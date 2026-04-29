@@ -1,0 +1,50 @@
+/**
+ * Rate-limit rule constants for canvas and folder REST endpoints.
+ *
+ * Rules are defined at the endpoint level and consumed by the route handlers.
+ * Each rule key follows `<resource>:<action>` naming.
+ *
+ * Limits intentionally differentiated by write/read profile:
+ * - Write ops (create/delete): 10/60s — generous for human interaction
+ * - Update ops: 30-60/60s — optimistic update paths benefit from headroom
+ * - Read ops: 60-100/60s — GET /canvas/:id set high for collab editor polling
+ *
+ * Key format for actual limiter calls:
+ *   `api:<rule-name>:<userId>`
+ *
+ * Design: "Rate limit 規則表" decision
+ */
+
+import type { RateLimitRule } from "./rate-limiter";
+
+const s = (seconds: number) => seconds * 1_000;
+
+/** POST /api/canvas — 10 creates per 60 seconds per user */
+export const CANVAS_CREATE_RULE: RateLimitRule = { windowMs: s(60), max: 10 };
+
+/** PATCH /api/canvas/:id — 60 updates per 60 seconds per user */
+export const CANVAS_UPDATE_RULE: RateLimitRule = { windowMs: s(60), max: 60 };
+
+/** DELETE /api/canvas/:id — 30 deletes per 60 seconds per user */
+export const CANVAS_DELETE_RULE: RateLimitRule = { windowMs: s(60), max: 30 };
+
+/** GET /api/canvas — 60 list requests per 60 seconds per user */
+export const CANVAS_LIST_RULE: RateLimitRule = { windowMs: s(60), max: 60 };
+
+/**
+ * GET /api/canvas/:id — 100 reads per 60 seconds per user.
+ * Permissive: add-canvas-editor-shell may poll for freshness frequently.
+ */
+export const CANVAS_READ_RULE: RateLimitRule = { windowMs: s(60), max: 100 };
+
+/** POST /api/folder — 10 creates per 60 seconds per user */
+export const FOLDER_CREATE_RULE: RateLimitRule = { windowMs: s(60), max: 10 };
+
+/** PATCH /api/folder/:id — 30 renames per 60 seconds per user */
+export const FOLDER_UPDATE_RULE: RateLimitRule = { windowMs: s(60), max: 30 };
+
+/** DELETE /api/folder/:id — 10 deletes per 60 seconds per user */
+export const FOLDER_DELETE_RULE: RateLimitRule = { windowMs: s(60), max: 10 };
+
+/** GET /api/folder — 60 list requests per 60 seconds per user */
+export const FOLDER_LIST_RULE: RateLimitRule = { windowMs: s(60), max: 60 };
