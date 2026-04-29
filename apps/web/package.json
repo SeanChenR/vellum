@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Vellum frontend — React + tldraw SDK + Tailwind v4",
   "scripts": {
-    "dev": "concurrently --names tw,web --prefix-colors cyan,green \"bun run tailwind:watch\" \"bun --hot src/index.html\"",
+    "dev": "concurrently --names tw,web --prefix-colors cyan,green \"bun run tailwind:watch\" \"PORT=3001 bun --hot src/index.html\"",
     "build": "bun run tailwind:build && bun build src/index.html --outdir=dist --minify",
     "tailwind:build": "tailwindcss -i ./src/styles.css -o ./src/styles.gen.css --minify",
     "tailwind:watch": "tailwindcss -i ./src/styles.css -o ./src/styles.gen.css --watch",
@@ -33,7 +33,11 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@happy-dom/global-registrator": "^20.9.0",
     "@tailwindcss/cli": "^4.2.4",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "concurrently": "^9.2.1",
