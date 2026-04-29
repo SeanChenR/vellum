@@ -70,20 +70,20 @@
 
 ## 8. Refactor — 對齊 design.md 決策後檢核
 
-- [ ] 8.1 對照 design.md `Decision 1: 採用 better-auth 而非自寫 OAuth state machine`：確認程式碼僅用 better-auth 提供的 OAuth state/PKCE/nonce 機制，無自寫 state 儲存
-- [ ] 8.2 對照 design.md 標題 Decision 2: 把 auth schema 放在 `packages/shared/src/db/auth-schema.ts` 而非 `apps/api/src/db/schema.ts`：跑 `grep -r "from \"./auth-schema\"" apps/api/src/db/schema.ts` 確認 re-export pattern；前端只 `import type` 不引 runtime
-- [ ] 8.3 對照 design.md 標題 Decision 3: EmailService 抽成 shared interface，Mailpit impl 住在 apps/api：確認 better-auth config 接收 `EmailService` 而非具體實作；mock 替換 Resend 不需動 better-auth config
-- [ ] 8.4 對照 design.md 標題 Decision 4: Rate-limit 規則三條 — Magic Link 寄信 per-email 與 per-IP，login 嘗試 per-IP：抽 §4.3 helper review，確認三條鍵命名與 design.md 一致
-- [ ] 8.5 對照 `Decision 5: errorKey 對應表固定在 spec 中`：grep 全 server 程式找硬編碼的 user-facing 錯誤字串，全部替換為 errorKey
-- [ ] 8.6 對照 design.md 標題 Decision 6: 帳號刪除採 cascade delete，所有 owner-only canvases 一併刪：確認 §1.4 migration 對 `sessions`、`accounts`、`verification_tokens` FK 加 `ON DELETE CASCADE`；M2 與 M5 加表時擴充 cascade
-- [ ] 8.7 對照 design.md 標題 Decision 7: Session 撤回走 better-auth 的 `revokeSession(sessionId)`：確認 §4.7 sessions revoke endpoint 呼叫 better-auth 提供的 API 而非自己 delete row
-- [ ] 8.8 對照 `Decision 8: New deep modules vs. shallow glue`：審視 §4 / §5 模組大小，確認 `EmailService` 維持薄 interface、shallow glue 無自寫單元測試（靠 integration / E2E 覆蓋）
-- [ ] 8.9 對照 `Risks / Trade-offs` 中 logger 不能落 token 的風險：再次跑 §2.11 redaction 測試 + 手動觸發一次 magic-link send，肉眼確認 stdout 不含 token
+- [x] 8.1 對照 design.md `Decision 1: 採用 better-auth 而非自寫 OAuth state machine`：確認程式碼僅用 better-auth 提供的 OAuth state/PKCE/nonce 機制，無自寫 state 儲存
+- [x] 8.2 對照 design.md 標題 Decision 2: 把 auth schema 放在 `packages/shared/src/db/auth-schema.ts` 而非 `apps/api/src/db/schema.ts`：跑 `grep -r "from \"./auth-schema\"" apps/api/src/db/schema.ts` 確認 re-export pattern；前端只 `import type` 不引 runtime
+- [x] 8.3 對照 design.md 標題 Decision 3: EmailService 抽成 shared interface，Mailpit impl 住在 apps/api：確認 better-auth config 接收 `EmailService` 而非具體實作；mock 替換 Resend 不需動 better-auth config
+- [x] 8.4 對照 design.md 標題 Decision 4: Rate-limit 規則三條 — Magic Link 寄信 per-email 與 per-IP，login 嘗試 per-IP：抽 §4.3 helper review，確認三條鍵命名與 design.md 一致
+- [x] 8.5 對照 `Decision 5: errorKey 對應表固定在 spec 中`：grep 全 server 程式找硬編碼的 user-facing 錯誤字串，全部替換為 errorKey
+- [x] 8.6 對照 design.md 標題 Decision 6: 帳號刪除採 cascade delete，所有 owner-only canvases 一併刪：確認 §1.4 migration 對 `sessions`、`accounts`、`verification_tokens` FK 加 `ON DELETE CASCADE`；M2 與 M5 加表時擴充 cascade
+- [x] 8.7 對照 design.md 標題 Decision 7: Session 撤回走 better-auth 的 `revokeSession(sessionId)`：確認 §4.7 sessions revoke endpoint 呼叫 better-auth 提供的 API 而非自己 delete row
+- [x] 8.8 對照 `Decision 8: New deep modules vs. shallow glue`：審視 §4 / §5 模組大小，確認 `EmailService` 維持薄 interface、shallow glue 無自寫單元測試（靠 integration / E2E 覆蓋）
+- [x] 8.9 對照 `Risks / Trade-offs` 中 logger 不能落 token 的風險：再次跑 §2.11 redaction 測試 + 手動觸發一次 magic-link send，肉眼確認 stdout 不含 token
 
 ## 9. 驗收與 Out-of-Scope Guard
 
-- [ ] 9.1 跑 `bun test --coverage` 確認 auth + account 模組單元 + integration 覆蓋 ≥ 70%
-- [ ] 9.2 跑 `bunx oxlint` 與 `bunx oxfmt --check` 全綠
-- [ ] 9.3 跑 `bun run typecheck` 全綠
-- [ ] 9.4 手動 review：本 change 未引入 Resend / Sentry / analytics / image cloud upload / 2FA / 密碼登入 / Apple GitHub OAuth / 全域語言切換器 UI / public-link viewer auth / 帳號合併 UI（per Non-Goals）
+- [x] 9.1 跑 `bun test --coverage` 確認 auth + account 模組單元 + integration 覆蓋 ≥ 70%
+- [x] 9.2 跑 `bunx oxlint` 與 `bunx oxfmt --check` 全綠
+- [x] 9.3 跑 `bun run typecheck` 全綠
+- [x] 9.4 手動 review：本 change 未引入 Resend / Sentry / analytics / image cloud upload / 2FA / 密碼登入 / Apple GitHub OAuth / 全域語言切換器 UI / public-link viewer auth / 帳號合併 UI（per Non-Goals）
 - [ ] 9.5 視覺預覽迭代收尾：依序開 `/login`、`/oauth/callback`（stub）、`/auth/verify`（stub）、`/account/profile`、`/account/sessions`、Delete Account dialog 給 user review；獲得 user 視覺通過後本 change 才算完成
