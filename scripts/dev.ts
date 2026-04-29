@@ -87,6 +87,21 @@ async function waitForPort(label: string, port: number, timeoutMs = 30_000): Pro
   shutdown(1);
 }
 
+function clearStaleListeners(label: string, port: number): void {
+  // Kill any leftover process bound to a dev port so dev:up is idempotent
+  // when a previous run was killed without cleanup. Brew services are left
+  // alone — only the per-run children (api, proxy) get reaped.
+  const lsof = spawnSync(["lsof", "-ti", `:${port}`], { stdout: "pipe" });
+  const pids = new TextDecoder()
+    .decode(lsof.stdout)
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (pids.length === 0) return;
+  log(label, `clearing stale listener(s) on :${port} (pid ${pids.join(", ")})`);
+  spawnSync(["kill", "-9", ...pids], { stdout: "ignore", stderr: "ignore" });
+}
+
 function ensureDevPostgresRoleAndDb(): void {
   // Idempotent: brew postgres uses the system user; we need a `postgres`
   // role + `vellum_dev` db so DATABASE_URL in apps/api/.env works as-is.
@@ -149,6 +164,9 @@ ensureBrewService("mailpit", "mailpit");
 
 await waitForPort("postgres", 5432);
 await waitForPort("mailpit", 1025);
+
+clearStaleListeners("preflight", 3000);
+clearStaleListeners("preflight", 3002);
 
 ensureDevPostgresRoleAndDb();
 
