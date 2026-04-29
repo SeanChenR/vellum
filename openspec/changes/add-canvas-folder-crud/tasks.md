@@ -59,9 +59,9 @@
 
 ## 9. i18n locale 同步（zh-TW + en）
 
-- [ ] 9.1 [P] 在 `packages/shared/src/locales/zh-TW.json` 新增 dashboard / canvas / folder UI 字串：`dashboard.myCanvases`、`dashboard.sharedWithMe`、`dashboard.createCanvas`、`dashboard.empty.owned`、`dashboard.empty.shared`、`canvas.card.lastEdited`、`canvas.card.menu.rename`、`canvas.card.menu.move`、`canvas.card.menu.delete`、`canvas.dialog.create.title`、`canvas.dialog.rename.title`、`canvas.dialog.delete.title`、`canvas.dialog.delete.confirm`、`folder.allCanvases`、`folder.unfiled`、`folder.create`、`folder.rename`、`folder.delete`、`folder.deleteConfirm`、以及全部 9 條 errorKey 翻譯（落地「Localized strings synchronized across zh-TW and en」與「Localized strings for folder UI synchronized across zh-TW and en」要求中 zh-TW 一側）
-- [ ] 9.2 [P] 在 `packages/shared/src/locales/en.json` 同步加入 9.1 的全部 key 與英文翻譯（落地兩個 i18n 同步要求中 en 一側）
-- [ ] 9.3 [P] 寫 unit test `packages/shared/src/locales/locales.test.ts` 驗證 zh-TW 與 en 兩 JSON 的 key 集合完全相同（防止單語漂移）
+- [x] 9.1 [P] 在 `packages/shared/src/locales/zh-TW.json` 新增 dashboard / canvas / folder UI 字串：`dashboard.myCanvases`、`dashboard.sharedWithMe`、`dashboard.createCanvas`、`dashboard.empty.owned`、`dashboard.empty.shared`、`canvas.card.lastEdited`、`canvas.card.menu.rename`、`canvas.card.menu.move`、`canvas.card.menu.delete`、`canvas.dialog.create.title`、`canvas.dialog.rename.title`、`canvas.dialog.delete.title`、`canvas.dialog.delete.confirm`、`folder.allCanvases`、`folder.unfiled`、`folder.create`、`folder.rename`、`folder.delete`、`folder.deleteConfirm`、以及全部 9 條 errorKey 翻譯（落地「Localized strings synchronized across zh-TW and en」與「Localized strings for folder UI synchronized across zh-TW and en」要求中 zh-TW 一側）
+- [x] 9.2 [P] 在 `packages/shared/src/locales/en.json` 同步加入 9.1 的全部 key 與英文翻譯（落地兩個 i18n 同步要求中 en 一側）
+- [x] 9.3 [P] 寫 unit test `packages/shared/src/locales/locales.test.ts` 驗證 zh-TW 與 en 兩 JSON 的 key 集合完全相同（防止單語漂移）
 
 ## 10. 前端架構：dashboard 用 TanStack Query 為 source of truth — Hooks 與 Tests
 

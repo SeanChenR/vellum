@@ -35,6 +35,62 @@
       "sessionRevoked": "Your session has expired. Please sign in again."
     }
   },
+  "dashboard": {
+    "myCanvases": "My Canvases",
+    "sharedWithMe": "Shared with me",
+    "createCanvas": "Create canvas",
+    "empty": {
+      "owned": "No canvases yet — create your first one!",
+      "shared": "Nothing has been shared with you yet"
+    }
+  },
+  "canvas": {
+    "card": {
+      "lastEdited": "Last edited {{time}}",
+      "menu": {
+        "rename": "Rename",
+        "move": "Move to folder",
+        "delete": "Delete"
+      }
+    },
+    "dialog": {
+      "create": {
+        "title": "Create canvas"
+      },
+      "rename": {
+        "title": "Rename canvas"
+      },
+      "delete": {
+        "title": "Delete canvas",
+        "confirm": "Delete \"{{title}}\"? This cannot be undone."
+      }
+    }
+  },
+  "folder": {
+    "allCanvases": "All canvases",
+    "unfiled": "Unfiled",
+    "create": "Create folder",
+    "rename": "Rename folder",
+    "delete": "Delete folder",
+    "deleteConfirm": "Delete \"{{name}}\"? Please move all canvases out of this folder first."
+  },
+  "errors": {
+    "auth": {
+      "unauthorized": "Please sign in to continue"
+    },
+    "canvas": {
+      "notFound": "Canvas not found",
+      "forbidden": "You do not have access to this canvas"
+    },
+    "folder": {
+      "notFound": "Folder not found",
+      "forbidden": "You do not have access to this folder",
+      "notEmpty": "Please move all canvases out of this folder before deleting it"
+    },
+    "validation": "Invalid input. Please check your data and try again.",
+    "rateLimit": "Too many requests. Please try again later.",
+    "internal": "An internal error occurred. Please try again later."
+  },
   "account": {
     "profile": {
       "title": "Profile",

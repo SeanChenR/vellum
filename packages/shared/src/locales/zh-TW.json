@@ -35,6 +35,62 @@
       "sessionRevoked": "登入階段已失效，請重新登入"
     }
   },
+  "dashboard": {
+    "myCanvases": "我的畫布",
+    "sharedWithMe": "與我共用",
+    "createCanvas": "建立畫布",
+    "empty": {
+      "owned": "還沒有畫布，立即建立第一個吧！",
+      "shared": "目前尚無共用畫布"
+    }
+  },
+  "canvas": {
+    "card": {
+      "lastEdited": "最後編輯：{{time}}",
+      "menu": {
+        "rename": "重新命名",
+        "move": "移動到資料夾",
+        "delete": "刪除"
+      }
+    },
+    "dialog": {
+      "create": {
+        "title": "建立畫布"
+      },
+      "rename": {
+        "title": "重新命名畫布"
+      },
+      "delete": {
+        "title": "刪除畫布",
+        "confirm": "確定要刪除「{{title}}」嗎？此動作無法復原。"
+      }
+    }
+  },
+  "folder": {
+    "allCanvases": "所有畫布",
+    "unfiled": "未分類",
+    "create": "建立資料夾",
+    "rename": "重新命名資料夾",
+    "delete": "刪除資料夾",
+    "deleteConfirm": "確定要刪除「{{name}}」嗎？請先將畫布移出此資料夾。"
+  },
+  "errors": {
+    "auth": {
+      "unauthorized": "請先登入"
+    },
+    "canvas": {
+      "notFound": "找不到此畫布",
+      "forbidden": "您沒有存取此畫布的權限"
+    },
+    "folder": {
+      "notFound": "找不到此資料夾",
+      "forbidden": "您沒有存取此資料夾的權限",
+      "notEmpty": "請先將畫布移出此資料夾，再刪除資料夾"
+    },
+    "validation": "輸入資料有誤，請確認後再試",
+    "rateLimit": "請求次數過多，請稍後再試",
+    "internal": "伺服器發生錯誤，請稍後再試"
+  },
   "account": {
     "profile": {
       "title": "個人資料",
