@@ -8,6 +8,13 @@
       "when": 1777453466201,
       "tag": "0000_hesitant_night_nurse",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777455579545,
+      "tag": "0001_new_shinko_yamashiro",
+      "breakpoints": true
     }
   ]
 }
