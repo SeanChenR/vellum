@@ -1,0 +1,14 @@
+{
+  "name": "@vellum/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared schema, types, locales, and validators between Vellum apps",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

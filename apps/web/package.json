@@ -1,0 +1,16 @@
+{
+  "name": "@vellum/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Vellum frontend — React + tldraw SDK + Tailwind v4",
+  "scripts": {
+    "dev": "bun --hot src/index.html",
+    "build": "bun build src/index.html --outdir=dist",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@vellum/shared": "workspace:*"
+  }
+}
