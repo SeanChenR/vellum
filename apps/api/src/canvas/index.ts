@@ -1,0 +1,389 @@
+/**
+ * Canvas REST routes.
+ *
+ * Endpoints:
+ *   POST   /api/canvas          — create canvas
+ *   GET    /api/canvas          — list canvases (scope + folderId filter)
+ *   GET    /api/canvas/:id      — read one canvas
+ *   PATCH  /api/canvas/:id      — rename / folder reassignment
+ *   DELETE /api/canvas/:id      — delete canvas
+ *
+ * Auth: all routes require an active session (passed in from index.ts after
+ * calling better-auth's getSession).
+ *
+ * Rate limits: per-user token-bucket rules from rate-limit-rules.ts.
+ *
+ * Error envelope: { error: ErrorKey }  (flat, matching api-contract.ts)
+ * Success envelope: { data: T, meta?: { total: number } }
+ *
+ * Spec: canvas-management capability
+ */
+
+import { eq, and, isNull, desc } from "drizzle-orm";
+import { getDb } from "../db/index";
+import { canvases, folders } from "../db/schema";
+import { canAccess } from "../lib/permission";
+import type { RateLimiter } from "../lib/rate-limiter";
+import {
+  CANVAS_CREATE_RULE,
+  CANVAS_DELETE_RULE,
+  CANVAS_LIST_RULE,
+  CANVAS_READ_RULE,
+  CANVAS_UPDATE_RULE,
+} from "../lib/rate-limit-rules";
+import {
+  canvasCreateInputSchema,
+  canvasUpdateInputSchema,
+} from "@vellum/shared/api-contract";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+interface SessionLike {
+  userId: string;
+}
+
+function errorResp(status: number, error: string, extra?: object): Response {
+  return Response.json({ error, ...extra }, { status });
+}
+
+function rateLimitResp(retryAfterSeconds: number): Response {
+  return new Response(
+    JSON.stringify({ error: "errors.rateLimit", retryAfter: retryAfterSeconds }),
+    {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(retryAfterSeconds),
+      },
+    },
+  );
+}
+
+function rlKey(action: string, userId: string) {
+  return `api:canvas:${action}:${userId}`;
+}
+
+// ---------------------------------------------------------------------------
+// Route handlers
+// ---------------------------------------------------------------------------
+
+async function handleCreate(
+  req: Request,
+  session: SessionLike,
+  rateLimiter: RateLimiter,
+): Promise<Response> {
+  const rl = rateLimiter.limit(rlKey("create", session.userId), CANVAS_CREATE_RULE);
+  if (!rl.allowed) return rateLimitResp(rl.retryAfterSeconds);
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return errorResp(400, "errors.validation", { details: [{ message: "Invalid JSON" }] });
+  }
+
+  const parsed = canvasCreateInputSchema.safeParse(body);
+  if (!parsed.success) {
+    return errorResp(400, "errors.validation", { details: parsed.error.issues });
+  }
+
+  const { title, folderId } = parsed.data;
+
+  // If folderId provided, verify it belongs to this user
+  if (folderId !== undefined && folderId !== null) {
+    const db = getDb();
+    const folder = await db.query.folders.findFirst({
+      where: (f, { eq: eq_ }) => eq_(f.id, folderId),
+    });
+    if (!folder) {
+      return errorResp(403, "errors.folder.forbidden");
+    }
+    if (folder.ownerId !== session.userId) {
+      return errorResp(403, "errors.folder.forbidden");
+    }
+  }
+
+  const db = getDb();
+  const [canvas] = await db
+    .insert(canvases)
+    .values({
+      ownerId: session.userId,
+      folderId: folderId ?? null,
+      title,
+    })
+    .returning();
+
+  if (!canvas) {
+    return errorResp(500, "errors.internal");
+  }
+
+  return Response.json({ data: canvasToDto(canvas) }, { status: 201 });
+}
+
+async function handleList(
+  req: Request,
+  session: SessionLike,
+  rateLimiter: RateLimiter,
+): Promise<Response> {
+  const rl = rateLimiter.limit(rlKey("list", session.userId), CANVAS_LIST_RULE);
+  if (!rl.allowed) return rateLimitResp(rl.retryAfterSeconds);
+
+  const url = new URL(req.url);
+  const scope = url.searchParams.get("scope") ?? "owned";
+  const folderIdParam = url.searchParams.get("folderId");
+
+  // TODO(add-sharing): remove short-circuit — shared scope resolution belongs
+  // to the add-sharing capability (canvas_shares table). Until then, return
+  // an empty collection so the dashboard "Shared with me" section renders.
+  if (scope === "shared") {
+    return Response.json({ data: [], meta: { total: 0 } });
+  }
+
+  const db = getDb();
+  let rows;
+
+  if (folderIdParam === null) {
+    // No folderId filter — return all owned canvases
+    rows = await db
+      .select()
+      .from(canvases)
+      .where(eq(canvases.ownerId, session.userId))
+      .orderBy(desc(canvases.updatedAt));
+  } else if (folderIdParam === "null") {
+    // folderId=null — unfiled canvases only
+    rows = await db
+      .select()
+      .from(canvases)
+      .where(
+        and(
+          eq(canvases.ownerId, session.userId),
+          isNull(canvases.folderId),
+        ),
+      )
+      .orderBy(desc(canvases.updatedAt));
+  } else {
+    // folderId=<uuid> — verify folder ownership then filter
+    const folder = await db.query.folders.findFirst({
+      where: (f, { eq: eq_ }) => eq_(f.id, folderIdParam),
+    });
+    if (!folder) {
+      return errorResp(403, "errors.folder.forbidden");
+    }
+    if (folder.ownerId !== session.userId) {
+      return errorResp(403, "errors.folder.forbidden");
+    }
+    rows = await db
+      .select()
+      .from(canvases)
+      .where(
+        and(
+          eq(canvases.ownerId, session.userId),
+          eq(canvases.folderId, folderIdParam),
+        ),
+      )
+      .orderBy(desc(canvases.updatedAt));
+  }
+
+  return Response.json({
+    data: rows.map(canvasToDto),
+    meta: { total: rows.length },
+  });
+}
+
+async function handleRead(
+  _req: Request,
+  session: SessionLike,
+  rateLimiter: RateLimiter,
+  canvasId: string,
+): Promise<Response> {
+  const rl = rateLimiter.limit(rlKey("read", session.userId), CANVAS_READ_RULE);
+  if (!rl.allowed) return rateLimitResp(rl.retryAfterSeconds);
+
+  const db = getDb();
+  const canvas = await db.query.canvases.findFirst({
+    where: (c, { eq: eq_ }) => eq_(c.id, canvasId),
+  });
+
+  if (!canvas) {
+    return errorResp(404, "errors.canvas.notFound");
+  }
+
+  if (!canAccess({ id: session.userId }, canvas, "read")) {
+    return errorResp(403, "errors.canvas.forbidden");
+  }
+
+  return Response.json({ data: canvasToDto(canvas) });
+}
+
+async function handleUpdate(
+  req: Request,
+  session: SessionLike,
+  rateLimiter: RateLimiter,
+  canvasId: string,
+): Promise<Response> {
+  const rl = rateLimiter.limit(rlKey("update", session.userId), CANVAS_UPDATE_RULE);
+  if (!rl.allowed) return rateLimitResp(rl.retryAfterSeconds);
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return errorResp(400, "errors.validation", { details: [{ message: "Invalid JSON" }] });
+  }
+
+  const parsed = canvasUpdateInputSchema.safeParse(body);
+  if (!parsed.success) {
+    return errorResp(400, "errors.validation", { details: parsed.error.issues });
+  }
+
+  const db = getDb();
+  const canvas = await db.query.canvases.findFirst({
+    where: (c, { eq: eq_ }) => eq_(c.id, canvasId),
+  });
+
+  if (!canvas) {
+    return errorResp(404, "errors.canvas.notFound");
+  }
+
+  if (!canAccess({ id: session.userId }, canvas, "write")) {
+    return errorResp(403, "errors.canvas.forbidden");
+  }
+
+  const { title, folderId } = parsed.data;
+
+  // If folderId is being set (not null and not undefined), verify ownership
+  if (folderId !== undefined && folderId !== null) {
+    const folder = await db.query.folders.findFirst({
+      where: (f, { eq: eq_ }) => eq_(f.id, folderId),
+    });
+    if (!folder || folder.ownerId !== session.userId) {
+      return errorResp(403, "errors.folder.forbidden");
+    }
+  }
+
+  const updateValues: Partial<{ title: string; folderId: string | null; updatedAt: Date }> = {
+    updatedAt: new Date(),
+  };
+  if (title !== undefined) updateValues.title = title;
+  if (folderId !== undefined) updateValues.folderId = folderId;
+
+  const [updated] = await db
+    .update(canvases)
+    .set(updateValues)
+    .where(eq(canvases.id, canvasId))
+    .returning();
+
+  if (!updated) {
+    return errorResp(500, "errors.internal");
+  }
+
+  return Response.json({ data: canvasToDto(updated) });
+}
+
+async function handleDelete(
+  _req: Request,
+  session: SessionLike,
+  rateLimiter: RateLimiter,
+  canvasId: string,
+): Promise<Response> {
+  const rl = rateLimiter.limit(rlKey("delete", session.userId), CANVAS_DELETE_RULE);
+  if (!rl.allowed) return rateLimitResp(rl.retryAfterSeconds);
+
+  const db = getDb();
+  const canvas = await db.query.canvases.findFirst({
+    where: (c, { eq: eq_ }) => eq_(c.id, canvasId),
+  });
+
+  if (!canvas) {
+    return errorResp(404, "errors.canvas.notFound");
+  }
+
+  if (!canAccess({ id: session.userId }, canvas, "delete")) {
+    return errorResp(403, "errors.canvas.forbidden");
+  }
+
+  await db.delete(canvases).where(eq(canvases.id, canvasId));
+
+  return new Response(null, { status: 204 });
+}
+
+// ---------------------------------------------------------------------------
+// DTO serialiser
+// ---------------------------------------------------------------------------
+
+type CanvasRow = typeof canvases.$inferSelect;
+
+function canvasToDto(c: CanvasRow) {
+  return {
+    id: c.id,
+    ownerId: c.ownerId,
+    folderId: c.folderId,
+    title: c.title,
+    snapshot: c.snapshot,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Router entry point
+// ---------------------------------------------------------------------------
+
+const CANVAS_PREFIX = "/api/canvas";
+
+/**
+ * Handle /api/canvas/* requests.
+ *
+ * @param req       - Incoming request
+ * @param session   - Resolved session from better-auth (null if unauthenticated)
+ * @param rateLimiter - Shared RateLimiter singleton
+ * @returns Response or null (caller continues routing)
+ */
+export async function handleCanvasRequest(
+  req: Request,
+  session: SessionLike | null,
+  rateLimiter: RateLimiter,
+): Promise<Response | null> {
+  const url = new URL(req.url);
+  const path = url.pathname;
+  const method = req.method.toUpperCase();
+
+  if (!path.startsWith(CANVAS_PREFIX)) return null;
+
+  // Auth guard — all canvas routes require a session
+  if (!session) {
+    return errorResp(401, "errors.auth.unauthorized");
+  }
+
+  const afterPrefix = path.slice(CANVAS_PREFIX.length); // "" | "/" | "/<id>" | "/<id>/..."
+
+  // POST /api/canvas
+  if (method === "POST" && (afterPrefix === "" || afterPrefix === "/")) {
+    return handleCreate(req, session, rateLimiter);
+  }
+
+  // GET /api/canvas (list)
+  if (method === "GET" && (afterPrefix === "" || afterPrefix === "/")) {
+    return handleList(req, session, rateLimiter);
+  }
+
+  // Routes that include a canvas ID
+  const idMatch = afterPrefix.match(/^\/([^/]+)$/);
+  if (idMatch) {
+    const canvasId = idMatch[1]!;
+
+    if (method === "GET") {
+      return handleRead(req, session, rateLimiter, canvasId);
+    }
+    if (method === "PATCH") {
+      return handleUpdate(req, session, rateLimiter, canvasId);
+    }
+    if (method === "DELETE") {
+      return handleDelete(req, session, rateLimiter, canvasId);
+    }
+  }
+
+  return null;
+}

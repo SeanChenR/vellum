@@ -27,35 +27,35 @@
 
 ## 5. Canvas REST endpoints — Tests First
 
-- [ ] 5.1 [P] 在 `apps/api/src/canvas/canvas.test.ts` 寫 integration test 覆蓋「Canvas creation」全部 scenario（成功在 root、成功在自己 folder、folder 屬他人 403、title 驗證、未認證、rate limit）
-- [ ] 5.2 [P] 寫 integration test 覆蓋「Canvas list query with scope filter」全部 scenario（owned scope sort by updatedAt desc、folderId 過濾、folderId=null unfiled、scope=shared 短路回空、未認證）
-- [ ] 5.3 [P] 寫 integration test 覆蓋「Canvas read by id」全部 scenario（owner 200、非 owner 403、不存在 404）
-- [ ] 5.4 [P] 寫 integration test 覆蓋「Canvas update (rename and folder reassignment)」全部 scenario（rename、move 進自己 folder、move 出至 null、move 進他人 folder 403、非 owner 403、validation 400）
-- [ ] 5.5 [P] 寫 integration test 覆蓋「Canvas delete」全部 scenario（owner 204、非 owner 403、不存在 404）
+- [x] 5.1 [P] 在 `apps/api/src/canvas/canvas.test.ts` 寫 integration test 覆蓋「Canvas creation」全部 scenario（成功在 root、成功在自己 folder、folder 屬他人 403、title 驗證、未認證、rate limit）
+- [x] 5.2 [P] 寫 integration test 覆蓋「Canvas list query with scope filter」全部 scenario（owned scope sort by updatedAt desc、folderId 過濾、folderId=null unfiled、scope=shared 短路回空、未認證）
+- [x] 5.3 [P] 寫 integration test 覆蓋「Canvas read by id」全部 scenario（owner 200、非 owner 403、不存在 404）
+- [x] 5.4 [P] 寫 integration test 覆蓋「Canvas update (rename and folder reassignment)」全部 scenario（rename、move 進自己 folder、move 出至 null、move 進他人 folder 403、非 owner 403、validation 400）
+- [x] 5.5 [P] 寫 integration test 覆蓋「Canvas delete」全部 scenario（owner 204、非 owner 403、不存在 404）
 
 ## 6. Canvas REST endpoints — Implementation
 
-- [ ] 6.1 在 `apps/api/src/canvas/index.ts` 實作 `POST /api/canvas`，套用 better-auth session middleware、`canAccess` 檢查（建立時改驗 folderId 屬該 user）、`canvasCreateInputSchema` 驗 body、套用 rate limit `canvas:create`（落地「Canvas creation」要求）
-- [ ] 6.2 在 `apps/api/src/canvas/index.ts` 實作 `GET /api/canvas`，支援 `scope=owned|shared` 與 `folderId=<uuid>|null` 兩個 query；`scope=shared` 在本 change 永遠 short-circuit 回 `{ data: [], meta: { total: 0 } }` 並在程式碼中加 `// TODO(add-sharing): remove short-circuit` 註解（落地「Shared with me」list 的 forward-compat 介面決策與「Canvas list query with scope filter」要求）
-- [ ] 6.3 在 `apps/api/src/canvas/index.ts` 實作 `GET /api/canvas/:id`，先 fetch row、再走 `canAccess(user, canvas, 'read')`；`canvas:read` rate limit 設 100/60s（落地「Canvas read by id」要求）
-- [ ] 6.4 在 `apps/api/src/canvas/index.ts` 實作 `PATCH /api/canvas/:id`，驗 `canvasUpdateInputSchema`、`canAccess(user, canvas, 'write')`、若帶 folderId 額外驗 folder ownership、更新 `updated_at`（落地「Canvas update (rename and folder reassignment)」要求）
-- [ ] 6.5 在 `apps/api/src/canvas/index.ts` 實作 `DELETE /api/canvas/:id`，`canAccess(user, canvas, 'delete')`，回 204 no body（落地「Canvas delete」要求）
-- [ ] 6.6 在 `apps/api/src/index.ts` 掛載 canvas routes 並 wire rate-limit middleware；確認 5.1-5.5 全測試綠燈
+- [x] 6.1 在 `apps/api/src/canvas/index.ts` 實作 `POST /api/canvas`，套用 better-auth session middleware、`canAccess` 檢查（建立時改驗 folderId 屬該 user）、`canvasCreateInputSchema` 驗 body、套用 rate limit `canvas:create`（落地「Canvas creation」要求）
+- [x] 6.2 在 `apps/api/src/canvas/index.ts` 實作 `GET /api/canvas`，支援 `scope=owned|shared` 與 `folderId=<uuid>|null` 兩個 query；`scope=shared` 在本 change 永遠 short-circuit 回 `{ data: [], meta: { total: 0 } }` 並在程式碼中加 `// TODO(add-sharing): remove short-circuit` 註解（落地「Shared with me」list 的 forward-compat 介面決策與「Canvas list query with scope filter」要求）
+- [x] 6.3 在 `apps/api/src/canvas/index.ts` 實作 `GET /api/canvas/:id`，先 fetch row、再走 `canAccess(user, canvas, 'read')`；`canvas:read` rate limit 設 100/60s（落地「Canvas read by id」要求）
+- [x] 6.4 在 `apps/api/src/canvas/index.ts` 實作 `PATCH /api/canvas/:id`，驗 `canvasUpdateInputSchema`、`canAccess(user, canvas, 'write')`、若帶 folderId 額外驗 folder ownership、更新 `updated_at`（落地「Canvas update (rename and folder reassignment)」要求）
+- [x] 6.5 在 `apps/api/src/canvas/index.ts` 實作 `DELETE /api/canvas/:id`，`canAccess(user, canvas, 'delete')`，回 204 no body（落地「Canvas delete」要求）
+- [x] 6.6 在 `apps/api/src/index.ts` 掛載 canvas routes 並 wire rate-limit middleware；確認 5.1-5.5 全測試綠燈
 
 ## 7. Folder REST endpoints — Tests First
 
-- [ ] 7.1 [P] 在 `apps/api/src/folder/folder.test.ts` 寫 integration test 覆蓋「Folder creation」全部 scenario（成功、name 驗證、未認證、rate limit）
-- [ ] 7.2 [P] 寫 integration test 覆蓋「Folder list query」全部 scenario（owned 排序 ascending by name、未認證）
-- [ ] 7.3 [P] 寫 integration test 覆蓋「Folder rename」全部 scenario（owner 200、非 owner 403、不存在 404、validation 400）
-- [ ] 7.4 [P] 寫 integration test 覆蓋「Folder delete with non-empty guard」全部 scenario（empty 204、non-empty 409、非 owner 403、不存在 404）
+- [x] 7.1 [P] 在 `apps/api/src/folder/folder.test.ts` 寫 integration test 覆蓋「Folder creation」全部 scenario（成功、name 驗證、未認證、rate limit）
+- [x] 7.2 [P] 寫 integration test 覆蓋「Folder list query」全部 scenario（owned 排序 ascending by name、未認證）
+- [x] 7.3 [P] 寫 integration test 覆蓋「Folder rename」全部 scenario（owner 200、非 owner 403、不存在 404、validation 400）
+- [x] 7.4 [P] 寫 integration test 覆蓋「Folder delete with non-empty guard」全部 scenario（empty 204、non-empty 409、非 owner 403、不存在 404）
 
 ## 8. Folder REST endpoints — Implementation
 
-- [ ] 8.1 在 `apps/api/src/folder/index.ts` 實作 `POST /api/folder`，session + `folderCreateInputSchema` + rate limit `folder:create`（落地「Folder creation」要求）
-- [ ] 8.2 在 `apps/api/src/folder/index.ts` 實作 `GET /api/folder`，回 owner 自己的 folder list、name asc 排序（落地「Folder list query」要求）
-- [ ] 8.3 在 `apps/api/src/folder/index.ts` 實作 `PATCH /api/folder/:id`，owner 檢查 + `folderUpdateInputSchema` + 更新 `updated_at`（落地「Folder rename」要求）
-- [ ] 8.4 在 `apps/api/src/folder/index.ts` 實作 `DELETE /api/folder/:id`，owner 檢查、count canvases where folder_id = id；若 > 0 回 409 `errors.folder.notEmpty`，否則 204（落地「Folder delete with non-empty guard」要求）
-- [ ] 8.5 在 `apps/api/src/index.ts` 掛載 folder routes；確認 7.1-7.4 全測試綠燈
+- [x] 8.1 在 `apps/api/src/folder/index.ts` 實作 `POST /api/folder`，session + `folderCreateInputSchema` + rate limit `folder:create`（落地「Folder creation」要求）
+- [x] 8.2 在 `apps/api/src/folder/index.ts` 實作 `GET /api/folder`，回 owner 自己的 folder list、name asc 排序（落地「Folder list query」要求）
+- [x] 8.3 在 `apps/api/src/folder/index.ts` 實作 `PATCH /api/folder/:id`，owner 檢查 + `folderUpdateInputSchema` + 更新 `updated_at`（落地「Folder rename」要求）
+- [x] 8.4 在 `apps/api/src/folder/index.ts` 實作 `DELETE /api/folder/:id`，owner 檢查、count canvases where folder_id = id；若 > 0 回 409 `errors.folder.notEmpty`，否則 204（落地「Folder delete with non-empty guard」要求）
+- [x] 8.5 在 `apps/api/src/index.ts` 掛載 folder routes；確認 7.1-7.4 全測試綠燈
 
 ## 9. i18n locale 同步（zh-TW + en）
 
