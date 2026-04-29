@@ -43,7 +43,7 @@ export function LoginPage() {
       const resp = await fetch("/api/auth/sign-in/magic-link", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: values.email }),
+        body: JSON.stringify({ email: values.email, callbackURL: "/dashboard" }),
       });
       const body = (await resp.json()) as MagicLinkResponse;
       if (!resp.ok) {
