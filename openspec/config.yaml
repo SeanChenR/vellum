@@ -1,20 +1,104 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  # Vellum — canvas-based collaborative web app on tldraw SDK
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Phase 1 of N. Local-only development; deployment deferred. See
+  docs/PRD.md for the full Phase 1 PRD (also GitHub Issue #1) and
+  docs/adr/ for architecture decision records.
+
+  ## Tech stack (pinned)
+
+  - Runtime / PM / Test / WebSocket / Bundler: Bun (no Node, no npm,
+    no vitest, no ws)
+  - Lint / format: oxlint + oxfmt (no eslint, no prettier)
+  - Pre-commit: Husky + lint-staged
+  - Frontend: React 19 + tldraw SDK
+  - CSS / UI: Tailwind v4 + shadcn/ui + MagicUI + Animate UI (shared
+    `motion`)
+  - Routing: TanStack Router
+  - Server state: TanStack Query
+  - Client-only state: Zustand
+  - Form: react-hook-form + zod
+  - Fonts: Inter (UI) + Newsreader (serif accent)
+  - DB / ORM: Postgres on Neon + Drizzle ORM (snapshots in jsonb)
+  - Auth: better-auth (Google OAuth + Magic Link)
+  - Email: Mailpit (dev) → Resend (prod, phase 2); React Email
+  - Realtime: tldraw sync, self-hosted on Bun.serve WebSocket
+  - Logging: Pino → stdout
+  - i18n: i18next + react-i18next (zh-TW + en)
+
+  Single-binary architecture: Bun.serve handles HTTP API + WebSocket
+  + static frontend in one process.
+
+  ## Repository layout
+
+  - apps/web/          React + tldraw frontend
+  - apps/api/          Bun.serve backend (HTTP + WebSocket + static)
+  - packages/shared/   Drizzle schema, API types, shape types, locales, zod
+  - docs/              PRD + ADRs
+  - e2e/               Playwright tests
+
+  ## Hard rules (override defaults — see CLAUDE.md)
+
+  1. TDD-first: show test plan first → write failing tests → implement
+     → refactor. Logic走TDD, 視覺走預覽迭代. Coverage target: 70%.
+  2. i18n discipline: every UI string through t('key'); zh-TW + en
+     synced in same change; server returns errorKey not translated
+     strings. Locale files in packages/shared/locales/zh-TW.json and
+     packages/shared/locales/en.json.
+  3. SSRF: every server-side fetch of user-provided URL MUST go through
+     validateExternalUrl() in apps/api/src/lib/validate-external-url.ts.
+  4. Rate limiting: every endpoint and WS connection has rate-limit
+     rules at definition time; uses RateLimiter in
+     apps/api/src/lib/rate-limiter.ts. 429 always carries Retry-After.
+  5. Animation discipline: motion in landing/dashboard/dialog/toast;
+     no motion inside canvas (tldraw owns timing) or on multiplayer
+     cursor/presence (must be instant).
+  6. Bun-native preference: Bun.file > node:fs, Bun.SQL via Drizzle
+     adapter > pg, Bun.password > bcryptjs, bun test > vitest,
+     Bun.serve > express/hono.
+  7. Sharing semantics: owner cannot leave their own canvas; public
+     link is per-canvas with single record per canvas switching mode
+     (closed | view | edit); no "request access" flow.
+  8. Out-of-scope guard: phase 2+ items (mobile, comments, multi-page,
+     mind-map/voting/table shapes, AI integration, image cloud upload,
+     embed iframe, version history, Sentry, analytics, Resend prod,
+     custom domain, offline/PWA, public discovery) MUST NOT be added
+     to phase 1.
+
+  ## Owner profile
+
+  - Implementation model: Claude writes; user reviews. Engineering
+    volume is not a cost; review/decision quality is.
+  - Strong preference for "完整不做一半" — pick the complete-feeling
+    option over MVP shortcuts when both are viable.
+  - Phase 1 milestone roadmap (M1-M10) lives in agent memory file
+    project_milestones.md.
+
+rules:
+  proposal:
+    - Reference the relevant PRD section by user-story number when
+      describing What Changes (e.g., covers PRD US 6-16).
+    - Non-Goals section is REQUIRED when design.md is skipped.
+    - Impact paths must be relative to project root (e.g.,
+      apps/api/src/auth/index.ts).
+  spec:
+    - Spec files MUST be written in English (normative SHALL/MUST).
+    - Each scenario MUST be independently verifiable (no chains).
+    - Cover happy path AND failure modes (rate-limit, SSRF, auth
+      failure) for every capability.
+  tasks:
+    - Group tasks under TDD phases — Tests First, Implementation,
+      Refactor — when the change has logic to test (per CLAUDE.md
+      hard rule 1).
+    - Mark visual-only tasks (chrome styling, custom shape rendering)
+      as preview-iteration, NOT TDD.
+    - When new UI strings are added, an explicit task MUST add both
+      zh-TW and en translations to packages/shared/locales.
+    - When a server fetch of a user URL is added, an explicit task
+      MUST wire validateExternalUrl() before the fetch call.
+  design:
+    - Reference existing deep modules where relevant - RateLimiter,
+      validateExternalUrl, Drizzle schema in apps/api/src/db.
+    - Call out which modules are NEW deep modules vs. shallow glue.

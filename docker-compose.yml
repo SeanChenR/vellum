@@ -1,4 +1,17 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vellum-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vellum_dev
+    volumes:
+      - vellum-postgres-data:/var/lib/postgresql/data
+
   mailpit:
     image: axllent/mailpit:latest
     container_name: vellum-mailpit
@@ -15,4 +28,5 @@ services:
       - mailpit-data:/data
 
 volumes:
+  vellum-postgres-data:
   mailpit-data:

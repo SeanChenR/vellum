@@ -11,13 +11,19 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@react-email/components": "^1.0.12",
     "@vellum/shared": "workspace:*",
     "better-auth": "^1.6.9",
     "drizzle-orm": "^0.45.2",
     "ipaddr.js": "^2.3.0",
-    "pino": "^10.3.1"
+    "nodemailer": "^8.0.7",
+    "pino": "^10.3.1",
+    "postgres": "^3.4.9",
+    "react-email": "^6.0.5",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/nodemailer": "^8.0.0",
     "drizzle-kit": "^0.31.10",
     "pino-pretty": "^13.1.3"
   }

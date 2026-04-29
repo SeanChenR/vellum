@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(rtk ls *)"
+      "Bash(rtk ls *)",
+      "Bash(rtk git *)",
+      "Bash(rtk gh *)",
+      "Bash(git commit *)",
+      "Bash(bun --version)"
     ]
   }
 }
