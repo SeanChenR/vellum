@@ -15,7 +15,7 @@
 
 import { eq, and, isNull } from "drizzle-orm";
 import { getDb } from "../db/index";
-import { users, sessions } from "../db/schema";
+import { users, sessions, verifications } from "../db/schema";
 import { requireAuth } from "../auth/route-guard";
 import { validateProfilePatch } from "./profile-validator";
 import { validateDeleteAccount } from "./delete-account-validator";
@@ -240,7 +240,14 @@ async function handleDeleteAccount(req: Request): Promise<Response> {
     return errorJson(400, validation.errorKey);
   }
 
-  // Cascade delete: sessions, accounts, verifications cascade from users FK
+  // Explicitly delete verifications by identifier (email): better-auth's
+  // verifications table uses identifier (email), not userId FK, so it cannot
+  // CASCADE from the users table. Clean it up manually before deleting the user.
+  await db
+    .delete(verifications)
+    .where(eq(verifications.identifier, user.email));
+
+  // Cascade delete: sessions + accounts cascade via userId FK ON DELETE CASCADE.
   await db.delete(users).where(eq(users.id, user.id));
 
   logger.info({ userId: user.id }, "account deleted");

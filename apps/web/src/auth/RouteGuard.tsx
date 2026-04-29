@@ -27,8 +27,8 @@ export function RouteGuard({ children }: RouteGuardProps) {
   }
 
   if (!user) {
-    const redirect = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/login?redirect=${redirect}`} />;
+    const redirect = location.pathname + location.search;
+    return <Navigate to="/login" search={{ redirect }} />;
   }
 
   return <>{children}</>;

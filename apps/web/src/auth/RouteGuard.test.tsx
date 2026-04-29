@@ -7,11 +7,11 @@
  * - authenticated user: renders children
  */
 
-import "../../i18n";
+import "../i18n";
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
-import i18n from "../../i18n";
+import i18n from "../i18n";
 import { RouteGuard } from "./RouteGuard";
 
 const mockNavigate = mock((_path: string) => {});

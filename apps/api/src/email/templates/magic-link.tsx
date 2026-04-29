@@ -49,7 +49,7 @@ export function MagicLinkEmail({ url, locale = "zh-TW" }: MagicLinkEmailProps) {
   return (
     <Html lang={locale === "zh-TW" ? "zh-TW" : "en"}>
       <Head />
-      <Preview>{t.preview}</Preview>
+      <Preview>{String(t.preview)}</Preview>
       <Body
         style={{
           backgroundColor: "#f9f9f7",

@@ -167,7 +167,6 @@ export function ProfilePage() {
           </label>
           <input
             id="image"
-            name="image"
             type="url"
             placeholder={t("account.profile.imagePlaceholder")}
             className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-ink-navy"
