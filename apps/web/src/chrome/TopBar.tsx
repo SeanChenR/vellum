@@ -180,7 +180,7 @@ export function TopBar({
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-ink-navy/10 bg-white px-4">
+      <header className="pointer-events-auto flex h-14 shrink-0 items-center gap-3 border-b border-ink-navy/10 bg-white px-4">
         {/* Logo slot — placeholder; replace with asset/vellum-logo.png integration */}
         <div className="flex shrink-0 items-center gap-2">
           <span aria-label={t("app.name")} className="font-serif text-lg font-bold text-ink-navy">

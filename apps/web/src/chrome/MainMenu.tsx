@@ -129,7 +129,7 @@ export function MainMenu({ onRename, onDuplicate, onDelete }: MainMenuProps) {
 
   return (
     <>
-      <div ref={menuRef} className="relative">
+      <div ref={menuRef} className="pointer-events-auto relative">
         {/* Menu trigger */}
         <button
           type="button"

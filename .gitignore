@@ -24,6 +24,8 @@ coverage/
 playwright-report/
 test-results/
 playwright/.cache/
+.playwright-mcp/
+happy-path-*.png
 
 # Drizzle
 drizzle/meta/

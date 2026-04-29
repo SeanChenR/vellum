@@ -67,4 +67,4 @@
 - [x] 13.3 [P] 跑 `bunx oxlint` 與 `bunx oxfmt --check`：無新增 warning。
 - [x] 13.4 [P] 用 plain DOM 巡檢確認 spec「No chrome component contains a hardcoded display string」：用 `grep -rn '"' apps/web/src/chrome/ apps/web/src/canvas/CanvasPage.tsx apps/web/src/canvas/Editor.tsx | grep -v "from '" | grep -v "import" | grep -v "//"` 人工 review 非 i18n 字面字串；亦或寫 codemod-style 測試掃 source 檔（可接受）。
 - [x] 13.5 [P] 用 plain JSON diff 工具比對 zh-TW.json 與 en.json 的 `canvas.chrome.*` 與 `canvas.title.*` 子樹鍵集合 MUST 一致（覆蓋 spec「Locale catalogs cover every chrome key in both languages」）。
-- [ ] 13.6 在 browser 手動跑 happy path：登入 → 建立 canvas → 進入 `/canvas/<id>` → 用 tldraw 工具畫幾筆 → 重整頁面 → 內容仍在；按 MainMenu Rename → 改名 → 標題更新；按 Share → 看到 toast；確認 tldraw 浮水印仍在；確認沒有 page tabs。
+- [x] 13.6 在 browser 手動跑 happy path：登入 → 建立 canvas → 進入 `/canvas/<id>` → 用 tldraw 工具畫幾筆 → 重整頁面 → 內容仍在；按 MainMenu Rename → 改名 → 標題更新；按 Share → 看到 toast；確認 tldraw 浮水印仍在；確認沒有 page tabs。

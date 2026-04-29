@@ -14,6 +14,7 @@
 import React, { useState } from "react";
 import { Tldraw, getSnapshot } from "tldraw";
 import type { Editor as TldrawEditor } from "tldraw";
+import "tldraw/tldraw.css";
 import { loadSnapshot } from "./persistence";
 import type { Snapshot } from "./persistence";
 import { useAutosave } from "./use-autosave";
@@ -94,15 +95,19 @@ export function Editor({
 
   return (
     <VellumChromeContext.Provider value={chromeContext}>
-      <div className="flex h-full w-full flex-col">
-        <Tldraw
-          shapeUtils={customShapeUtils}
-          tools={customShapeTools}
-          components={vellumChromeComponents}
-          options={{ maxPages: 1 }}
-          snapshot={initialSnapshot ?? undefined}
-          onMount={handleMount}
-        />
+      {/* tldraw needs a positioned, fully-sized container; use absolute inset so
+          the infinite-canvas surface does not push siblings (chrome) off-screen. */}
+      <div className="relative h-full w-full">
+        <div className="absolute inset-0">
+          <Tldraw
+            shapeUtils={customShapeUtils}
+            tools={customShapeTools}
+            components={vellumChromeComponents}
+            options={{ maxPages: 1 }}
+            snapshot={initialSnapshot ?? undefined}
+            onMount={handleMount}
+          />
+        </div>
       </div>
     </VellumChromeContext.Provider>
   );
