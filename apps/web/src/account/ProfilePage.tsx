@@ -11,10 +11,12 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import i18n from "../i18n";
+import { DeleteAccountDialog } from "./DeleteAccountDialog";
 
 const profileSchema = z.object({
   name: z.string().min(1).max(80),
@@ -77,6 +79,7 @@ async function patchProfile(data: ProfileForm): Promise<ProfileData> {
 export function ProfilePage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["account", "profile"],
@@ -110,8 +113,7 @@ export function ProfilePage() {
       }
     },
     onError: (err) => {
-      const errorKey =
-        err instanceof Error ? err.message : "account.errors.saveFailed";
+      const errorKey = err instanceof Error ? err.message : "account.errors.saveFailed";
       setError("image", { message: errorKey });
     },
   });
@@ -130,17 +132,12 @@ export function ProfilePage() {
 
   return (
     <main className="mx-auto max-w-lg px-6 py-10">
-      <h1 className="font-serif text-2xl text-ink-navy mb-8">
-        {t("account.profile.title")}
-      </h1>
+      <h1 className="font-serif text-2xl text-ink-navy mb-8">{t("account.profile.title")}</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Name */}
         <div>
-          <label
-            htmlFor="name"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
             {t("account.profile.nameLabel")}
           </label>
           <input
@@ -151,18 +148,13 @@ export function ProfilePage() {
             {...register("name")}
           />
           {errors.name && (
-            <p className="mt-1 text-sm text-red-600">
-              {t(errors.name.message ?? "")}
-            </p>
+            <p className="mt-1 text-sm text-red-600">{t(errors.name.message ?? "")}</p>
           )}
         </div>
 
         {/* Image URL */}
         <div>
-          <label
-            htmlFor="image"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
             {t("account.profile.imageLabel")}
           </label>
           <input
@@ -173,10 +165,7 @@ export function ProfilePage() {
             {...register("image")}
           />
           {errors.image && (
-            <p
-              data-testid="image-error"
-              className="mt-1 text-sm text-red-600"
-            >
+            <p data-testid="image-error" className="mt-1 text-sm text-red-600">
               {t(errors.image.message ?? "account.errors.invalidImageUrl")}
             </p>
           )}
@@ -184,10 +173,7 @@ export function ProfilePage() {
 
         {/* Locale */}
         <div>
-          <label
-            htmlFor="locale"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label htmlFor="locale" className="block text-sm font-medium text-gray-700 mb-1">
             {t("account.profile.localeLabel")}
           </label>
           <select
@@ -202,9 +188,7 @@ export function ProfilePage() {
 
         {/* Email (read-only) */}
         <div>
-          <p className="text-sm text-gray-500">
-            {profile?.email}
-          </p>
+          <p className="text-sm text-gray-500">{profile?.email}</p>
         </div>
 
         <button
@@ -216,11 +200,26 @@ export function ProfilePage() {
         </button>
 
         {mutation.isSuccess && (
-          <p className="text-center text-sm text-green-600">
-            {t("account.profile.saveSuccess")}
-          </p>
+          <p className="text-center text-sm text-green-600">{t("account.profile.saveSuccess")}</p>
         )}
       </form>
+
+      {/* Danger zone: account deletion. Lives at the bottom of the page so it
+          stays out of normal-flow tab order; the dialog is the single trigger
+          for DELETE /api/account. */}
+      <section className="mt-12 border-t border-red-200 pt-6">
+        <h2 className="text-base font-semibold text-red-700">{t("account.deleteAccount.title")}</h2>
+        <p className="mt-2 text-sm text-warm-sepia">{t("account.deleteAccount.warning")}</p>
+        <button
+          type="button"
+          onClick={() => setDeleteDialogOpen(true)}
+          className="mt-4 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+        >
+          {t("account.deleteAccount.confirmButton")}
+        </button>
+      </section>
+
+      <DeleteAccountDialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} />
     </main>
   );
 }
