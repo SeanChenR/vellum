@@ -8,7 +8,9 @@
   },
   "rules": {
     "no-console": "off",
-    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }]
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-uses-react": "off"
   },
   "env": {
     "browser": true,

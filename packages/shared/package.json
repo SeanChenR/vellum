@@ -6,6 +6,7 @@
   "description": "Shared schema, types, locales, and validators between Vellum apps",
   "exports": {
     ".": "./src/index.ts",
+    "./locales/*.json": "./src/locales/*.json",
     "./*": "./src/*.ts"
   },
   "scripts": {

@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@source "./**/*.{ts,tsx,html}";
+
+@theme {
+  /* Vellum brand palette — see ADR-0005 + branding direction */
+  --color-ink-navy: #1A2332;
+  --color-parchment-cream: #F5F0E6;
+  --color-warm-sepia: #8B6F47;
+  --color-off-white: #FAFAF7;
+
+  /* Typography */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Newsreader", Georgia, "Times New Roman", serif;
+}
+
+/* Base styles */
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background: var(--color-off-white);
+    color: var(--color-ink-navy);
+  }
+}

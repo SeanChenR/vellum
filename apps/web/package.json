@@ -5,12 +5,38 @@
   "type": "module",
   "description": "Vellum frontend — React + tldraw SDK + Tailwind v4",
   "scripts": {
-    "dev": "bun --hot src/index.html",
-    "build": "bun build src/index.html --outdir=dist",
+    "dev": "concurrently --names tw,web --prefix-colors cyan,green \"bun run tailwind:watch\" \"bun --hot src/index.html\"",
+    "build": "bun run tailwind:build && bun build src/index.html --outdir=dist --minify",
+    "tailwind:build": "tailwindcss -i ./src/styles.css -o ./src/styles.gen.css --minify",
+    "tailwind:watch": "tailwindcss -i ./src/styles.css -o ./src/styles.gen.css --watch",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@vellum/shared": "workspace:*"
+    "@hookform/resolvers": "^5.2.2",
+    "@tanstack/react-query": "^5.100.6",
+    "@tanstack/react-query-devtools": "^5.100.6",
+    "@tanstack/react-router": "^1.168.25",
+    "@tanstack/react-router-devtools": "^1.166.13",
+    "@vellum/shared": "workspace:*",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "i18next": "^26.0.8",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "motion": "^12.38.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-hook-form": "^7.74.0",
+    "react-i18next": "^17.0.6",
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.2.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "concurrently": "^9.2.1",
+    "tailwindcss": "^4.2.4"
   }
 }
