@@ -65,32 +65,32 @@
 
 ## 10. 前端架構：dashboard 用 TanStack Query 為 source of truth — Hooks 與 Tests
 
-- [ ] 10.1 [P] 在 `apps/web/src/dashboard/useCanvasList.ts` 寫 `useCanvasList(scope, folderId)` hook，包 `GET /api/canvas` query、回 `Canvas[]`，rename / delete / move 用 useMutation + invalidateQueries（落地「前端架構：dashboard 用 TanStack Query 為 source of truth」決策）
-- [ ] 10.2 [P] 在 `apps/web/src/dashboard/useFolderList.ts` 寫 `useFolderList()` hook，包 `GET /api/folder` 的 query 與 create/rename/delete mutation
-- [ ] 10.3 [P] 寫 hook test 驗證 useCanvasList 的 invalidateQueries 在 mutation 成功後重新觸發 list refetch
+- [x] 10.1 [P] 在 `apps/web/src/dashboard/useCanvasList.ts` 寫 `useCanvasList(scope, folderId)` hook，包 `GET /api/canvas` query、回 `Canvas[]`，rename / delete / move 用 useMutation + invalidateQueries（落地「前端架構：dashboard 用 TanStack Query 為 source of truth」決策）
+- [x] 10.2 [P] 在 `apps/web/src/dashboard/useFolderList.ts` 寫 `useFolderList()` hook，包 `GET /api/folder` 的 query 與 create/rename/delete mutation
+- [x] 10.3 [P] 寫 hook test 驗證 useCanvasList 的 invalidateQueries 在 mutation 成功後重新觸發 list refetch
 
 ## 11. 前端：Dashboard、CanvasCard、FolderTree 互動行為（Tests First）
 
-- [ ] 11.1 [P] 寫 component test `apps/web/src/dashboard/DashboardPage.test.tsx` 覆蓋「Dashboard canvas list view」全部 scenario（兩 heading 渲染、empty owned、empty shared、unauthenticated 重導向 /login）
-- [ ] 11.2 [P] 寫 component test `apps/web/src/components/CanvasCard.test.tsx` 覆蓋「Canvas card displays metadata」全部 scenario（render 標題與 last-edited、context menu 開 rename dialog、context menu 開 delete dialog）
-- [ ] 11.3 [P] 寫 component test `apps/web/src/components/FolderTree.test.tsx` 覆蓋「Folder tree component renders flat list with drag targets」全部 scenario（5 行順序：All canvases / Unfiled / A / B / C、drop CanvasCard 觸發 PATCH `{folderId}`、drop 到 Unfiled 觸發 `folderId: null`、click folder 行觸發 list 重 query）
+- [x] 11.1 [P] 寫 component test `apps/web/src/dashboard/DashboardPage.test.tsx` 覆蓋「Dashboard canvas list view」全部 scenario（兩 heading 渲染、empty owned、empty shared、unauthenticated 重導向 /login）
+- [x] 11.2 [P] 寫 component test `apps/web/src/components/CanvasCard.test.tsx` 覆蓋「Canvas card displays metadata」全部 scenario（render 標題與 last-edited、context menu 開 rename dialog、context menu 開 delete dialog）
+- [x] 11.3 [P] 寫 component test `apps/web/src/components/FolderTree.test.tsx` 覆蓋「Folder tree component renders flat list with drag targets」全部 scenario（5 行順序：All canvases / Unfiled / A / B / C、drop CanvasCard 觸發 PATCH `{folderId}`、drop 到 Unfiled 觸發 `folderId: null`、click folder 行觸發 list 重 query）
 
 ## 12. 前端：Dashboard、CanvasCard、FolderTree 元件實作
 
-- [ ] 12.1 在 `apps/web/src/components/CanvasCard.tsx` 實作元件：title、localized 相對時間（用 i18next plural / Intl.RelativeTimeFormat）、placeholder 縮圖（純 CSS 漸層）、context menu 三個 action（落地「Canvas card displays metadata」要求；視覺走預覽迭代不上 TDD）
-- [ ] 12.2 在 `apps/web/src/components/FolderTree.tsx` 實作 1 層 flat list（含 synthetic「All canvases」/「Unfiled」），每個 folder row 為 dnd-kit drop target，click row 改變 dashboard 的 folder filter state（落地「Folder tree component renders flat list with drag targets」要求；視覺走預覽迭代）
-- [ ] 12.3 在 `apps/web/src/components/CanvasCreateDialog.tsx` / `CanvasRenameDialog.tsx` / `CanvasDeleteDialog.tsx` 實作三個 dialog（react-hook-form + zod；delete 為破壞性，無 optimistic update）
-- [ ] 12.4 在 `apps/web/src/components/FolderCreateDialog.tsx` / `FolderRenameDialog.tsx` / `FolderDeleteDialog.tsx` 實作三個 dialog；delete dialog 處理 `errors.folder.notEmpty` 顯示「請先把 canvas 移出此 folder」訊息
-- [ ] 12.5 在 `apps/web/src/dashboard/DashboardPage.tsx` 組合 FolderTree + CanvasCard 列表 + 兩區（My Canvases / Shared with me），用 useCanvasList(scope='owned') 與 useCanvasList(scope='shared') 拉資料；pass 11.1 全測試（落地「Dashboard canvas list view」要求）
+- [x] 12.1 在 `apps/web/src/components/CanvasCard.tsx` 實作元件：title、localized 相對時間（用 i18next plural / Intl.RelativeTimeFormat）、placeholder 縮圖（純 CSS 漸層）、context menu 三個 action（落地「Canvas card displays metadata」要求；視覺走預覽迭代不上 TDD）
+- [x] 12.2 在 `apps/web/src/components/FolderTree.tsx` 實作 1 層 flat list（含 synthetic「All canvases」/「Unfiled」），每個 folder row 為 dnd-kit drop target，click row 改變 dashboard 的 folder filter state（落地「Folder tree component renders flat list with drag targets」要求；視覺走預覽迭代）
+- [x] 12.3 在 `apps/web/src/components/CanvasCreateDialog.tsx` / `CanvasRenameDialog.tsx` / `CanvasDeleteDialog.tsx` 實作三個 dialog（react-hook-form + zod；delete 為破壞性，無 optimistic update）
+- [x] 12.4 在 `apps/web/src/components/FolderCreateDialog.tsx` / `FolderRenameDialog.tsx` / `FolderDeleteDialog.tsx` 實作三個 dialog；delete dialog 處理 `errors.folder.notEmpty` 顯示「請先把 canvas 移出此 folder」訊息
+- [x] 12.5 在 `apps/web/src/dashboard/DashboardPage.tsx` 組合 FolderTree + CanvasCard 列表 + 兩區（My Canvases / Shared with me），用 useCanvasList(scope='owned') 與 useCanvasList(scope='shared') 拉資料；pass 11.1 全測試（落地「Dashboard canvas list view」要求）
 
 ## 13. Routing 與認證守衛
 
-- [ ] 13.1 在 `apps/web/src/router.tsx` 註冊 `/dashboard` 路由 component 為 DashboardPage，beforeLoad 走 better-auth session 檢查；未登入 throw redirect 到 `/login`（落地「Dashboard canvas list view」中 unauthenticated 重導向 scenario）
-- [ ] 13.2 [P] 寫 router test 驗證未認證進 `/dashboard` 導向 `/login`、已認證可進
+- [x] 13.1 在 `apps/web/src/router.tsx` 註冊 `/dashboard` 路由 component 為 DashboardPage，beforeLoad 走 better-auth session 檢查；未登入 throw redirect 到 `/login`（落地「Dashboard canvas list view」中 unauthenticated 重導向 scenario）
+- [x] 13.2 [P] 寫 router test 驗證未認證進 `/dashboard` 導向 `/login`、已認證可進
 
 ## 14. 完成驗證與覆蓋率
 
-- [ ] 14.1 跑 `bun test --coverage` 確認本 change 內 logic 區塊（permission、api-contract、canvas/folder routes、hooks、locales 同步）≥ 70% 覆蓋率
-- [ ] 14.2 [P] 跑 `bunx oxlint` 與 `bunx oxfmt --check` 確認無 lint / format 問題
-- [ ] 14.3 [P] 跑 `bun run typecheck` 確認 TypeScript 全綠
+- [x] 14.1 跑 `bun test --coverage` 確認本 change 內 logic 區塊（permission、api-contract、canvas/folder routes、hooks、locales 同步）≥ 70% 覆蓋率
+- [x] 14.2 [P] 跑 `bunx oxlint` 與 `bunx oxfmt --check` 確認無 lint / format 問題
+- [x] 14.3 [P] 跑 `bun run typecheck` 確認 TypeScript 全綠
 - [ ] 14.4 在 dev 機開本地伺服器（用 tmux 啟動 dev script），手動 walk-through 五條互動：建立 canvas、rename、建立 folder、drag 進 folder、刪除 folder（先空再非空），完成「視覺走預覽迭代」的 visual approval

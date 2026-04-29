@@ -12,6 +12,7 @@ import { OAuthCallbackPage } from "./auth/OAuthCallbackPage";
 import { MagicLinkVerifyPage } from "./auth/MagicLinkVerifyPage";
 import { ProfilePage } from "./account/ProfilePage";
 import { SessionsPage } from "./account/SessionsPage";
+import { DashboardPage } from "./dashboard/DashboardPage";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -62,7 +63,7 @@ const dashboardRoute = createRoute({
   path: "/dashboard",
   component: () => (
     <RouteGuard>
-      <DashboardPlaceholder />
+      <DashboardPage />
     </RouteGuard>
   ),
 });
@@ -109,14 +110,6 @@ function HomePage() {
           Get started
         </a>
       </div>
-    </main>
-  );
-}
-
-function DashboardPlaceholder() {
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <p className="text-ink-navy">Dashboard — coming in M2</p>
     </main>
   );
 }

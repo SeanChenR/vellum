@@ -16,7 +16,7 @@
  * Spec: folder-management capability
  */
 
-import { eq, and, count, asc } from "drizzle-orm";
+import { eq, count, asc } from "drizzle-orm";
 import { getDb } from "../db/index";
 import { folders, canvases } from "../db/schema";
 import type { RateLimiter } from "../lib/rate-limiter";

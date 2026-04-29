@@ -17,7 +17,6 @@
 
 import { describe, expect, test } from "bun:test";
 import { handleCanvasRequest } from "./index";
-import type { Canvas } from "../db/schema";
 import type { RateLimiter } from "../lib/rate-limiter";
 
 // ---------------------------------------------------------------------------
@@ -32,10 +31,6 @@ function makeUserId() {
 
 function makeCanvasId() {
   return "00000000-0000-0000-0000-" + Math.random().toString(16).slice(2, 14).padStart(12, "0");
-}
-
-function makeFolderId() {
-  return "11111111-1111-1111-1111-" + Math.random().toString(16).slice(2, 14).padStart(12, "0");
 }
 
 interface MockSession { userId: string }

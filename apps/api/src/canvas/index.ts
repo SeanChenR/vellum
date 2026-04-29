@@ -21,7 +21,7 @@
 
 import { eq, and, isNull, desc } from "drizzle-orm";
 import { getDb } from "../db/index";
-import { canvases, folders } from "../db/schema";
+import { canvases } from "../db/schema";
 import { canAccess } from "../lib/permission";
 import type { RateLimiter } from "../lib/rate-limiter";
 import {

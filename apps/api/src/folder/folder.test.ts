@@ -20,8 +20,6 @@ import type { RateLimiter } from "../lib/rate-limiter";
 
 const BASE = "http://localhost:3000";
 
-interface MockSession { userId: string }
-
 function req(
   method: string,
   path: string,
