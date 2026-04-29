@@ -11,6 +11,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@vellum/shared": "workspace:*"
+    "@vellum/shared": "workspace:*",
+    "better-auth": "^1.6.9",
+    "drizzle-orm": "^0.45.2",
+    "ipaddr.js": "^2.3.0",
+    "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10",
+    "pino-pretty": "^13.1.3"
   }
 }
