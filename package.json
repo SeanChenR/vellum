@@ -10,6 +10,8 @@
   ],
   "scripts": {
     "dev": "bun --filter '*' dev",
+    "dev:up": "bun scripts/dev.ts",
+    "dev:down": "brew services stop postgresql@14 mailpit; lsof -ti:3000,3002 | xargs -r kill",
     "build": "bun --filter '*' build",
     "start": "bun --filter '@vellum/api' start",
     "test": "bun test apps packages",
