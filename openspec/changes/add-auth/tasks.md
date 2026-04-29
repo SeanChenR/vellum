@@ -32,40 +32,40 @@
 
 ## 4. Implementation — Server（讓 §2 測試轉綠）
 
-- [ ] 4.1 實作 `apps/api/src/email/mailpit.ts` 的 `MailpitEmailService` — nodemailer SMTP transport（host/port/from from env），實作 `EmailService.send`；export factory `createMailpitEmailService(env)`
-- [ ] 4.2 實作 `apps/api/src/email/templates/magic-link.tsx` — React Email 元件 `<MagicLinkEmail url={...} />`，輸出 `{ html, text }`（text 用 `render(component, { plainText: true })`）；支援 `locale` prop 切換 zh-TW / en 內文
-- [ ] 4.3 實作 `apps/api/src/auth/rate-limit.ts` — `applyAuthRateLimit({ kind, ip, email? })` helper，內部消費 `apps/api/src/lib/rate-limiter.ts` 的 RateLimiter 單例；3 條 rule 鍵命名固定為 `auth:magic-link:email:<email>`、`auth:magic-link:ip:<ip>`、`auth:login:ip:<ip>`
-- [ ] 4.4 實作 `apps/api/src/auth/config.ts` — better-auth instance：drizzle adapter wired 到 `getDb()`、`socialProviders.google` 帶 client id/secret、`magicLink` plugin 注入 `EmailService`（從 §4.1 來）；session cookie 屬性符合「Session cookie configuration」requirement（HttpOnly / Secure / SameSite=Lax / Path=/）
-- [ ] 4.5 實作 `apps/api/src/auth/index.ts` — export better-auth handler 與 `mountAuth(server)` 函式，把 `/api/auth/*` 路徑接到 better-auth；在 magic-link send 與 login 嘗試前序套用 §4.3 rate-limit；429 回應夾 `Retry-After` header；任何失敗回 `{ error: { errorKey } }` envelope
-- [ ] 4.6 實作 logger redaction：在 `apps/api/src/lib/logger.ts` 補 `redact: { paths: ['req.query.token', 'req.body.token', 'req.headers.cookie', 'req.headers.authorization'], remove: true }` 並讓 §2.11 測試轉綠
-- [ ] 4.7 實作 `apps/api/src/account/routes.ts` — 註冊 `GET /api/account/profile`、`PATCH /api/account/profile`、`GET /api/account/sessions`、`DELETE /api/account/sessions/:id`；全部走 protected route guard；body 用 zod schema 驗證 name 1-80、image 限 https 或 null、locale 限 `zh-TW | en`
-- [ ] 4.8 實作 `apps/api/src/account/delete-account.ts` 與註冊 `DELETE /api/account` route — 驗 `confirmEmail` 大小寫不敏感比對 `users.email`；通過後呼叫 cascade delete（依靠 §1.4 migration 中的 `ON DELETE CASCADE`）；最後 clear session cookie；任何失敗用 errorKey
-- [ ] 4.9 修改 `apps/api/src/index.ts` — mount `/api/auth/*`（§4.5）與 `/api/account/*`（§4.7、§4.8）；初始化 RateLimiter 單例；確認 protected route guard middleware 套用順序
+- [x] 4.1 實作 `apps/api/src/email/mailpit.ts` 的 `MailpitEmailService` — nodemailer SMTP transport（host/port/from from env），實作 `EmailService.send`；export factory `createMailpitEmailService(env)`
+- [x] 4.2 實作 `apps/api/src/email/templates/magic-link.tsx` — React Email 元件 `<MagicLinkEmail url={...} />`，輸出 `{ html, text }`（text 用 `render(component, { plainText: true })`）；支援 `locale` prop 切換 zh-TW / en 內文
+- [x] 4.3 實作 `apps/api/src/auth/rate-limit.ts` — `applyAuthRateLimit({ kind, ip, email? })` helper，內部消費 `apps/api/src/lib/rate-limiter.ts` 的 RateLimiter 單例；3 條 rule 鍵命名固定為 `auth:magic-link:email:<email>`、`auth:magic-link:ip:<ip>`、`auth:login:ip:<ip>`
+- [x] 4.4 實作 `apps/api/src/auth/config.ts` — better-auth instance：drizzle adapter wired 到 `getDb()`、`socialProviders.google` 帶 client id/secret、`magicLink` plugin 注入 `EmailService`（從 §4.1 來）；session cookie 屬性符合「Session cookie configuration」requirement（HttpOnly / Secure / SameSite=Lax / Path=/）
+- [x] 4.5 實作 `apps/api/src/auth/index.ts` — export better-auth handler 與 `mountAuth(server)` 函式，把 `/api/auth/*` 路徑接到 better-auth；在 magic-link send 與 login 嘗試前序套用 §4.3 rate-limit；429 回應夾 `Retry-After` header；任何失敗回 `{ error: { errorKey } }` envelope
+- [x] 4.6 實作 logger redaction：在 `apps/api/src/lib/logger.ts` 補 `redact: { paths: ['req.query.token', 'req.body.token', 'req.headers.cookie', 'req.headers.authorization'], remove: true }` 並讓 §2.11 測試轉綠
+- [x] 4.7 實作 `apps/api/src/account/routes.ts` — 註冊 `GET /api/account/profile`、`PATCH /api/account/profile`、`GET /api/account/sessions`、`DELETE /api/account/sessions/:id`；全部走 protected route guard；body 用 zod schema 驗證 name 1-80、image 限 https 或 null、locale 限 `zh-TW | en`
+- [x] 4.8 實作 `apps/api/src/account/delete-account.ts` 與註冊 `DELETE /api/account` route — 驗 `confirmEmail` 大小寫不敏感比對 `users.email`；通過後呼叫 cascade delete（依靠 §1.4 migration 中的 `ON DELETE CASCADE`）；最後 clear session cookie；任何失敗用 errorKey
+- [x] 4.9 修改 `apps/api/src/index.ts` — mount `/api/auth/*`（§4.5）與 `/api/account/*`（§4.7、§4.8）；初始化 RateLimiter 單例；確認 protected route guard middleware 套用順序
 
 ## 5. Implementation — Web（讓 §3 測試轉綠）
 
-- [ ] 5.1 實作 `apps/web/src/auth/useAuth.ts` — TanStack Query hook 包 `GET /api/account/profile`，cache key `['auth', 'session']`；export `useAuth()` 回傳 `{ user, isLoading, isAuthenticated }`；同時讀 `users.locale` 並在初始化時呼叫 `i18n.changeLanguage(user.locale)`
-- [ ] 5.2 實作 `apps/web/src/auth/RouteGuard.tsx` — 高階元件，檢查 `useAuth`，未登入或 `auth.errors.sessionRevoked` 時 `<Navigate to="/login" />` 並把當前路徑塞 `?redirect=`
-- [ ] 5.3 實作 `apps/web/src/auth/LoginPage.tsx` — react-hook-form + zod 驗 email 格式；Google OAuth 按鈕（`<a href="/api/auth/google">`）；Magic Link form 提交後顯示「請至信箱收信」說明；錯誤狀態走 i18n key（`auth.errors.*`）；視覺走預覽迭代（不在 TDD 範圍）
-- [ ] 5.4 實作 `apps/web/src/auth/OAuthCallbackPage.tsx` — 接 better-auth 的 callback；成功後 navigate to `/dashboard`，失敗 navigate to `/login?error=googleOauthFailed`
-- [ ] 5.5 實作 `apps/web/src/auth/MagicLinkVerifyPage.tsx` — 從 search param 取 token，呼叫 `GET /api/auth/magic-link/verify?token=...`；server 已會 set cookie + redirect，這裡只 fallback 處理 error state
-- [ ] 5.6 實作 `apps/web/src/account/ProfilePage.tsx` — react-hook-form 編輯 name / image（限 https URL）/ locale（select with zh-TW + en）；submit PATCH /api/account/profile；錯誤狀態用 errorKey 顯示；視覺走預覽迭代
-- [ ] 5.7 實作 `apps/web/src/account/SessionsPage.tsx` — TanStack Query 拉 `GET /api/account/sessions`；列表顯示 createdAt、ipAddress、userAgent、`isCurrent` badge；每列附 revoke 按鈕呼叫 DELETE；當前 session 被 revoke 後 `useAuth.logout()` + navigate `/login`
-- [ ] 5.8 實作 `apps/web/src/account/DeleteAccountDialog.tsx` — shadcn Dialog；form input `confirmEmail` 即時比對 `useAuth().user.email`（大小寫不敏感）；不符時 submit 按鈕 disabled；提交後 `DELETE /api/account` 並 navigate `/login`；視覺走預覽迭代
-- [ ] 5.9 修改 `apps/web/src/router.tsx` — 註冊 `/login`、`/oauth/callback`、`/auth/verify`、`/account/profile`、`/account/sessions` 路由；用 §5.2 RouteGuard 包 `/account/*`
+- [x] 5.1 實作 `apps/web/src/auth/useAuth.ts` — TanStack Query hook 包 `GET /api/account/profile`，cache key `['auth', 'session']`；export `useAuth()` 回傳 `{ user, isLoading, isAuthenticated }`；同時讀 `users.locale` 並在初始化時呼叫 `i18n.changeLanguage(user.locale)`
+- [x] 5.2 實作 `apps/web/src/auth/RouteGuard.tsx` — 高階元件，檢查 `useAuth`，未登入或 `auth.errors.sessionRevoked` 時 `<Navigate to="/login" />` 並把當前路徑塞 `?redirect=`
+- [x] 5.3 實作 `apps/web/src/auth/LoginPage.tsx` — react-hook-form + zod 驗 email 格式；Google OAuth 按鈕（`<a href="/api/auth/google">`）；Magic Link form 提交後顯示「請至信箱收信」說明；錯誤狀態走 i18n key（`auth.errors.*`）；視覺走預覽迭代（不在 TDD 範圍）
+- [x] 5.4 實作 `apps/web/src/auth/OAuthCallbackPage.tsx` — 接 better-auth 的 callback；成功後 navigate to `/dashboard`，失敗 navigate to `/login?error=googleOauthFailed`
+- [x] 5.5 實作 `apps/web/src/auth/MagicLinkVerifyPage.tsx` — 從 search param 取 token，呼叫 `GET /api/auth/magic-link/verify?token=...`；server 已會 set cookie + redirect，這裡只 fallback 處理 error state
+- [x] 5.6 實作 `apps/web/src/account/ProfilePage.tsx` — react-hook-form 編輯 name / image（限 https URL）/ locale（select with zh-TW + en）；submit PATCH /api/account/profile；錯誤狀態用 errorKey 顯示；視覺走預覽迭代
+- [x] 5.7 實作 `apps/web/src/account/SessionsPage.tsx` — TanStack Query 拉 `GET /api/account/sessions`；列表顯示 createdAt、ipAddress、userAgent、`isCurrent` badge；每列附 revoke 按鈕呼叫 DELETE；當前 session 被 revoke 後 `useAuth.logout()` + navigate `/login`
+- [x] 5.8 實作 `apps/web/src/account/DeleteAccountDialog.tsx` — shadcn Dialog；form input `confirmEmail` 即時比對 `useAuth().user.email`（大小寫不敏感）；不符時 submit 按鈕 disabled；提交後 `DELETE /api/account` 並 navigate `/login`；視覺走預覽迭代
+- [x] 5.9 修改 `apps/web/src/router.tsx` — 註冊 `/login`、`/oauth/callback`、`/auth/verify`、`/account/profile`、`/account/sessions` 路由；用 §5.2 RouteGuard 包 `/account/*`
 
 ## 6. i18n — 兩語同步
 
-- [ ] 6.1 [P] 在 `packages/shared/locales/zh-TW.json` 補齊 `auth.*` 與 `account.*` 兩區所有 UI 字串及 errorKey 翻譯（涵蓋 `Server-returned error keys (i18n contract)` 與 `Bilingual UI strings for auth and account` requirement 列舉的全部 key 集合）
-- [ ] 6.2 [P] 在 `packages/shared/locales/en.json` 同步補齊對應英文翻譯，鍵集合與 zh-TW 完全一致
-- [ ] 6.3 跑 `bun test apps/api/src/auth/error-key-contract.test.ts` 確認 §2.10 的 errorKey ↔ locale 對應測試通過
+- [x] 6.1 [P] 在 `packages/shared/locales/zh-TW.json` 補齊 `auth.*` 與 `account.*` 兩區所有 UI 字串及 errorKey 翻譯（涵蓋 `Server-returned error keys (i18n contract)` 與 `Bilingual UI strings for auth and account` requirement 列舉的全部 key 集合）
+- [x] 6.2 [P] 在 `packages/shared/locales/en.json` 同步補齊對應英文翻譯，鍵集合與 zh-TW 完全一致
+- [x] 6.3 跑 `bun test apps/api/src/auth/error-key-contract.test.ts` 確認 §2.10 的 errorKey ↔ locale 對應測試通過
 
 ## 7. E2E — Playwright（落地驗收 happy paths）
 
-- [ ] 7.1 寫 `e2e/auth-magic-link.spec.ts`：啟 Mailpit（docker compose up -d mailpit）→ 在 `/login` 輸 email → 後台 Mailpit API 抓最新信 → 取信內 magic link → 開該 URL → 進到 `/dashboard`；對應 spec 中 `Magic Link login request` 與 `Magic Link verification` requirement
-- [ ] 7.2 [P] 寫 `e2e/auth-google-oauth.spec.ts`：用 stub Google OAuth provider（`mockttp` 或環境切換 `GOOGLE_OAUTH_TEST_MODE=1`）模擬 callback；驗證首次登入建 user row、回流登入重用 row；對應 `Google OAuth login` requirement
-- [ ] 7.3 [P] 寫 `e2e/account-delete.spec.ts`：登入 → `/account/profile` → 觸發 Delete Account dialog → 輸入 confirmEmail → 提交 → 驗證 redirect 到 `/login` 且重新進入需重新登入；對應 `Delete account` requirement
-- [ ] 7.4 [P] 寫 `e2e/auth-logout-and-sessions.spec.ts`：登入 → 進 `/account/sessions` → 確認自己 session 標 `isCurrent` → 開第二 browser context 再登入 → 第一 context refresh 看到第二 session → revoke 第二 session → 第二 context 重新打 API 收到 401；對應 `Logout`、`List active sessions`、`Revoke session` requirement
+- [x] 7.1 寫 `e2e/auth-magic-link.spec.ts`：啟 Mailpit（docker compose up -d mailpit）→ 在 `/login` 輸 email → 後台 Mailpit API 抓最新信 → 取信內 magic link → 開該 URL → 進到 `/dashboard`；對應 spec 中 `Magic Link login request` 與 `Magic Link verification` requirement
+- [x] 7.2 [P] 寫 `e2e/auth-google-oauth.spec.ts`：用 stub Google OAuth provider（`mockttp` 或環境切換 `GOOGLE_OAUTH_TEST_MODE=1`）模擬 callback；驗證首次登入建 user row、回流登入重用 row；對應 `Google OAuth login` requirement
+- [x] 7.3 [P] 寫 `e2e/account-delete.spec.ts`：登入 → `/account/profile` → 觸發 Delete Account dialog → 輸入 confirmEmail → 提交 → 驗證 redirect 到 `/login` 且重新進入需重新登入；對應 `Delete account` requirement
+- [x] 7.4 [P] 寫 `e2e/auth-logout-and-sessions.spec.ts`：登入 → 進 `/account/sessions` → 確認自己 session 標 `isCurrent` → 開第二 browser context 再登入 → 第一 context refresh 看到第二 session → revoke 第二 session → 第二 context 重新打 API 收到 401；對應 `Logout`、`List active sessions`、`Revoke session` requirement
 - [ ] 7.5 跑 `bun run test:e2e` 確認所有 E2E 通過；coverage 報告需顯示 auth + account 模組 ≥ 70%
 
 ## 8. Refactor — 對齊 design.md 決策後檢核
