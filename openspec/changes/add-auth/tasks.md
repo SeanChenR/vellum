@@ -1,34 +1,34 @@
 ## 1. 前置 — Schema 與 Email 抽象（依賴根基）
 
-- [ ] 1.1 [P] 在 `packages/shared/src/db/auth-schema.ts` 定義 better-auth 標準四張表（`users`、`sessions`、`accounts`、`verification_tokens`），其中 `users` 多一欄 `locale: text` 預設 `'zh-TW'` 並加 check constraint 限定 `'zh-TW' | 'en'`；export 對應的 `User`、`Session`、`Account`、`VerificationToken` TypeScript types
-- [ ] 1.2 [P] 在 `packages/shared/src/email/types.ts` 定義 `EmailService` interface — 一個 method `send({ to, subject, html, text }): Promise<void>`；無實作，純 type
-- [ ] 1.3 修改 `apps/api/src/db/schema.ts` 從 `packages/shared/src/db/auth-schema.ts` re-export 上述四張表
-- [ ] 1.4 用 `bunx drizzle-kit generate` 產生 migration；review SQL 確認 `users.locale` constraint 有落實；`bunx drizzle-kit migrate` 套到本地 Neon test branch
-- [ ] 1.5 [P] 修改 `apps/api/.env.example`：補完 `BETTER_AUTH_SECRET`（範例 `change-me-32-bytes-hex`）、`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET` 註解（標明 `Get from https://console.cloud.google.com`）、確認 `SMTP_HOST=localhost` `SMTP_PORT=1025` `SMTP_FROM=noreply@vellum.local`
+- [x] 1.1 [P] 在 `packages/shared/src/db/auth-schema.ts` 定義 better-auth 標準四張表（`users`、`sessions`、`accounts`、`verification_tokens`），其中 `users` 多一欄 `locale: text` 預設 `'zh-TW'` 並加 check constraint 限定 `'zh-TW' | 'en'`；export 對應的 `User`、`Session`、`Account`、`VerificationToken` TypeScript types
+- [x] 1.2 [P] 在 `packages/shared/src/email/types.ts` 定義 `EmailService` interface — 一個 method `send({ to, subject, html, text }): Promise<void>`；無實作，純 type
+- [x] 1.3 修改 `apps/api/src/db/schema.ts` 從 `packages/shared/src/db/auth-schema.ts` re-export 上述四張表
+- [x] 1.4 用 `bunx drizzle-kit generate` 產生 migration；review SQL 確認 `users.locale` constraint 有落實；`bunx drizzle-kit migrate` 套到本地 Neon test branch
+- [x] 1.5 [P] 修改 `apps/api/.env.example`：補完 `BETTER_AUTH_SECRET`（範例 `change-me-32-bytes-hex`）、`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET` 註解（標明 `Get from https://console.cloud.google.com`）、確認 `SMTP_HOST=localhost` `SMTP_PORT=1025` `SMTP_FROM=noreply@vellum.local`
 
 ## 2. Tests First — Server 單元測試（紅燈先行）
 
-- [ ] 2.1 寫失敗測試 `apps/api/src/email/mailpit.test.ts`：用 `mock.module('nodemailer')` 注入假 transport；驗證 `MailpitEmailService.send` 把 `{ to, subject, html, text }` 正確傳給 transport.sendMail；transport throw 時 `send` 也 throw
-- [ ] 2.2 [P] 寫失敗測試 `apps/api/src/auth/rate-limit.test.ts`：覆蓋 Magic Link login request 的兩條規則（per-email 3/10min、per-IP 10/hr）以及 login 嘗試 per-IP 10/min；超限回 `{ allowed: false, retryAfterSeconds }` 且 retryAfterSeconds 取兩條規則中較大者
-- [ ] 2.3 [P] 寫失敗測試 `apps/api/src/auth/magic-link.test.ts`：Magic Link verification 端點對「過期 token」、「已用 token」、「未知 token」、「合法未用 token」四個 scenario 的回應行為；確認合法 token 會 mark `used_at` 並 set 1 個 session cookie
-- [ ] 2.4 [P] 寫失敗測試 `apps/api/src/auth/google-oauth.test.ts`：Google OAuth login state mismatch 拒絕、provider error 拒絕、首次登入建 user row 並 redirect to `/dashboard`、回流登入重用既有 user row
-- [ ] 2.5 [P] 寫失敗測試 `apps/api/src/auth/logout.test.ts`：authenticated logout 刪 session row + clear cookie；unauthenticated logout 仍回 200 idempotent
-- [ ] 2.6 [P] 寫失敗測試 `apps/api/src/auth/route-guard.test.ts`：protected route guard 對無 session、revoked session、合法 session 三種情況的回應；errorKey 必為 `auth.errors.notAuthenticated` / `auth.errors.sessionRevoked`
-- [ ] 2.7 [P] 寫失敗測試 `apps/api/src/account/profile.test.ts`：read profile 與 update profile 五個 scenario（合法 name、非 https image 拒、locale 持久化、不支援 locale 拒、email 欄位不可 patch）
-- [ ] 2.8 [P] 寫失敗測試 `apps/api/src/account/sessions.test.ts`：list active sessions 排除 revoked；revoke session（他機 / 當前 / 他人 ID）三條 scenario
-- [ ] 2.9 [P] 寫失敗測試 `apps/api/src/account/delete-account.test.ts`：delete account 四個 scenario（confirmEmail 一致刪除並 cascade、不一致拒、case-insensitive 接受、未登入 401）
-- [ ] 2.10 [P] 寫失敗測試 `apps/api/src/auth/error-key-contract.test.ts`：scan 所有 auth + account 端點失敗回應，斷言 envelope 為 `{ error: { errorKey: string } }` 且 errorKey 同時存在於 `packages/shared/locales/zh-TW.json` 與 `packages/shared/locales/en.json`
-- [ ] 2.11 [P] 寫失敗測試 `apps/api/src/auth/logger-redaction.test.ts`：對 magic-link send 端點觸發任何 log，斷言 log 內容不含原始 token、email body、`Authorization`/`Cookie` header
-- [ ] 2.12 [P] 寫失敗測試 `apps/api/src/auth/session-cookie.test.ts`：login 成功的 `Set-Cookie` header 包含 `HttpOnly`、`Secure`、`SameSite=Lax`、`Path=/`，且 cookie value 不含 user id/email/token
+- [x] 2.1 寫失敗測試 `apps/api/src/email/mailpit.test.ts`：用 `mock.module('nodemailer')` 注入假 transport；驗證 `MailpitEmailService.send` 把 `{ to, subject, html, text }` 正確傳給 transport.sendMail；transport throw 時 `send` 也 throw
+- [x] 2.2 [P] 寫失敗測試 `apps/api/src/auth/rate-limit.test.ts`：覆蓋 Magic Link login request 的兩條規則（per-email 3/10min、per-IP 10/hr）以及 login 嘗試 per-IP 10/min；超限回 `{ allowed: false, retryAfterSeconds }` 且 retryAfterSeconds 取兩條規則中較大者
+- [x] 2.3 [P] 寫失敗測試 `apps/api/src/auth/magic-link.test.ts`：Magic Link verification 端點對「過期 token」、「已用 token」、「未知 token」、「合法未用 token」四個 scenario 的回應行為；確認合法 token 會 mark `used_at` 並 set 1 個 session cookie
+- [x] 2.4 [P] 寫失敗測試 `apps/api/src/auth/google-oauth.test.ts`：Google OAuth login state mismatch 拒絕、provider error 拒絕、首次登入建 user row 並 redirect to `/dashboard`、回流登入重用既有 user row
+- [x] 2.5 [P] 寫失敗測試 `apps/api/src/auth/logout.test.ts`：authenticated logout 刪 session row + clear cookie；unauthenticated logout 仍回 200 idempotent
+- [x] 2.6 [P] 寫失敗測試 `apps/api/src/auth/route-guard.test.ts`：protected route guard 對無 session、revoked session、合法 session 三種情況的回應；errorKey 必為 `auth.errors.notAuthenticated` / `auth.errors.sessionRevoked`
+- [x] 2.7 [P] 寫失敗測試 `apps/api/src/account/profile.test.ts`：read profile 與 update profile 五個 scenario（合法 name、非 https image 拒、locale 持久化、不支援 locale 拒、email 欄位不可 patch）
+- [x] 2.8 [P] 寫失敗測試 `apps/api/src/account/sessions.test.ts`：list active sessions 排除 revoked；revoke session（他機 / 當前 / 他人 ID）三條 scenario
+- [x] 2.9 [P] 寫失敗測試 `apps/api/src/account/delete-account.test.ts`：delete account 四個 scenario（confirmEmail 一致刪除並 cascade、不一致拒、case-insensitive 接受、未登入 401）
+- [x] 2.10 [P] 寫失敗測試 `apps/api/src/auth/error-key-contract.test.ts`：scan 所有 auth + account 端點失敗回應，斷言 envelope 為 `{ error: { errorKey: string } }` 且 errorKey 同時存在於 `packages/shared/locales/zh-TW.json` 與 `packages/shared/locales/en.json`
+- [x] 2.11 [P] 寫失敗測試 `apps/api/src/auth/logger-redaction.test.ts`：對 magic-link send 端點觸發任何 log，斷言 log 內容不含原始 token、email body、`Authorization`/`Cookie` header
+- [x] 2.12 [P] 寫失敗測試 `apps/api/src/auth/session-cookie.test.ts`：login 成功的 `Set-Cookie` header 包含 `HttpOnly`、`Secure`、`SameSite=Lax`、`Path=/`，且 cookie value 不含 user id/email/token
 
 ## 3. Tests First — Web 互動測試（component test，紅燈先行）
 
-- [ ] 3.1 寫失敗測試 `apps/web/src/auth/LoginPage.test.tsx`：渲染 Google OAuth 按鈕與 Magic Link form；Magic Link form submit 呼叫 fetch；server 回 emailRateLimited 時顯示對應 i18n key 的訊息
-- [ ] 3.2 [P] 寫失敗測試 `apps/web/src/auth/MagicLinkVerifyPage.test.tsx`：URL `?token=...` 正常時導向 `/dashboard`；token 過期時顯示 `auth.errors.magicLinkExpired` 對應字串
-- [ ] 3.3 [P] 寫失敗測試 `apps/web/src/auth/RouteGuard.test.tsx`：未登入造訪受保護路由時 redirect 到 `/login?redirect=<path>`；revoked session 同樣 redirect
-- [ ] 3.4 [P] 寫失敗測試 `apps/web/src/account/ProfilePage.test.tsx`：載入時用 GET profile 帶入欄位；改 name + locale 並 submit 走 PATCH；非 https image URL 顯示 `account.errors.invalidImageUrl`
-- [ ] 3.5 [P] 寫失敗測試 `apps/web/src/account/SessionsPage.test.tsx`：列出多筆 session 並標出 `isCurrent`；revoke 他機 session 後該列消失；revoke 當前 session 後 redirect 到 `/login`
-- [ ] 3.6 [P] 寫失敗測試 `apps/web/src/account/DeleteAccountDialog.test.tsx`：confirm email 不符不允許按 submit；符合時 submit 呼叫 DELETE /api/account 並導向 `/login`
+- [x] 3.1 寫失敗測試 `apps/web/src/auth/LoginPage.test.tsx`：渲染 Google OAuth 按鈕與 Magic Link form；Magic Link form submit 呼叫 fetch；server 回 emailRateLimited 時顯示對應 i18n key 的訊息
+- [x] 3.2 [P] 寫失敗測試 `apps/web/src/auth/MagicLinkVerifyPage.test.tsx`：URL `?token=...` 正常時導向 `/dashboard`；token 過期時顯示 `auth.errors.magicLinkExpired` 對應字串
+- [x] 3.3 [P] 寫失敗測試 `apps/web/src/auth/RouteGuard.test.tsx`：未登入造訪受保護路由時 redirect 到 `/login?redirect=<path>`；revoked session 同樣 redirect
+- [x] 3.4 [P] 寫失敗測試 `apps/web/src/account/ProfilePage.test.tsx`：載入時用 GET profile 帶入欄位；改 name + locale 並 submit 走 PATCH；非 https image URL 顯示 `account.errors.invalidImageUrl`
+- [x] 3.5 [P] 寫失敗測試 `apps/web/src/account/SessionsPage.test.tsx`：列出多筆 session 並標出 `isCurrent`；revoke 他機 session 後該列消失；revoke 當前 session 後 redirect 到 `/login`
+- [x] 3.6 [P] 寫失敗測試 `apps/web/src/account/DeleteAccountDialog.test.tsx`：confirm email 不符不允許按 submit；符合時 submit 呼叫 DELETE /api/account 並導向 `/login`
 
 ## 4. Implementation — Server（讓 §2 測試轉綠）
 

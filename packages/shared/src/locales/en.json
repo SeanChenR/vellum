@@ -2,5 +2,73 @@
   "app": {
     "name": "Vellum",
     "tagline": "Scaffolding in progress"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in to Vellum",
+      "subtitle": "Choose how to sign in",
+      "googleButton": "Sign in with Google",
+      "magicLinkLabel": "Or sign in with a Magic Link",
+      "emailPlaceholder": "your@email.com",
+      "emailLabel": "Email address",
+      "sendLinkButton": "Send sign-in link",
+      "checkEmail": "Check your inbox! The link expires in 15 minutes.",
+      "backToLogin": "Back to sign in"
+    },
+    "verify": {
+      "verifying": "Verifying your link…",
+      "success": "Verified! Redirecting…",
+      "invalidToken": "This link is invalid. Please sign in again."
+    },
+    "logout": {
+      "button": "Sign out"
+    },
+    "errors": {
+      "invalidEmail": "Please enter a valid email address",
+      "invalidCredentials": "This link is invalid or has already been used. Please request a new one.",
+      "magicLinkExpired": "This link has expired (15 minutes). Please request a new one.",
+      "magicLinkSendFailed": "Could not send the sign-in link. Please try again later.",
+      "googleOauthFailed": "Google sign-in failed. Please try again.",
+      "emailRateLimited": "Too many requests for this email. Please wait 10 minutes.",
+      "ipRateLimited": "Too many requests. Please try again later.",
+      "notAuthenticated": "Please sign in to continue.",
+      "sessionRevoked": "Your session has expired. Please sign in again."
+    }
+  },
+  "account": {
+    "profile": {
+      "title": "Profile",
+      "nameLabel": "Display name",
+      "namePlaceholder": "Your name",
+      "imageLabel": "Avatar URL (optional)",
+      "imagePlaceholder": "https://example.com/avatar.png",
+      "localeLabel": "Interface language",
+      "saveButton": "Save",
+      "saveSuccess": "Saved"
+    },
+    "sessions": {
+      "title": "Active sessions",
+      "current": "Current device",
+      "revokeButton": "Sign out this device",
+      "revokeSuccess": "Signed out",
+      "createdAt": "Signed in",
+      "lastSeen": "Last active",
+      "ipAddress": "IP address",
+      "userAgent": "Device"
+    },
+    "deleteAccount": {
+      "title": "Delete account permanently",
+      "warning": "This action cannot be undone. All data (including canvases) will be deleted.",
+      "confirmEmailLabel": "Enter your email to confirm",
+      "confirmButton": "Delete my account permanently",
+      "cancelButton": "Cancel"
+    },
+    "errors": {
+      "invalidImageUrl": "Avatar must be an absolute https:// URL or left blank",
+      "unsupportedLocale": "Unsupported language setting",
+      "confirmEmailMismatch": "Email does not match. Please check again.",
+      "sessionNotFound": "Session not found",
+      "cannotDeleteOnlyOwner": "You are the sole owner of some canvases. Please transfer or delete them before deleting your account."
+    }
   }
 }

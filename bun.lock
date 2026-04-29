@@ -26,6 +26,8 @@
         "nodemailer": "^8.0.7",
         "pino": "^10.3.1",
         "postgres": "^3.4.9",
+        "react": "19",
+        "react-dom": "19",
         "react-email": "^6.0.5",
         "zod": "^4.3.6",
       },
