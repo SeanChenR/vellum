@@ -93,4 +93,4 @@
 - [x] 14.1 跑 `bun test --coverage` 確認本 change 內 logic 區塊（permission、api-contract、canvas/folder routes、hooks、locales 同步）≥ 70% 覆蓋率
 - [x] 14.2 [P] 跑 `bunx oxlint` 與 `bunx oxfmt --check` 確認無 lint / format 問題
 - [x] 14.3 [P] 跑 `bun run typecheck` 確認 TypeScript 全綠
-- [ ] 14.4 在 dev 機開本地伺服器（用 tmux 啟動 dev script），手動 walk-through 五條互動：建立 canvas、rename、建立 folder、drag 進 folder、刪除 folder（先空再非空），完成「視覺走預覽迭代」的 visual approval
+- [x] 14.4 在 dev 機開本地伺服器（用 tmux 啟動 dev script），手動 walk-through 五條互動：建立 canvas、rename、建立 folder、drag 進 folder、刪除 folder（先空再非空），完成「視覺走預覽迭代」的 visual approval
