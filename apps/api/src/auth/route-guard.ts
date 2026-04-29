@@ -17,9 +17,7 @@ interface SessionLike {
  *
  * @returns `Response` (401) to short-circuit the handler, or `null` to proceed.
  */
-export function requireAuth(
-  session: SessionLike | null | undefined,
-): Response | null {
+export function requireAuth(session: SessionLike | null | undefined): Response | null {
   if (!session) {
     return errorResponse(401, "auth.errors.notAuthenticated");
   }

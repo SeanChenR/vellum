@@ -13,10 +13,17 @@ export default defineConfig({
   reporter: isCI ? "github" : "list",
 
   use: {
-    baseURL: process.env["E2E_BASE_URL"] ?? "http://localhost:3001",
+    baseURL: process.env["E2E_BASE_URL"] ?? "http://localhost:3002",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
+    // Send an Origin header on every APIRequestContext call. better-auth
+    // refuses POST /api/auth/* with a session cookie but no Origin header
+    // (CSRF guard). Playwright's request fixture skips Origin by default;
+    // emulate a browser-style same-origin request explicitly.
+    extraHTTPHeaders: {
+      Origin: process.env["E2E_BASE_URL"] ?? "http://localhost:3002",
+    },
   },
 
   projects: [
@@ -27,8 +34,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "bun run dev",
-    url: "http://localhost:3001",
+    command: "bun scripts/dev.ts",
+    url: "http://localhost:3002",
     reuseExistingServer: !isCI,
     timeout: 120_000,
     stdout: "ignore",

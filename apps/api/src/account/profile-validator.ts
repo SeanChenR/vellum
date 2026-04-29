@@ -54,9 +54,7 @@ export type ProfilePatchResult = ProfilePatchSuccess | ProfilePatchFailure;
  * Validate and strip the profile patch body.
  * Strips `email`, `id`, and any unrecognised keys.
  */
-export function validateProfilePatch(
-  body: ProfilePatchInput,
-): ProfilePatchResult {
+export function validateProfilePatch(body: ProfilePatchInput): ProfilePatchResult {
   // Strip disallowed fields before parsing
   const { name, image, locale } = body;
   const stripped = {
@@ -69,8 +67,7 @@ export function validateProfilePatch(
   if (!result.success) {
     // Return the first errorKey message
     const firstIssue = result.error.issues[0];
-    const errorKey =
-      firstIssue?.message ?? "account.errors.invalidInput";
+    const errorKey = firstIssue?.message ?? "account.errors.invalidInput";
     return { success: false, errorKey };
   }
 

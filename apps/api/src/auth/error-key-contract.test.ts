@@ -42,18 +42,13 @@ const ALL_ERROR_KEYS = [...AUTH_ERROR_KEYS, ...ACCOUNT_ERROR_KEYS];
 // Helper: resolve dot-notation key against a JSON object
 // ---------------------------------------------------------------------------
 
-function getNestedValue(
-  obj: Record<string, unknown>,
-  dotPath: string,
-): unknown {
-  return dotPath
-    .split(".")
-    .reduce<unknown>((acc, key) => {
-      if (acc !== null && typeof acc === "object") {
-        return (acc as Record<string, unknown>)[key];
-      }
-      return undefined;
-    }, obj);
+function getNestedValue(obj: Record<string, unknown>, dotPath: string): unknown {
+  return dotPath.split(".").reduce<unknown>((acc, key) => {
+    if (acc !== null && typeof acc === "object") {
+      return (acc as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, obj);
 }
 
 // ---------------------------------------------------------------------------
@@ -63,19 +58,13 @@ function getNestedValue(
 describe("errorKey i18n contract", () => {
   for (const key of ALL_ERROR_KEYS) {
     test(`${key} exists in zh-TW.json`, () => {
-      const value = getNestedValue(
-        zhTW as unknown as Record<string, unknown>,
-        key,
-      );
+      const value = getNestedValue(zhTW as unknown as Record<string, unknown>, key);
       expect(value).not.toBeUndefined();
       expect(typeof value).toBe("string");
     });
 
     test(`${key} exists in en.json`, () => {
-      const value = getNestedValue(
-        en as unknown as Record<string, unknown>,
-        key,
-      );
+      const value = getNestedValue(en as unknown as Record<string, unknown>, key);
       expect(value).not.toBeUndefined();
       expect(typeof value).toBe("string");
     });
@@ -84,18 +73,12 @@ describe("errorKey i18n contract", () => {
   test("zh-TW.json and en.json have matching key sets for auth.*", () => {
     const zhAuthErrors = (zhTW as { auth?: { errors?: object } }).auth?.errors;
     const enAuthErrors = (en as { auth?: { errors?: object } }).auth?.errors;
-    expect(Object.keys(zhAuthErrors ?? {})).toEqual(
-      Object.keys(enAuthErrors ?? {}),
-    );
+    expect(Object.keys(zhAuthErrors ?? {})).toEqual(Object.keys(enAuthErrors ?? {}));
   });
 
   test("zh-TW.json and en.json have matching key sets for account.*", () => {
-    const zhAccountErrors = (zhTW as { account?: { errors?: object } }).account
-      ?.errors;
-    const enAccountErrors = (en as { account?: { errors?: object } }).account
-      ?.errors;
-    expect(Object.keys(zhAccountErrors ?? {})).toEqual(
-      Object.keys(enAccountErrors ?? {}),
-    );
+    const zhAccountErrors = (zhTW as { account?: { errors?: object } }).account?.errors;
+    const enAccountErrors = (en as { account?: { errors?: object } }).account?.errors;
+    expect(Object.keys(zhAccountErrors ?? {})).toEqual(Object.keys(enAccountErrors ?? {}));
   });
 });

@@ -20,6 +20,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { AuthUser } from "../auth/useAuth";
+import vellumLogo from "../assets/vellum-logo.png";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -181,11 +182,14 @@ export function TopBar({
   return (
     <>
       <header className="pointer-events-auto flex h-14 shrink-0 items-center gap-3 border-b border-ink-navy/10 bg-white px-4">
-        {/* Logo slot — placeholder; replace with asset/vellum-logo.png integration */}
+        {/* Logo */}
         <div className="flex shrink-0 items-center gap-2">
-          <span aria-label={t("app.name")} className="font-serif text-lg font-bold text-ink-navy">
-            {t("app.name").charAt(0)}
-          </span>
+          <img
+            src={vellumLogo}
+            alt={t("app.name")}
+            className="h-8 w-8 select-none"
+            draggable={false}
+          />
         </div>
 
         {/* Breadcrumb + title */}

@@ -15,10 +15,9 @@ const BASE = "http://localhost:3000";
 describe("Google OAuth — /api/auth/callback/google", () => {
   test("state mismatch returns 400 with googleOauthFailed errorKey", async () => {
     // Calling the callback with a mismatched state should be rejected.
-    const resp = await fetch(
-      `${BASE}/api/auth/callback/google?code=fake-code&state=bad-state`,
-      { redirect: "manual" },
-    );
+    const resp = await fetch(`${BASE}/api/auth/callback/google?code=fake-code&state=bad-state`, {
+      redirect: "manual",
+    });
     // Accept 400 or redirect-to-error — shape assertion when 400
     const body = await resp.json().catch(() => ({}));
     if (resp.status === 400) {
@@ -32,10 +31,9 @@ describe("Google OAuth — /api/auth/callback/google", () => {
   });
 
   test("Google provider error returns 400 with googleOauthFailed errorKey", async () => {
-    const resp = await fetch(
-      `${BASE}/api/auth/callback/google?error=access_denied&state=any`,
-      { redirect: "manual" },
-    );
+    const resp = await fetch(`${BASE}/api/auth/callback/google?error=access_denied&state=any`, {
+      redirect: "manual",
+    });
     const body = await resp.json().catch(() => ({}));
     if (resp.status === 400) {
       expect((body as { error?: { errorKey?: string } }).error?.errorKey).toBe(

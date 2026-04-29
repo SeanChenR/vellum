@@ -5,9 +5,7 @@
  * matches the authenticated user's email (case-insensitive).
  */
 
-export type DeleteAccountResult =
-  | { valid: true }
-  | { valid: false; errorKey: string };
+export type DeleteAccountResult = { valid: true } | { valid: false; errorKey: string };
 
 export function validateDeleteAccount(
   body: { confirmEmail?: string },

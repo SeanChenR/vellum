@@ -49,9 +49,7 @@ async function getMagicLinkForEmail(recipientEmail: string): Promise<string> {
       };
 
       // Find the latest message addressed to our specific recipient
-      const match = list.messages?.find((m) =>
-        m.To?.some((t) => t.Address === recipientEmail),
-      );
+      const match = list.messages?.find((m) => m.To?.some((t) => t.Address === recipientEmail));
       if (!match) throw new Error(`No email for ${recipientEmail}`);
 
       const msgResp = await fetch(`${MAILPIT_API}/v1/message/${match.ID}`);
@@ -85,13 +83,17 @@ async function signInWithMagicLink(
   await emailInput.fill(email);
   await emailInput.press("Enter");
 
-  await expect(
-    page.getByText(/check your inbox|請至信箱收信/i),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/check your inbox|請至信箱收信/i)).toBeVisible({ timeout: 10_000 });
 
   const rawUrl = await getMagicLinkForEmail(email);
-  // Rewrite host to the test base URL (magic link email uses production host)
-  const verifyUrl = rawUrl.replace(/^https?:\/\/[^/]+/, "http://localhost:3001");
+  // Decode HTML entities (email body may be HTML-escaped) and rewrite host to baseURL.
+  const decoded = rawUrl
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"');
+  const baseUrl = page.url().match(/^https?:\/\/[^/]+/)?.[0] ?? "http://localhost:3002";
+  const verifyUrl = decoded.replace(/^https?:\/\/[^/]+/, baseUrl);
 
   await page.goto(verifyUrl);
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
@@ -102,93 +104,90 @@ async function signInWithMagicLink(
 // ---------------------------------------------------------------------------
 
 test.describe("Session management and logout", () => {
-  test(
-    "can list sessions (isCurrent), revoke another session, and sign out",
-    async ({ browser }) => {
-      // ---------------------------------------------------------------
-      // § 1 — Context 1 signs in
-      // ---------------------------------------------------------------
-      const context1 = await browser.newContext();
-      const page1 = await context1.newPage();
-      await signInWithMagicLink(page1, SHARED_EMAIL);
+  test("can list sessions (isCurrent), revoke another session, and sign out", async ({
+    browser,
+  }) => {
+    // ---------------------------------------------------------------
+    // § 1 — Context 1 signs in
+    // ---------------------------------------------------------------
+    const context1 = await browser.newContext();
+    const page1 = await context1.newPage();
+    await signInWithMagicLink(page1, SHARED_EMAIL);
 
-      // ---------------------------------------------------------------
-      // § 2 — GET /api/account/sessions: exactly 1, isCurrent=true
-      // ---------------------------------------------------------------
-      const sessResp1 = await page1.request.get("/api/account/sessions");
-      expect(sessResp1.status()).toBe(200);
+    // ---------------------------------------------------------------
+    // § 2 — GET /api/account/sessions: exactly 1, isCurrent=true
+    // ---------------------------------------------------------------
+    const sessResp1 = await page1.request.get("/api/account/sessions");
+    expect(sessResp1.status()).toBe(200);
 
-      const sessBody1 = (await sessResp1.json()) as {
+    const sessBody1 = (await sessResp1.json()) as {
+      data?: { sessions?: Array<{ id: string; isCurrent: boolean }> };
+    };
+    const sessions1 = sessBody1.data?.sessions ?? [];
+    expect(sessions1.length).toBeGreaterThanOrEqual(1);
+
+    const currentSession = sessions1.find((s) => s.isCurrent);
+    expect(currentSession).toBeDefined();
+
+    // ---------------------------------------------------------------
+    // § 3 — Context 2 signs in (same email → second session)
+    // ---------------------------------------------------------------
+    const context2 = await browser.newContext();
+    const page2 = await context2.newPage();
+    await signInWithMagicLink(page2, SHARED_EMAIL);
+
+    // ---------------------------------------------------------------
+    // § 4 — Context 1 sees 2 sessions after Context 2 signs in
+    // ---------------------------------------------------------------
+    // Poll briefly — DB write is near-instant but give a small grace period
+    let otherSession: { id: string; isCurrent: boolean } | undefined;
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const sessResp2 = await page1.request.get("/api/account/sessions");
+      const sessBody2 = (await sessResp2.json()) as {
         data?: { sessions?: Array<{ id: string; isCurrent: boolean }> };
       };
-      const sessions1 = sessBody1.data?.sessions ?? [];
-      expect(sessions1.length).toBeGreaterThanOrEqual(1);
+      const all = sessBody2.data?.sessions ?? [];
+      otherSession = all.find((s) => !s.isCurrent);
+      if (otherSession) break;
+      await page1.waitForTimeout(500);
+    }
 
-      const currentSession = sessions1.find((s) => s.isCurrent);
-      expect(currentSession).toBeDefined();
+    expect(otherSession).toBeDefined();
 
-      // ---------------------------------------------------------------
-      // § 3 — Context 2 signs in (same email → second session)
-      // ---------------------------------------------------------------
-      const context2 = await browser.newContext();
-      const page2 = await context2.newPage();
-      await signInWithMagicLink(page2, SHARED_EMAIL);
+    // ---------------------------------------------------------------
+    // § 5 — Context 1 revokes Context 2's session
+    // ---------------------------------------------------------------
+    const revokeResp = await page1.request.delete(`/api/account/sessions/${otherSession!.id}`);
+    expect(revokeResp.status()).toBe(200);
 
-      // ---------------------------------------------------------------
-      // § 4 — Context 1 sees 2 sessions after Context 2 signs in
-      // ---------------------------------------------------------------
-      // Poll briefly — DB write is near-instant but give a small grace period
-      let otherSession: { id: string; isCurrent: boolean } | undefined;
+    // ---------------------------------------------------------------
+    // § 6 — Context 2's next API call → 401 (session revoked)
+    // ---------------------------------------------------------------
+    const profileRespCtx2 = await page2.request.get("/api/account/profile");
+    expect(profileRespCtx2.status()).toBe(401);
 
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const sessResp2 = await page1.request.get("/api/account/sessions");
-        const sessBody2 = (await sessResp2.json()) as {
-          data?: { sessions?: Array<{ id: string; isCurrent: boolean }> };
-        };
-        const all = sessBody2.data?.sessions ?? [];
-        otherSession = all.find((s) => !s.isCurrent);
-        if (otherSession) break;
-        await page1.waitForTimeout(500);
-      }
+    // ---------------------------------------------------------------
+    // § 7 — Context 1 signs out
+    // ---------------------------------------------------------------
+    const signOutResp = await page1.request.post("/api/auth/sign-out");
+    expect([200, 204]).toContain(signOutResp.status());
 
-      expect(otherSession).toBeDefined();
+    // ---------------------------------------------------------------
+    // § 8 — Context 1's next API call → 401 (session cleared by logout)
+    // ---------------------------------------------------------------
+    const profileRespCtx1 = await page1.request.get("/api/account/profile");
+    expect(profileRespCtx1.status()).toBe(401);
 
-      // ---------------------------------------------------------------
-      // § 5 — Context 1 revokes Context 2's session
-      // ---------------------------------------------------------------
-      const revokeResp = await page1.request.delete(
-        `/api/account/sessions/${otherSession!.id}`,
-      );
-      expect(revokeResp.status()).toBe(200);
+    // ---------------------------------------------------------------
+    // Navigating to protected route redirects to /login
+    // ---------------------------------------------------------------
+    await page1.goto("/account/profile");
+    await expect(page1).toHaveURL(/\/login/, { timeout: 5_000 });
 
-      // ---------------------------------------------------------------
-      // § 6 — Context 2's next API call → 401 (session revoked)
-      // ---------------------------------------------------------------
-      const profileRespCtx2 = await page2.request.get("/api/account/profile");
-      expect(profileRespCtx2.status()).toBe(401);
-
-      // ---------------------------------------------------------------
-      // § 7 — Context 1 signs out
-      // ---------------------------------------------------------------
-      const signOutResp = await page1.request.post("/api/auth/sign-out");
-      expect([200, 204]).toContain(signOutResp.status());
-
-      // ---------------------------------------------------------------
-      // § 8 — Context 1's next API call → 401 (session cleared by logout)
-      // ---------------------------------------------------------------
-      const profileRespCtx1 = await page1.request.get("/api/account/profile");
-      expect(profileRespCtx1.status()).toBe(401);
-
-      // ---------------------------------------------------------------
-      // Navigating to protected route redirects to /login
-      // ---------------------------------------------------------------
-      await page1.goto("/account/profile");
-      await expect(page1).toHaveURL(/\/login/, { timeout: 5_000 });
-
-      await context1.close();
-      await context2.close();
-    },
-  );
+    await context1.close();
+    await context2.close();
+  });
 
   test("current session is marked isCurrent=true in the list", async ({ page }) => {
     await signInWithMagicLink(page, `isCurrent-check-${Date.now()}@vellum-test.local`);

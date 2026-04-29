@@ -27,7 +27,10 @@ export function RouteGuard({ children }: RouteGuardProps) {
   }
 
   if (!user) {
-    const redirect = location.pathname + location.search;
+    // TanStack Router's location.search is the parsed object, not the raw
+    // query string — concatenating it would throw "Cannot convert object to
+    // primitive value". The raw URL portion lives on globalThis.location.
+    const redirect = location.pathname + globalThis.location.search;
     return <Navigate to="/login" search={{ redirect }} />;
   }
 

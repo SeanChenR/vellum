@@ -25,7 +25,13 @@ playwright-report/
 test-results/
 playwright/.cache/
 .playwright-mcp/
-happy-path-*.png
+
+# Visual review artifacts (Playwright runs, large + ephemeral).
+# Folder structure stays via .gitkeep + README; the PNGs themselves are local-only.
+docs/screenshots/**/*.png
+docs/screenshots/**/*.jpg
+!docs/screenshots/**/.gitkeep
+!docs/screenshots/README.md
 
 # Drizzle
 drizzle/meta/

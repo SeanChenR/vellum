@@ -61,32 +61,44 @@ export function LoginPage() {
       <div className="w-full max-w-sm space-y-8">
         {/* Logo / Title */}
         <div className="text-center">
-          <h1 className="font-serif text-3xl text-ink-navy">
-            {t("app.name")}
-          </h1>
-          <p className="mt-2 text-sm text-warm-sepia">
-            {t("auth.login.subtitle")}
-          </p>
+          <h1 className="font-serif text-3xl text-ink-navy">{t("app.name")}</h1>
+          <p className="mt-2 text-sm text-warm-sepia">{t("auth.login.subtitle")}</p>
         </div>
 
-        {/* Google OAuth Button */}
-        <a
-          href="/api/auth/sign-in/social?provider=google&callbackURL=/dashboard"
+        {/* Google OAuth Button — POST to /sign-in/social, follow returned redirect URL */}
+        <button
+          type="button"
+          onClick={async () => {
+            setErrorKey(null);
+            try {
+              const resp = await fetch("/api/auth/sign-in/social", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ provider: "google", callbackURL: "/dashboard" }),
+              });
+              const body = (await resp.json()) as { url?: string; error?: { errorKey?: string } };
+              if (body.url) {
+                window.location.href = body.url;
+                return;
+              }
+              setErrorKey(body.error?.errorKey ?? "auth.errors.googleOauthFailed");
+            } catch {
+              setErrorKey("auth.errors.googleOauthFailed");
+            }
+          }}
           className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium transition hover:bg-gray-50"
           aria-label="Google"
         >
           <GoogleIcon />
           {t("auth.login.googleButton")}
-        </a>
+        </button>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-xs text-gray-400">
-            <span className="bg-white px-2">
-              {t("auth.login.magicLinkLabel")}
-            </span>
+            <span className="bg-white px-2">{t("auth.login.magicLinkLabel")}</span>
           </div>
         </div>
 
@@ -102,10 +114,7 @@ export function LoginPage() {
             className="space-y-4"
           >
             <div>
-              <label
-                htmlFor="email"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700">
                 {t("auth.login.emailLabel")}
               </label>
               <input
@@ -119,10 +128,7 @@ export function LoginPage() {
             </div>
 
             {errorKey && (
-              <p
-                data-testid="auth-error"
-                className="text-sm text-red-600"
-              >
+              <p data-testid="auth-error" className="text-sm text-red-600">
                 {t(errorKey, { defaultValue: errorKey })}
               </p>
             )}

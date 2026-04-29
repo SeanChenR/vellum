@@ -141,12 +141,13 @@ function startChild(
   color: string,
   cmd: string[],
   cwd: string,
+  extraEnv: Record<string, string> = {},
 ): ReturnType<typeof spawn> {
   const proc = spawn(cmd, {
     cwd,
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...process.env, FORCE_COLOR: "1" },
+    env: { ...process.env, FORCE_COLOR: "1", ...extraEnv },
   });
   children.push({ label, proc });
   streamPrefixed(label, color, proc);
@@ -192,7 +193,9 @@ log("web", "initial build (tailwind + bun build)...");
 
 // 31 (cyan) tailwind, 32 (green) api, 35 (magenta) web, 36 (cyan) proxy
 startChild("tailwind", "31", ["bun", "run", "tailwind:watch"], APP_WEB);
-startChild("api", "32", ["bun", "--hot", "src/index.ts"], APP_API);
+startChild("api", "32", ["bun", "--hot", "src/index.ts"], APP_API, {
+  DISABLE_AUTH_RATE_LIMIT: "1",
+});
 startChild("web", "35", ["bun", "build", "src/index.html", "--outdir=dist", "--watch"], APP_WEB);
 startChild("proxy", "36", ["bun", "scripts/dev-proxy.ts"], ROOT);
 

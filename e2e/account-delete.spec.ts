@@ -24,9 +24,7 @@ async function signInWithMagicLink(page: import("@playwright/test").Page, email:
   await emailInput.fill(email);
   await emailInput.press("Enter");
 
-  await expect(
-    page.getByText(/check your inbox|請至信箱收信/i),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/check your inbox|請至信箱收信/i)).toBeVisible({ timeout: 10_000 });
 
   // Fetch magic link from Mailpit
   let magicLinkUrl = "";
@@ -41,25 +39,35 @@ async function signInWithMagicLink(page: import("@playwright/test").Page, email:
       const msgResp = await fetch(`${MAILPIT_API}/v1/message/${latest.ID}`);
       const msg = (await msgResp.json()) as { HTML?: string; Text?: string };
       const body = msg.HTML ?? msg.Text ?? "";
-      const match = body.match(/href=["']([^"']*\/api\/auth\/magic-link\/verify[^"']*)['"]/i)
-        ?? body.match(/(https?:\/\/[^\s]*\/api\/auth\/magic-link\/verify[^\s]*)/i);
-      if (match?.[1]) { magicLinkUrl = match[1]; break; }
-    } catch { /* retry */ }
+      const match =
+        body.match(/href=["']([^"']*\/api\/auth\/magic-link\/verify[^"']*)['"]/i) ??
+        body.match(/(https?:\/\/[^\s]*\/api\/auth\/magic-link\/verify[^\s]*)/i);
+      if (match?.[1]) {
+        magicLinkUrl = match[1];
+        break;
+      }
+    } catch {
+      /* retry */
+    }
     await page.waitForTimeout(1000);
   }
 
   if (!magicLinkUrl) throw new Error("Magic link URL not found");
 
-  // Navigate to the verify URL (adjust host)
-  const verifyUrl = magicLinkUrl.replace(/^https?:\/\/[^/]+/, "http://localhost:3001");
+  // Decode HTML entities (email body may be HTML-escaped) and rewrite host to baseURL.
+  const decoded = magicLinkUrl
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"');
+  const baseUrl = page.url().match(/^https?:\/\/[^/]+/)?.[0] ?? "http://localhost:3002";
+  const verifyUrl = decoded.replace(/^https?:\/\/[^/]+/, baseUrl);
   await page.goto(verifyUrl);
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
 }
 
 test.describe("Delete account flow", () => {
-  test("signed-in user can delete account and is redirected to /login", async ({
-    page,
-  }) => {
+  test("signed-in user can delete account and is redirected to /login", async ({ page }) => {
     // Sign in
     await signInWithMagicLink(page, DELETE_TEST_EMAIL);
 
@@ -70,7 +78,7 @@ test.describe("Delete account flow", () => {
     const deleteBtn = page.getByRole("button", {
       name: /delete.*account|刪除帳號/i,
     });
-    if (await deleteBtn.count() === 0) {
+    if ((await deleteBtn.count()) === 0) {
       // If not on profile page, skip — visual iteration not yet done
       test.skip();
       return;

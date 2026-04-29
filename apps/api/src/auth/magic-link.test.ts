@@ -23,9 +23,7 @@ beforeAll(async () => {
 
 describe("Magic Link verification — /api/auth/magic-link/verify", () => {
   test("expired token returns 400 with magicLinkExpired errorKey", async () => {
-    const resp = await fetch(
-      `${baseUrl}/api/auth/magic-link/verify?token=expired-test-token`,
-    );
+    const resp = await fetch(`${baseUrl}/api/auth/magic-link/verify?token=expired-test-token`);
     // Will fail until auth is mounted — expected RED state
     expect([400, 401, 500]).not.toContain(200); // placeholder assertion
     const body = await resp.json().catch(() => ({}));
@@ -37,9 +35,7 @@ describe("Magic Link verification — /api/auth/magic-link/verify", () => {
   });
 
   test("already-used token returns 400 with invalidCredentials errorKey", async () => {
-    const resp = await fetch(
-      `${baseUrl}/api/auth/magic-link/verify?token=used-test-token`,
-    );
+    const resp = await fetch(`${baseUrl}/api/auth/magic-link/verify?token=used-test-token`);
     const body = await resp.json().catch(() => ({}));
     if (resp.status === 400) {
       expect((body as { error?: { errorKey?: string } }).error?.errorKey).toBe(
@@ -49,9 +45,7 @@ describe("Magic Link verification — /api/auth/magic-link/verify", () => {
   });
 
   test("unknown token returns 400 with invalidCredentials errorKey", async () => {
-    const resp = await fetch(
-      `${baseUrl}/api/auth/magic-link/verify?token=nonexistent-token-xyz`,
-    );
+    const resp = await fetch(`${baseUrl}/api/auth/magic-link/verify?token=nonexistent-token-xyz`);
     const body = await resp.json().catch(() => ({}));
     if (resp.status === 400) {
       expect((body as { error?: { errorKey?: string } }).error?.errorKey).toBe(

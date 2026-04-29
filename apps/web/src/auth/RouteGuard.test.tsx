@@ -19,16 +19,8 @@ const mockNavigate = mock((_path: string) => {});
 mock.module("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
   useLocation: () => ({ pathname: "/dashboard" }),
-  Navigate: ({
-    to,
-    search,
-  }: {
-    to: string;
-    search?: Record<string, string>;
-  }) => {
-    const searchStr = search
-      ? "?" + new URLSearchParams(search).toString()
-      : "";
+  Navigate: ({ to, search }: { to: string; search?: Record<string, string> }) => {
+    const searchStr = search ? "?" + new URLSearchParams(search).toString() : "";
     mockNavigate(`${to}${searchStr}`);
     return null;
   },

@@ -17,18 +17,12 @@ import { validateDeleteAccount } from "./delete-account-validator";
 
 describe("validateDeleteAccount", () => {
   test("matching emails (exact) are accepted", () => {
-    const result = validateDeleteAccount(
-      { confirmEmail: "user@example.com" },
-      "user@example.com",
-    );
+    const result = validateDeleteAccount({ confirmEmail: "user@example.com" }, "user@example.com");
     expect(result.valid).toBe(true);
   });
 
   test("mismatched email is rejected with confirmEmailMismatch", () => {
-    const result = validateDeleteAccount(
-      { confirmEmail: "wrong@example.com" },
-      "user@example.com",
-    );
+    const result = validateDeleteAccount({ confirmEmail: "wrong@example.com" }, "user@example.com");
     expect(result.valid).toBe(false);
     if (!result.valid) {
       expect(result.errorKey).toBe("account.errors.confirmEmailMismatch");
@@ -36,10 +30,7 @@ describe("validateDeleteAccount", () => {
   });
 
   test("comparison is case-insensitive", () => {
-    const result = validateDeleteAccount(
-      { confirmEmail: "user@example.com" },
-      "User@Example.com",
-    );
+    const result = validateDeleteAccount({ confirmEmail: "user@example.com" }, "User@Example.com");
     expect(result.valid).toBe(true);
   });
 });

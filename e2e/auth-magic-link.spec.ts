@@ -19,41 +19,45 @@ import { expect, test } from "@playwright/test";
 const MAILPIT_API = process.env["MAILPIT_API"] ?? "http://localhost:8025/api";
 const TEST_EMAIL = `playwright-test-${Date.now()}@vellum-test.local`;
 
-async function getLatestEmailBody(): Promise<string> {
-  // Poll Mailpit API for the latest message
+async function getEmailBodyForRecipient(recipient: string): Promise<string> {
+  // Filter by recipient — running specs in parallel means many magic-link
+  // emails arrive in mailpit; we MUST scope to the address this test owns.
   const listResp = await fetch(`${MAILPIT_API}/v1/messages`);
   const list = (await listResp.json()) as {
-    messages?: Array<{ ID: string }>;
+    messages?: Array<{ ID: string; To?: Array<{ Address?: string }> }>;
   };
 
-  const latest = list.messages?.[0];
-  if (!latest) throw new Error("No email found in Mailpit");
+  const match = list.messages?.find((m) => m.To?.some((t) => t.Address === recipient));
+  if (!match) throw new Error(`No email found in Mailpit for ${recipient}`);
 
-  const msgResp = await fetch(`${MAILPIT_API}/v1/message/${latest.ID}`);
+  const msgResp = await fetch(`${MAILPIT_API}/v1/message/${match.ID}`);
   const msg = (await msgResp.json()) as { HTML?: string; Text?: string };
   return msg.HTML ?? msg.Text ?? "";
 }
 
 function extractMagicLinkUrl(emailBody: string): string {
   // Match href containing /api/auth/magic-link/verify
-  const match = emailBody.match(
-    /href=["']([^"']*\/api\/auth\/magic-link\/verify[^"']*)['"]/i,
-  );
-  if (match?.[1]) return match[1];
+  const match = emailBody.match(/href=["']([^"']*\/api\/auth\/magic-link\/verify[^"']*)['"]/i);
+  if (match?.[1]) return decodeHtmlEntities(match[1]);
 
   // Fallback: match plain text URL
-  const textMatch = emailBody.match(
-    /(https?:\/\/[^\s]*\/api\/auth\/magic-link\/verify[^\s]*)/i,
-  );
-  if (textMatch?.[1]) return textMatch[1];
+  const textMatch = emailBody.match(/(https?:\/\/[^\s]*\/api\/auth\/magic-link\/verify[^\s]*)/i);
+  if (textMatch?.[1]) return decodeHtmlEntities(textMatch[1]);
 
   throw new Error(`Magic link URL not found in email body:\n${emailBody}`);
 }
 
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
 test.describe("Magic Link login flow", () => {
-  test("user can sign in via magic link and reach /dashboard", async ({
-    page,
-  }) => {
+  test("user can sign in via magic link and reach /dashboard", async ({ page }) => {
     // Step 1: Go to /login
     await page.goto("/login");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -64,15 +68,13 @@ test.describe("Magic Link login flow", () => {
     await emailInput.press("Enter");
 
     // Step 3: Wait for "check your inbox" message
-    await expect(
-      page.getByText(/check your inbox|請至信箱收信/i),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/check your inbox|請至信箱收信/i)).toBeVisible({ timeout: 10_000 });
 
-    // Step 4: Retrieve magic-link URL from Mailpit
+    // Step 4: Retrieve magic-link URL from Mailpit (scoped to TEST_EMAIL)
     let magicLinkUrl = "";
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        const body = await getLatestEmailBody();
+        const body = await getEmailBodyForRecipient(TEST_EMAIL);
         magicLinkUrl = extractMagicLinkUrl(body);
         break;
       } catch {
@@ -81,12 +83,9 @@ test.describe("Magic Link login flow", () => {
     }
     expect(magicLinkUrl).not.toBe("");
 
-    // Step 5: Navigate to the magic link
-    // Replace the server-side URL with the test base URL
-    const verifyUrl = magicLinkUrl.replace(
-      /^https?:\/\/[^/]+/,
-      page.context().browser()?.contexts()[0]?.pages()[0]?.url().match(/^https?:\/\/[^/]+/)?.[0] ?? "http://localhost:3001",
-    );
+    // Step 5: Navigate to the magic link, rewriting host to baseURL
+    const baseUrl = page.url().match(/^https?:\/\/[^/]+/)?.[0] ?? "http://localhost:3002";
+    const verifyUrl = magicLinkUrl.replace(/^https?:\/\/[^/]+/, baseUrl);
 
     await page.goto(verifyUrl);
 

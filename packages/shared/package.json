@@ -2,8 +2,8 @@
   "name": "@vellum/shared",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "description": "Shared schema, types, locales, and validators between Vellum apps",
+  "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./locales/*.json": "./src/locales/*.json",

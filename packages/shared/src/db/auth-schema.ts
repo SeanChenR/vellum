@@ -8,13 +8,7 @@
  * (zh-TW | en) for US #6 language-preference persistence.
  */
 
-import {
-  boolean,
-  check,
-  pgTable,
-  text,
-  timestamp,
-} from "drizzle-orm/pg-core";
+import { boolean, check, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
@@ -33,12 +27,7 @@ export const users = pgTable(
     createdAt: timestamp("created_at").notNull(),
     updatedAt: timestamp("updated_at").notNull(),
   },
-  (table) => [
-    check(
-      "locale_valid",
-      sql`${table.locale} IN ('zh-TW', 'en')`,
-    ),
-  ],
+  (table) => [check("locale_valid", sql`${table.locale} IN ('zh-TW', 'en')`)],
 );
 
 // ---------------------------------------------------------------------------

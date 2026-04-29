@@ -9,14 +9,7 @@
  */
 
 import "../i18n"; // initialise i18n before tests
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  mock,
-  test,
-} from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
@@ -48,18 +41,15 @@ function renderPage() {
 describe("LoginPage", () => {
   test("renders Google OAuth button", () => {
     renderPage();
-    const googleBtn = screen.getByRole("link", { name: /google/i });
+    const googleBtn = screen.getByRole("button", { name: /google/i });
     expect(googleBtn).not.toBeNull();
-    expect((googleBtn as HTMLAnchorElement).href).toContain(
-      "/api/auth/sign-in/social",
-    );
   });
 
   test("renders Magic Link email input and submit button", () => {
     renderPage();
     const emailInput = screen.getByRole("textbox", { name: /email/i });
     expect(emailInput).not.toBeNull();
-    const submitBtn = screen.getByRole("button");
+    const submitBtn = screen.getByRole("button", { name: /sign-in link|sign.in.link/i });
     expect(submitBtn).not.toBeNull();
   });
 
@@ -82,10 +72,7 @@ describe("LoginPage", () => {
 
   test("emailRateLimited error shows corresponding i18n message", async () => {
     mockFetch.mockImplementation(async () =>
-      Response.json(
-        { error: { errorKey: "auth.errors.emailRateLimited" } },
-        { status: 429 },
-      ),
+      Response.json({ error: { errorKey: "auth.errors.emailRateLimited" } }, { status: 429 }),
     );
 
     const user = userEvent.setup();

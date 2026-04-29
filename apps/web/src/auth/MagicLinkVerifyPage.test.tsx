@@ -25,9 +25,7 @@ mock.module("@tanstack/react-router", () => ({
   },
 }));
 
-const mockFetch = mock(async (_url: string) =>
-  Response.json({ data: {} }, { status: 200 }),
-);
+const mockFetch = mock(async (_url: string) => Response.json({ data: {} }, { status: 200 }));
 
 afterEach(() => {
   cleanup();
@@ -57,9 +55,7 @@ function renderPage(token = "valid-token") {
 
 describe("MagicLinkVerifyPage", () => {
   test("valid token: navigates to /dashboard on success", async () => {
-    mockFetch.mockImplementation(async () =>
-      Response.json({ data: {} }, { status: 200 }),
-    );
+    mockFetch.mockImplementation(async () => Response.json({ data: {} }, { status: 200 }));
     renderPage("valid-token");
 
     await waitFor(() => {
@@ -69,10 +65,7 @@ describe("MagicLinkVerifyPage", () => {
 
   test("expired token: shows magicLinkExpired error message", async () => {
     mockFetch.mockImplementation(async () =>
-      Response.json(
-        { error: { errorKey: "auth.errors.magicLinkExpired" } },
-        { status: 400 },
-      ),
+      Response.json({ error: { errorKey: "auth.errors.magicLinkExpired" } }, { status: 400 }),
     );
     renderPage("expired-token");
 

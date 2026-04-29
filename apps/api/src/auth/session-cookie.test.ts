@@ -18,37 +18,27 @@ import { parseCookieAttributes } from "./session-cookie-parser";
 
 describe("parseCookieAttributes", () => {
   test("detects HttpOnly attribute", () => {
-    const attrs = parseCookieAttributes(
-      "session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/",
-    );
+    const attrs = parseCookieAttributes("session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/");
     expect(attrs.httpOnly).toBe(true);
   });
 
   test("detects Secure attribute", () => {
-    const attrs = parseCookieAttributes(
-      "session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/",
-    );
+    const attrs = parseCookieAttributes("session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/");
     expect(attrs.secure).toBe(true);
   });
 
   test("detects SameSite=Lax attribute", () => {
-    const attrs = parseCookieAttributes(
-      "session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/",
-    );
+    const attrs = parseCookieAttributes("session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/");
     expect(attrs.sameSite).toBe("Lax");
   });
 
   test("detects Path=/ attribute", () => {
-    const attrs = parseCookieAttributes(
-      "session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/",
-    );
+    const attrs = parseCookieAttributes("session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/");
     expect(attrs.path).toBe("/");
   });
 
   test("extracts cookie value", () => {
-    const attrs = parseCookieAttributes(
-      "session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/",
-    );
+    const attrs = parseCookieAttributes("session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/");
     expect(attrs.value).toBe("abc123");
   });
 
@@ -70,10 +60,9 @@ describe("Session cookie on sign-in (HTTP integration)", () => {
   test("magic-link verify sets cookie with correct attributes (integration)", async () => {
     // This test will turn green in §4/§7 when auth is fully wired.
     // For now we validate the structural assertion without an active session.
-    const resp = await fetch(
-      `${BASE}/api/auth/magic-link/verify?token=no-such-token`,
-      { redirect: "manual" },
-    );
+    const resp = await fetch(`${BASE}/api/auth/magic-link/verify?token=no-such-token`, {
+      redirect: "manual",
+    });
 
     const setCookie = resp.headers.get("set-cookie");
     if (setCookie && resp.status === 200) {

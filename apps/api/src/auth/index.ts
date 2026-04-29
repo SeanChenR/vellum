@@ -69,13 +69,10 @@ export function createAuthHandler(
     const ip = getClientIp(req);
 
     // Rate-limit: magic-link send (per-email + per-IP)
-    if (
-      path === "/api/auth/magic-link/send" ||
-      path === "/api/auth/sign-in/magic-link"
-    ) {
+    if (path === "/api/auth/magic-link/send" || path === "/api/auth/sign-in/magic-link") {
       let email: string | undefined;
       try {
-        const body = await req.clone().json() as { email?: string };
+        const body = (await req.clone().json()) as { email?: string };
         email = body.email;
       } catch {
         // body parse error — let better-auth handle validation
@@ -83,9 +80,7 @@ export function createAuthHandler(
 
       const rl = applyAuthRateLimit({ kind: "magic-link", ip, email }, rateLimiter);
       if (!rl.allowed) {
-        const errorKey = email
-          ? "auth.errors.emailRateLimited"
-          : "auth.errors.ipRateLimited";
+        const errorKey = email ? "auth.errors.emailRateLimited" : "auth.errors.ipRateLimited";
         return new Response(JSON.stringify({ error: { errorKey } }), {
           status: 429,
           headers: {
@@ -97,22 +92,16 @@ export function createAuthHandler(
     }
 
     // Rate-limit: login attempts (magic-link verify, OAuth callback)
-    if (
-      path.startsWith("/api/auth/magic-link/verify") ||
-      path.startsWith("/api/auth/callback/")
-    ) {
+    if (path.startsWith("/api/auth/magic-link/verify") || path.startsWith("/api/auth/callback/")) {
       const rl = applyAuthRateLimit({ kind: "login", ip }, rateLimiter);
       if (!rl.allowed) {
-        return new Response(
-          JSON.stringify({ error: { errorKey: "auth.errors.ipRateLimited" } }),
-          {
-            status: 429,
-            headers: {
-              "content-type": "application/json",
-              "retry-after": String(rl.retryAfterSeconds),
-            },
+        return new Response(JSON.stringify({ error: { errorKey: "auth.errors.ipRateLimited" } }), {
+          status: 429,
+          headers: {
+            "content-type": "application/json",
+            "retry-after": String(rl.retryAfterSeconds),
           },
-        );
+        });
       }
     }
 

@@ -29,10 +29,7 @@ describe("applyAuthRateLimit — magic-link:email rule (3/10min)", () => {
 
   test("4th send within 10 min is blocked", () => {
     for (let i = 0; i < 3; i++) {
-      applyAuthRateLimit(
-        { kind: "magic-link", ip: "1.2.3.4", email: "a@test.com" },
-        limiter,
-      );
+      applyAuthRateLimit({ kind: "magic-link", ip: "1.2.3.4", email: "a@test.com" }, limiter);
     }
     const result = applyAuthRateLimit(
       { kind: "magic-link", ip: "1.2.3.4", email: "a@test.com" },
@@ -46,10 +43,7 @@ describe("applyAuthRateLimit — magic-link:email rule (3/10min)", () => {
 
   test("send after window refills is allowed", () => {
     for (let i = 0; i < 3; i++) {
-      applyAuthRateLimit(
-        { kind: "magic-link", ip: "1.2.3.4", email: "a@test.com" },
-        limiter,
-      );
+      applyAuthRateLimit({ kind: "magic-link", ip: "1.2.3.4", email: "a@test.com" }, limiter);
     }
     // Advance past 10-minute window
     nowMs = 10 * 60 * 1000 + 1;
@@ -109,10 +103,7 @@ describe("applyAuthRateLimit — login:ip rule (10/min)", () => {
 
   test("first 10 login attempts from same IP are allowed", () => {
     for (let i = 0; i < 10; i++) {
-      const result = applyAuthRateLimit(
-        { kind: "login", ip: "9.9.9.9" },
-        limiter,
-      );
+      const result = applyAuthRateLimit({ kind: "login", ip: "9.9.9.9" }, limiter);
       expect(result.allowed).toBe(true);
     }
   });
@@ -139,10 +130,7 @@ describe("applyAuthRateLimit — magic-link retryAfterSeconds takes max of two r
   test("retryAfterSeconds ≥ 1 when blocked", () => {
     // exhaust per-email rule first
     for (let i = 0; i < 3; i++) {
-      applyAuthRateLimit(
-        { kind: "magic-link", ip: "2.2.2.2", email: "b@test.com" },
-        limiter,
-      );
+      applyAuthRateLimit({ kind: "magic-link", ip: "2.2.2.2", email: "b@test.com" }, limiter);
     }
     const result = applyAuthRateLimit(
       { kind: "magic-link", ip: "2.2.2.2", email: "b@test.com" },

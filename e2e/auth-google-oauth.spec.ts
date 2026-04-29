@@ -24,9 +24,7 @@ const GOOGLE_TEST_EMAIL = `google-test-${Date.now()}@gmail-test.local`;
 test.describe("Google OAuth login (stub provider)", () => {
   test.skip(!TEST_MODE, "Skipped: set GOOGLE_OAUTH_TEST_MODE=1 to run");
 
-  test("first-time Google login creates user and redirects to /dashboard", async ({
-    page,
-  }) => {
+  test("first-time Google login creates user and redirects to /dashboard", async ({ page }) => {
     // Navigate to the stub OAuth callback (test mode only)
     await page.goto(
       `/api/auth/callback/google?test_email=${encodeURIComponent(GOOGLE_TEST_EMAIL)}&test_mode=1`,

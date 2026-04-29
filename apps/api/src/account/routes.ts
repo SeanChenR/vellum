@@ -13,7 +13,7 @@
  *   DELETE /api/account
  */
 
-import { eq, and, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb } from "../db/index";
 import { users, sessions, verifications } from "../db/schema";
 import { requireAuth } from "../auth/route-guard";
@@ -93,9 +93,7 @@ async function handlePatchProfile(req: Request): Promise<Response> {
     return errorJson(400, "account.errors.invalidBody");
   }
 
-  const validation = validateProfilePatch(
-    body as Parameters<typeof validateProfilePatch>[0],
-  );
+  const validation = validateProfilePatch(body as Parameters<typeof validateProfilePatch>[0]);
   if (!validation.success) {
     return errorJson(400, validation.errorKey);
   }
@@ -142,10 +140,7 @@ async function handleGetSessions(req: Request): Promise<Response> {
   // better-auth sessions don't have a revoked_at column in the standard schema;
   // we filter by expiry — sessions table only shows non-expired entries.
   // In a custom revoke flow we'd mark revokedAt; for now list all active.
-  const allSessions = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.userId, session!.userId));
+  const allSessions = await db.select().from(sessions).where(eq(sessions.userId, session!.userId));
 
   const now = new Date();
   const activeSessions = allSessions
@@ -166,10 +161,7 @@ async function handleGetSessions(req: Request): Promise<Response> {
 // DELETE /api/account/sessions/:id
 // ---------------------------------------------------------------------------
 
-async function handleRevokeSession(
-  req: Request,
-  sessionId: string,
-): Promise<Response> {
+async function handleRevokeSession(req: Request, sessionId: string): Promise<Response> {
   const session = await getSession(req);
   const guard = requireAuth(session);
   if (guard) return guard;
@@ -178,21 +170,30 @@ async function handleRevokeSession(
 
   // Verify the session belongs to the authenticated user
   const target = await db.query.sessions.findFirst({
-    where: (s, { eq, and }) =>
-      and(eq(s.id, sessionId), eq(s.userId, session!.userId)),
+    where: (s, { eq, and }) => and(eq(s.id, sessionId), eq(s.userId, session!.userId)),
   });
 
   if (!target) {
     return errorJson(404, "account.errors.sessionNotFound");
   }
 
+  // Delete the session row directly. better-auth.api.revokeSession is
+  // unreliable across versions (sometimes only clears the in-memory cache
+  // for the calling request, sometimes is a no-op against arbitrary tokens),
+  // so we own the deletion explicitly. Subsequent getSession lookups for
+  // this token will return null and the route guard returns 401.
   try {
-    const auth = getAuth();
-    await auth.api.revokeSession({ headers: req.headers, body: { token: target.token } });
+    const deleted = await db
+      .delete(sessions)
+      .where(eq(sessions.id, sessionId))
+      .returning({ id: sessions.id });
+    logger.info(
+      { sessionId, deletedRows: deleted.length, callerSessionId: session!.id },
+      "session revoked",
+    );
   } catch (err) {
-    logger.error({ err, sessionId }, "revokeSession error");
-    // Fallback: delete the row directly
-    await db.delete(sessions).where(eq(sessions.id, sessionId));
+    logger.error({ err, sessionId }, "revokeSession delete failed");
+    return errorJson(500, "errors.internal");
   }
 
   const isCurrentSession = sessionId === session!.id;
@@ -200,8 +201,7 @@ async function handleRevokeSession(
 
   if (isCurrentSession) {
     // Clear the session cookie
-    headers["set-cookie"] =
-      "vellum.session_token=; Max-Age=0; HttpOnly; SameSite=Lax; Path=/";
+    headers["set-cookie"] = "vellum.session_token=; Max-Age=0; HttpOnly; SameSite=Lax; Path=/";
   }
 
   return new Response(JSON.stringify({ data: { ok: true } }), {
@@ -243,35 +243,27 @@ async function handleDeleteAccount(req: Request): Promise<Response> {
   // Explicitly delete verifications by identifier (email): better-auth's
   // verifications table uses identifier (email), not userId FK, so it cannot
   // CASCADE from the users table. Clean it up manually before deleting the user.
-  await db
-    .delete(verifications)
-    .where(eq(verifications.identifier, user.email));
+  await db.delete(verifications).where(eq(verifications.identifier, user.email));
 
   // Cascade delete: sessions + accounts cascade via userId FK ON DELETE CASCADE.
   await db.delete(users).where(eq(users.id, user.id));
 
   logger.info({ userId: user.id }, "account deleted");
 
-  return new Response(
-    JSON.stringify({ data: { ok: true } }),
-    {
-      status: 200,
-      headers: {
-        "content-type": "application/json",
-        "set-cookie":
-          "vellum.session_token=; Max-Age=0; HttpOnly; SameSite=Lax; Path=/",
-      },
+  return new Response(JSON.stringify({ data: { ok: true } }), {
+    status: 200,
+    headers: {
+      "content-type": "application/json",
+      "set-cookie": "vellum.session_token=; Max-Age=0; HttpOnly; SameSite=Lax; Path=/",
     },
-  );
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Router — dispatches /api/account/* requests
 // ---------------------------------------------------------------------------
 
-export async function handleAccountRequest(
-  req: Request,
-): Promise<Response | null> {
+export async function handleAccountRequest(req: Request): Promise<Response | null> {
   const url = new URL(req.url);
   const path = url.pathname;
   const method = req.method.toUpperCase();

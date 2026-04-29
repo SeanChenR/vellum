@@ -34,9 +34,7 @@ export function MagicLinkVerifyPage() {
 
     void (async () => {
       try {
-        const resp = await fetch(
-          `/api/auth/magic-link/verify?token=${encodeURIComponent(token)}`,
-        );
+        const resp = await fetch(`/api/auth/magic-link/verify?token=${encodeURIComponent(token)}`);
 
         if (resp.ok || resp.redirected) {
           void navigate({ to: "/dashboard" });
@@ -44,9 +42,7 @@ export function MagicLinkVerifyPage() {
         }
 
         const body = (await resp.json().catch(() => ({}))) as VerifyResponse;
-        setErrorKey(
-          body.error?.errorKey ?? "auth.errors.invalidCredentials",
-        );
+        setErrorKey(body.error?.errorKey ?? "auth.errors.invalidCredentials");
       } catch {
         setErrorKey("auth.errors.invalidCredentials");
       }
@@ -57,16 +53,10 @@ export function MagicLinkVerifyPage() {
     return (
       <main className="flex min-h-screen items-center justify-center p-6">
         <div className="max-w-sm text-center">
-          <p
-            data-testid="verify-error"
-            className="text-red-600"
-          >
+          <p data-testid="verify-error" className="text-red-600">
             {t(errorKey, { defaultValue: errorKey })}
           </p>
-          <a
-            href="/login"
-            className="mt-4 block text-sm text-ink-navy underline"
-          >
+          <a href="/login" className="mt-4 block text-sm text-ink-navy underline">
             {t("auth.login.backToLogin")}
           </a>
         </div>

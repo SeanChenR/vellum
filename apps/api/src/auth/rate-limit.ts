@@ -48,6 +48,14 @@ export function applyAuthRateLimit(
   opts: ApplyAuthRateLimitOptions,
   limiter: RateLimiter,
 ): RateLimitResult {
+  // Dev / E2E bypass: avoid per-IP throttling when running locally so the
+  // Playwright suite (and `bun run dev:up` smoke loops) does not exhaust
+  // the 10/hr-per-IP magic-link budget on a single machine. NEVER set in
+  // production — the limits are real abuse defenses there.
+  if (Bun.env.DISABLE_AUTH_RATE_LIMIT === "1") {
+    return { allowed: true };
+  }
+
   if (opts.kind === "magic-link") {
     const ipKey = `auth:magic-link:ip:${opts.ip}`;
     const ipResult = limiter.limit(ipKey, MAGIC_LINK_IP_RULE);
@@ -58,9 +66,7 @@ export function applyAuthRateLimit(
 
       if (!emailResult.allowed || !ipResult.allowed) {
         // Both were consumed — pick the larger retryAfterSeconds
-        const emailSeconds = emailResult.allowed
-          ? 0
-          : emailResult.retryAfterSeconds;
+        const emailSeconds = emailResult.allowed ? 0 : emailResult.retryAfterSeconds;
         const ipSeconds = ipResult.allowed ? 0 : ipResult.retryAfterSeconds;
         return {
           allowed: false,
