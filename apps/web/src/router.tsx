@@ -13,6 +13,7 @@ import { MagicLinkVerifyPage } from "./auth/MagicLinkVerifyPage";
 import { ProfilePage } from "./account/ProfilePage";
 import { SessionsPage } from "./account/SessionsPage";
 import { DashboardPage } from "./dashboard/DashboardPage";
+import { CanvasPage } from "./canvas/CanvasPage";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -88,6 +89,16 @@ const sessionsRoute = createRoute({
   ),
 });
 
+const canvasRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/canvas/$id",
+  component: () => (
+    <RouteGuard>
+      <CanvasPage />
+    </RouteGuard>
+  ),
+});
+
 // ---------------------------------------------------------------------------
 // Components
 // ---------------------------------------------------------------------------
@@ -126,6 +137,7 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   profileRoute,
   sessionsRoute,
+  canvasRoute,
 ]);
 
 export const router = createRouter({ routeTree });

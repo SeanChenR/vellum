@@ -64,6 +64,50 @@
         "title": "Delete canvas",
         "confirm": "Delete \"{{title}}\"? This cannot be undone."
       }
+    },
+    "chrome": {
+      "topbar": {
+        "shareButton": "Share",
+        "sharePlaceholderToast": "Sharing is not yet available — coming in a future update",
+        "userMenu": {
+          "label": "User menu",
+          "signOut": "Sign out"
+        },
+        "breadcrumb": {
+          "myCanvases": "My canvases"
+        }
+      },
+      "mainMenu": {
+        "label": "Menu",
+        "rename": "Rename",
+        "duplicate": "Duplicate",
+        "delete": "Delete",
+        "deleteConfirmTitle": "Delete canvas",
+        "deleteConfirmBody": "Delete this canvas? This cannot be undone.",
+        "deleteConfirmYes": "Delete",
+        "deleteConfirmNo": "Cancel",
+        "export": "Export",
+        "exportComingSoon": "coming soon",
+        "exportPng": "Export as PNG",
+        "exportSvg": "Export as SVG",
+        "exportPdf": "Export as PDF",
+        "exportJson": "Export as JSON",
+        "exportMarkdown": "Export as Markdown"
+      },
+      "persistence": {
+        "quotaExceededToast": "Local storage is full — please export your canvas and clear space",
+        "loadFailedToast": "Could not load canvas contents — opening with a blank canvas"
+      },
+      "loading": "Loading…",
+      "duplicateSuffix": "(copy)"
+    },
+    "title": {
+      "untitled": "Untitled canvas",
+      "renameDialog": {
+        "label": "Canvas name",
+        "confirm": "Confirm",
+        "cancel": "Cancel"
+      }
     }
   },
   "folder": {

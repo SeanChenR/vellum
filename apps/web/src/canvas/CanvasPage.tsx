@@ -1,0 +1,108 @@
+/**
+ * CanvasPage.tsx — Route component for /canvas/:id.
+ *
+ * Responsibilities:
+ *   - Extract canvasId from route params
+ *   - Fetch canvas metadata via useCanvasQuery
+ *   - Show loading/error states
+ *   - Render <Editor> with canvas data + mutation handlers
+ *   - Wire onShareClick → placeholder toast (canvas.chrome.topbar.sharePlaceholderToast)
+ *
+ * Design: "Share button 是 placeholder：onShareClick callback prop"
+ * Spec: "Share button placeholder triggers a not-yet-available toast"
+ */
+
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { useParams } from "@tanstack/react-router";
+import { useAuth } from "../auth/useAuth";
+import { useCanvasQuery } from "./useCanvasQuery";
+import { useCanvasList } from "../dashboard/useCanvasList";
+import { Editor } from "./Editor";
+
+// ---------------------------------------------------------------------------
+// CanvasPage
+// ---------------------------------------------------------------------------
+
+export function CanvasPage() {
+  const { t } = useTranslation();
+  const { id } = useParams({ from: "/canvas/$id" });
+  const { user, logout } = useAuth();
+  const query = useCanvasQuery(id);
+
+  // Mutations from the canvas list hook (scope=owned — canvas is assumed owned)
+  const { renameCanvas, deleteCanvas, createCanvas } = useCanvasList("owned");
+
+  function handleShareClick() {
+    // Phase 1 placeholder — fire vellum:toast so any listener can display it
+    window.dispatchEvent(
+      new CustomEvent("vellum:toast", {
+        detail: { message: t("canvas.chrome.topbar.sharePlaceholderToast") },
+      }),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // States
+  // ---------------------------------------------------------------------------
+
+  if (query.status === "loading") {
+    return (
+      <div
+        role="status"
+        aria-label={t("app.name")}
+        className="flex h-screen items-center justify-center"
+      >
+        <span className="text-sm text-warm-sepia">{t("canvas.chrome.loading")}</span>
+      </div>
+    );
+  }
+
+  if (query.status === "error") {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4">
+        <p className="text-sm text-red-600">{t("errors.canvas.notFound")}</p>
+        <a
+          href="/dashboard"
+          className="rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white hover:bg-ink-navy/90"
+        >
+          {t("dashboard.myCanvases")}
+        </a>
+      </div>
+    );
+  }
+
+  const canvas = query.data;
+
+  // Guard: currentUser must be available (route is auth-protected)
+  if (!user) return null;
+
+  return (
+    <div className="flex h-screen w-screen flex-col overflow-hidden">
+      <Editor
+        canvasId={canvas.id}
+        title={canvas.title}
+        folder={canvas.folderId ? { id: canvas.folderId, name: canvas.folderId } : null}
+        onRenameSubmit={(newTitle) => {
+          renameCanvas.mutate({ id: canvas.id, title: newTitle });
+        }}
+        onDuplicate={() => {
+          createCanvas.mutate({
+            title: `${canvas.title} ${t("canvas.chrome.duplicateSuffix")}`,
+            folderId: canvas.folderId,
+          });
+        }}
+        onDelete={() => {
+          deleteCanvas.mutate(canvas.id, {
+            onSuccess: () => {
+              window.location.href = "/dashboard";
+            },
+          });
+        }}
+        onShareClick={handleShareClick}
+        currentUser={user}
+        onSignOut={logout}
+      />
+    </div>
+  );
+}
