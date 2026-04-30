@@ -66,7 +66,7 @@
 - [x] 7.2 [P] 寫 `e2e/auth-google-oauth.spec.ts`：用 stub Google OAuth provider（`mockttp` 或環境切換 `GOOGLE_OAUTH_TEST_MODE=1`）模擬 callback；驗證首次登入建 user row、回流登入重用 row；對應 `Google OAuth login` requirement
 - [x] 7.3 [P] 寫 `e2e/account-delete.spec.ts`：登入 → `/account/profile` → 觸發 Delete Account dialog → 輸入 confirmEmail → 提交 → 驗證 redirect 到 `/login` 且重新進入需重新登入；對應 `Delete account` requirement
 - [x] 7.4 [P] 寫 `e2e/auth-logout-and-sessions.spec.ts`：登入 → 進 `/account/sessions` → 確認自己 session 標 `isCurrent` → 開第二 browser context 再登入 → 第一 context refresh 看到第二 session → revoke 第二 session → 第二 context 重新打 API 收到 401；對應 `Logout`、`List active sessions`、`Revoke session` requirement
-- [ ] 7.5 跑 `bun run test:e2e` 確認所有 E2E 通過；coverage 報告需顯示 auth + account 模組 ≥ 70%
+- [x] 7.5 跑 `bun run test:e2e` 確認所有 E2E 通過；coverage 報告需顯示 auth + account 模組 ≥ 70%
 
 ## 8. Refactor — 對齊 design.md 決策後檢核
 
@@ -86,4 +86,4 @@
 - [x] 9.2 跑 `bunx oxlint` 與 `bunx oxfmt --check` 全綠
 - [x] 9.3 跑 `bun run typecheck` 全綠
 - [x] 9.4 手動 review：本 change 未引入 Resend / Sentry / analytics / image cloud upload / 2FA / 密碼登入 / Apple GitHub OAuth / 全域語言切換器 UI / public-link viewer auth / 帳號合併 UI（per Non-Goals）
-- [ ] 9.5 視覺預覽迭代收尾：依序開 `/login`、`/oauth/callback`（stub）、`/auth/verify`（stub）、`/account/profile`、`/account/sessions`、Delete Account dialog 給 user review；獲得 user 視覺通過後本 change 才算完成
+- [x] 9.5 視覺預覽迭代收尾：依序開 `/login`、`/oauth/callback`（stub）、`/auth/verify`（stub）、`/account/profile`、`/account/sessions`、Delete Account dialog 給 user review；獲得 user 視覺通過後本 change 才算完成
