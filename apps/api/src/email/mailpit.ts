@@ -47,8 +47,6 @@ export class MailpitEmailService implements EmailService {
 /**
  * Factory function — creates a MailpitEmailService from env variables.
  */
-export function createMailpitEmailService(
-  env: MailpitEnv,
-): MailpitEmailService {
+export function createMailpitEmailService(env: MailpitEnv): MailpitEmailService {
   return new MailpitEmailService(env);
 }

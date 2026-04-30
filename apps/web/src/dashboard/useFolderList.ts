@@ -94,8 +94,7 @@ export function useFolderList() {
   });
 
   const renameFolder = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) =>
-      renameFolderApi(id, name),
+    mutationFn: ({ id, name }: { id: string; name: string }) => renameFolderApi(id, name),
     // Optimistic rename
     onMutate: async ({ id, name }) => {
       await queryClient.cancelQueries({ queryKey: FOLDER_LIST_KEY });

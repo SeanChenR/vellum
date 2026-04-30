@@ -2,8 +2,8 @@
   "name": "@vellum/web",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "description": "Vellum frontend — React + tldraw SDK + Tailwind v4",
+  "type": "module",
   "scripts": {
     "dev": "concurrently --names tw,web --prefix-colors cyan,green \"bun run tailwind:watch\" \"PORT=3001 bun --hot src/index.html\"",
     "build": "bun run tailwind:build && bun build src/index.html --outdir=dist --minify",
@@ -13,7 +13,6 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "tldraw": "4.5.10",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -33,6 +32,7 @@
     "react-hook-form": "^7.74.0",
     "react-i18next": "^17.0.6",
     "tailwind-merge": "^3.5.0",
+    "tldraw": "4.5.10",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
   },

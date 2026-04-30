@@ -23,9 +23,7 @@ export type ValidationError =
 
 export type BlockReason = "private" | "loopback" | "link-local" | "reserved";
 
-export type ValidationResult =
-  | { ok: true; url: URL }
-  | { ok: false; error: ValidationError };
+export type ValidationResult = { ok: true; url: URL } | { ok: false; error: ValidationError };
 
 export type DnsLookup = (hostname: string) => Promise<readonly string[]>;
 

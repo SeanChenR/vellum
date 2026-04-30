@@ -35,11 +35,7 @@ const MOCK_CANVAS: Canvas = {
 
 function makeWrapper(queryClient: QueryClient): FC<{ children: ReactNode }> {
   return function Wrapper({ children }) {
-    return React.createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      children,
-    );
+    return React.createElement(QueryClientProvider, { client: queryClient }, children);
   };
 }
 
@@ -56,12 +52,12 @@ describe("useCanvasList — invalidateQueries after mutation", () => {
     // Mock fetch for the PATCH call
     const globalFetch = global.fetch;
     global.fetch = mock(async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : (input as Request).url ?? String(input);
+      const url = typeof input === "string" ? input : ((input as Request).url ?? String(input));
       if (url.includes("/api/canvas/c1")) {
-        return new Response(
-          JSON.stringify({ data: { ...MOCK_CANVAS, title: "Renamed" } }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        );
+        return new Response(JSON.stringify({ data: { ...MOCK_CANVAS, title: "Renamed" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
       }
       if (url.includes("/api/canvas")) {
         fetchCount++;
@@ -99,16 +95,16 @@ describe("useCanvasList — invalidateQueries after mutation", () => {
 
     const globalFetch = global.fetch;
     global.fetch = mock(async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : (input as Request).url ?? String(input);
+      const url = typeof input === "string" ? input : ((input as Request).url ?? String(input));
       if (url.includes("/api/canvas/c1")) {
         return new Response(null, { status: 204 });
       }
       if (url.includes("/api/canvas")) {
         fetchCount++;
-        return new Response(
-          JSON.stringify({ data: [], meta: { total: 0 } }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        );
+        return new Response(JSON.stringify({ data: [], meta: { total: 0 } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
       }
       return new Response("{}", { status: 200 });
     }) as unknown as typeof fetch;

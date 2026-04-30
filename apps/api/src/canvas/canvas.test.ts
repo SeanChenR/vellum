@@ -33,7 +33,9 @@ function makeCanvasId() {
   return "00000000-0000-0000-0000-" + Math.random().toString(16).slice(2, 14).padStart(12, "0");
 }
 
-interface MockSession { userId: string }
+interface MockSession {
+  userId: string;
+}
 
 /** Build a fake Request with optional JSON body and auth session. */
 function req(
@@ -72,7 +74,7 @@ describe("POST /api/canvas — Canvas creation", () => {
     const r = req("POST", "/api/canvas", { body: { title: "My Canvas" } });
     const resp = await handleCanvasRequest(r, null, allowRateLimiter);
     expect(resp?.status).toBe(401);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.auth.unauthorized");
   });
 
@@ -81,7 +83,7 @@ describe("POST /api/canvas — Canvas creation", () => {
     const r = req("POST", "/api/canvas", { body: {} });
     const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter);
     expect(resp?.status).toBe(400);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.validation");
   });
 
@@ -90,7 +92,7 @@ describe("POST /api/canvas — Canvas creation", () => {
     const r = req("POST", "/api/canvas", { body: { title: "" } });
     const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter);
     expect(resp?.status).toBe(400);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.validation");
   });
 
@@ -107,7 +109,7 @@ describe("POST /api/canvas — Canvas creation", () => {
     const resp = await handleCanvasRequest(r, { userId }, denyRateLimiter);
     expect(resp?.status).toBe(429);
     expect(resp?.headers.get("retry-after")).toBeTruthy();
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.rateLimit");
   });
 
@@ -130,7 +132,7 @@ describe("GET /api/canvas — Canvas list", () => {
     const r = req("GET", "/api/canvas");
     const resp = await handleCanvasRequest(r, null, allowRateLimiter);
     expect(resp?.status).toBe(401);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.auth.unauthorized");
   });
 
@@ -139,7 +141,7 @@ describe("GET /api/canvas — Canvas list", () => {
     const r = req("GET", "/api/canvas?scope=shared");
     const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter);
     expect(resp?.status).toBe(200);
-    const body = await resp!.json() as { data: unknown[]; meta: { total: number } };
+    const body = (await resp!.json()) as { data: unknown[]; meta: { total: number } };
     expect(body.data).toEqual([]);
     expect(body.meta.total).toBe(0);
   });
@@ -163,7 +165,7 @@ describe("GET /api/canvas/:id — Canvas read by id", () => {
     const r = req("GET", `/api/canvas/${canvasId}`);
     const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter);
     expect(resp?.status).toBe(404);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.canvas.notFound");
   });
 });
@@ -186,7 +188,7 @@ describe("PATCH /api/canvas/:id — Canvas update", () => {
     const r = req("PATCH", `/api/canvas/${canvasId}`, { body: { title: "Renamed" } });
     const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter);
     expect(resp?.status).toBe(404);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.canvas.notFound");
   });
 
@@ -196,7 +198,7 @@ describe("PATCH /api/canvas/:id — Canvas update", () => {
     const r = req("PATCH", `/api/canvas/${canvasId}`, { body: { title: "" } });
     const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter);
     expect(resp?.status).toBe(400);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.validation");
   });
 
@@ -229,7 +231,7 @@ describe("DELETE /api/canvas/:id — Canvas delete", () => {
     const r = req("DELETE", `/api/canvas/${canvasId}`);
     const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter);
     expect(resp?.status).toBe(404);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.canvas.notFound");
   });
 });

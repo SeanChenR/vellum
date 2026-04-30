@@ -31,10 +31,7 @@ import {
   CANVAS_READ_RULE,
   CANVAS_UPDATE_RULE,
 } from "../lib/rate-limit-rules";
-import {
-  canvasCreateInputSchema,
-  canvasUpdateInputSchema,
-} from "@vellum/shared/api-contract";
+import { canvasCreateInputSchema, canvasUpdateInputSchema } from "@vellum/shared/api-contract";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -156,12 +153,7 @@ async function handleList(
     rows = await db
       .select()
       .from(canvases)
-      .where(
-        and(
-          eq(canvases.ownerId, session.userId),
-          isNull(canvases.folderId),
-        ),
-      )
+      .where(and(eq(canvases.ownerId, session.userId), isNull(canvases.folderId)))
       .orderBy(desc(canvases.updatedAt));
   } else {
     // folderId=<uuid> — verify folder ownership then filter
@@ -177,12 +169,7 @@ async function handleList(
     rows = await db
       .select()
       .from(canvases)
-      .where(
-        and(
-          eq(canvases.ownerId, session.userId),
-          eq(canvases.folderId, folderIdParam),
-        ),
-      )
+      .where(and(eq(canvases.ownerId, session.userId), eq(canvases.folderId, folderIdParam)))
       .orderBy(desc(canvases.updatedAt));
   }
 

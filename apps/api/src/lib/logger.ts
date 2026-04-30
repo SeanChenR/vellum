@@ -14,12 +14,7 @@ export const logger = pino({
    * an exposed token is equivalent to an exposed password.
    */
   redact: {
-    paths: [
-      "req.query.token",
-      "req.body.token",
-      "req.headers.cookie",
-      "req.headers.authorization",
-    ],
+    paths: ["req.query.token", "req.body.token", "req.headers.cookie", "req.headers.authorization"],
     remove: true,
   },
   ...(isDev

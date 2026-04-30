@@ -4,10 +4,10 @@
 
 @theme {
   /* Vellum brand palette — see ADR-0005 + branding direction */
-  --color-ink-navy: #1A2332;
-  --color-parchment-cream: #F5F0E6;
-  --color-warm-sepia: #8B6F47;
-  --color-off-white: #FAFAF7;
+  --color-ink-navy: #1a2332;
+  --color-parchment-cream: #f5f0e6;
+  --color-warm-sepia: #8b6f47;
+  --color-off-white: #fafaf7;
 
   /* Typography */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;

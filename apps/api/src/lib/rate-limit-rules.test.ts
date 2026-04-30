@@ -27,7 +27,12 @@ import {
 
 function makeClock() {
   let t = 1_000_000;
-  return { advance: (ms: number) => { t += ms; }, now: () => t };
+  return {
+    advance: (ms: number) => {
+      t += ms;
+    },
+    now: () => t,
+  };
 }
 
 function drainAndExpect429(

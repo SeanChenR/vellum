@@ -8,21 +8,8 @@
  */
 
 import "../i18n";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  mock,
-  test,
-} from "bun:test";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { I18nextProvider } from "react-i18next";
@@ -40,7 +27,7 @@ const mockUser = {
 
 const mockFetch = mock(async (url: string, opts?: RequestInit) => {
   if (opts?.method === "PATCH") {
-    return Response.json({ data: { ...mockUser, ...(JSON.parse(opts.body as string)) } });
+    return Response.json({ data: { ...mockUser, ...JSON.parse(opts.body as string) } });
   }
   return Response.json({ data: mockUser });
 });
@@ -113,9 +100,7 @@ describe("ProfilePage", () => {
     });
 
     // Manually trigger the image validation by finding the image input
-    const imageInput = document.querySelector(
-      "input[name='image']",
-    ) as HTMLInputElement | null;
+    const imageInput = document.querySelector("input[name='image']") as HTMLInputElement | null;
     if (imageInput) {
       await user.clear(imageInput);
       await user.type(imageInput, "http://not-https.com/img.png");

@@ -26,8 +26,7 @@ export function DeleteAccountDialog({ open, onClose }: DeleteAccountDialogProps)
   const [error, setError] = useState<string | null>(null);
 
   const emailMatches =
-    confirmEmail.toLowerCase().trim() ===
-    (user?.email ?? "").toLowerCase().trim();
+    confirmEmail.toLowerCase().trim() === (user?.email ?? "").toLowerCase().trim();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,23 +72,15 @@ export function DeleteAccountDialog({ open, onClose }: DeleteAccountDialogProps)
       }}
     >
       <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-xl">
-        <h2
-          id="delete-account-title"
-          className="text-lg font-semibold text-red-700 mb-4"
-        >
+        <h2 id="delete-account-title" className="text-lg font-semibold text-red-700 mb-4">
           {t("account.deleteAccount.title")}
         </h2>
 
-        <p className="text-sm text-gray-600 mb-6">
-          {t("account.deleteAccount.warning")}
-        </p>
+        <p className="text-sm text-gray-600 mb-6">{t("account.deleteAccount.warning")}</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="confirm-email"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label htmlFor="confirm-email" className="block text-sm font-medium text-gray-700 mb-1">
               {t("account.deleteAccount.confirmEmailLabel")}
             </label>
             <input
@@ -103,9 +94,7 @@ export function DeleteAccountDialog({ open, onClose }: DeleteAccountDialogProps)
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-600">{t(error, { defaultValue: error })}</p>
-          )}
+          {error && <p className="text-sm text-red-600">{t(error, { defaultValue: error })}</p>}
 
           <div className="flex gap-3">
             <button

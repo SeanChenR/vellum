@@ -13,30 +13,13 @@
  * re-exported here so drizzle-kit picks them up from a single schema file.
  */
 
-import {
-  index,
-  jsonb,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { users } from "@vellum/shared/db/auth-schema";
 
-export {
-  users,
-  sessions,
-  accounts,
-  verifications,
-} from "@vellum/shared/db/auth-schema";
+export { users, sessions, accounts, verifications } from "@vellum/shared/db/auth-schema";
 
-export type {
-  User,
-  Session,
-  Account,
-  Verification,
-} from "@vellum/shared/db/auth-schema";
+export type { User, Session, Account, Verification } from "@vellum/shared/db/auth-schema";
 
 // ---------------------------------------------------------------------------
 // folders — flat, 1-level only (no parent_id)
@@ -57,16 +40,10 @@ export const folders = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index("folders_owner_id_name_idx").on(table.ownerId, table.name),
-  ],
+  (table) => [index("folders_owner_id_name_idx").on(table.ownerId, table.name)],
 );
 
 export type Folder = typeof folders.$inferSelect;
@@ -106,19 +83,12 @@ export const canvases = pgTable(
     snapshot: jsonb("snapshot")
       .notNull()
       .default(sql`'{}'::jsonb`),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     /** Primary sort for dashboard list: recency descending, scoped by owner. */
-    index("canvases_owner_id_updated_at_idx").on(
-      table.ownerId,
-      table.updatedAt,
-    ),
+    index("canvases_owner_id_updated_at_idx").on(table.ownerId, table.updatedAt),
   ],
 );
 

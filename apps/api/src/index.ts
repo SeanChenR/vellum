@@ -79,9 +79,7 @@ const server = Bun.serve({
 
     // Health check
     if (url.pathname === "/health") {
-      return respond(
-        Response.json({ status: "ok", version: VELLUM_VERSION }),
-      );
+      return respond(Response.json({ status: "ok", version: VELLUM_VERSION }));
     }
 
     // Auth routes
@@ -120,7 +118,4 @@ const server = Bun.serve({
   },
 });
 
-logger.info(
-  { port: server.port, version: VELLUM_VERSION },
-  "vellum api listening",
-);
+logger.info({ port: server.port, version: VELLUM_VERSION }, "vellum api listening");

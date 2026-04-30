@@ -26,10 +26,7 @@ import {
   FOLDER_LIST_RULE,
   FOLDER_UPDATE_RULE,
 } from "../lib/rate-limit-rules";
-import {
-  folderCreateInputSchema,
-  folderUpdateInputSchema,
-} from "@vellum/shared/api-contract";
+import { folderCreateInputSchema, folderUpdateInputSchema } from "@vellum/shared/api-contract";
 
 // ---------------------------------------------------------------------------
 // Helpers

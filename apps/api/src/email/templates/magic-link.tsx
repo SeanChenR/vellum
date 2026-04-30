@@ -67,17 +67,11 @@ export function MagicLinkEmail({ url, locale = "zh-TW" }: MagicLinkEmailProps) {
             padding: "40px",
           }}
         >
-          <Text style={{ fontSize: "24px", fontWeight: "600", color: "#1a1a2e" }}>
-            Vellum
-          </Text>
+          <Text style={{ fontSize: "24px", fontWeight: "600", color: "#1a1a2e" }}>Vellum</Text>
 
-          <Text style={{ fontSize: "16px", color: "#4a4a6a" }}>
-            {t.greeting}
-          </Text>
+          <Text style={{ fontSize: "16px", color: "#4a4a6a" }}>{t.greeting}</Text>
 
-          <Text style={{ fontSize: "16px", color: "#4a4a6a", lineHeight: "1.6" }}>
-            {t.body}
-          </Text>
+          <Text style={{ fontSize: "16px", color: "#4a4a6a", lineHeight: "1.6" }}>{t.body}</Text>
 
           <Section style={{ textAlign: "center", margin: "32px 0" }}>
             <Button
@@ -96,20 +90,13 @@ export function MagicLinkEmail({ url, locale = "zh-TW" }: MagicLinkEmailProps) {
             </Button>
           </Section>
 
-          <Text style={{ fontSize: "13px", color: "#9a9ab0" }}>
-            {t.fallback}
-          </Text>
+          <Text style={{ fontSize: "13px", color: "#9a9ab0" }}>{t.fallback}</Text>
 
-          <Link
-            href={url}
-            style={{ color: "#6b6bf7", fontSize: "13px", wordBreak: "break-all" }}
-          >
+          <Link href={url} style={{ color: "#6b6bf7", fontSize: "13px", wordBreak: "break-all" }}>
             {url}
           </Link>
 
-          <Text style={{ fontSize: "12px", color: "#c0c0d8", marginTop: "24px" }}>
-            {t.expiry}
-          </Text>
+          <Text style={{ fontSize: "12px", color: "#c0c0d8", marginTop: "24px" }}>{t.expiry}</Text>
         </Container>
       </Body>
     </Html>
@@ -124,9 +111,6 @@ export async function renderMagicLinkEmail(opts: {
   locale?: "zh-TW" | "en";
 }): Promise<{ html: string; text: string }> {
   const element = React.createElement(MagicLinkEmail, opts);
-  const [html, text] = await Promise.all([
-    render(element),
-    render(element, { plainText: true }),
-  ]);
+  const [html, text] = await Promise.all([render(element), render(element, { plainText: true })]);
   return { html, text };
 }

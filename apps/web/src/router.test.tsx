@@ -28,16 +28,8 @@ const mockNavigate = mock((_path: string) => {});
 mock.module("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
   useLocation: () => ({ pathname: "/dashboard", search: "" }),
-  Navigate: ({
-    to,
-    search,
-  }: {
-    to: string;
-    search?: Record<string, string>;
-  }) => {
-    const searchStr = search
-      ? "?" + new URLSearchParams(search).toString()
-      : "";
+  Navigate: ({ to, search }: { to: string; search?: Record<string, string> }) => {
+    const searchStr = search ? "?" + new URLSearchParams(search).toString() : "";
     mockNavigate(`${to}${searchStr}`);
     return null;
   },
@@ -84,11 +76,7 @@ describe("/dashboard route guard", () => {
       React.createElement(
         Wrapper,
         null,
-        React.createElement(
-          RouteGuard,
-          null,
-          React.createElement(DashboardPage),
-        ),
+        React.createElement(RouteGuard, null, React.createElement(DashboardPage)),
       ),
     );
 
@@ -115,19 +103,13 @@ describe("/dashboard route guard", () => {
       React.createElement(
         Wrapper,
         null,
-        React.createElement(
-          RouteGuard,
-          null,
-          React.createElement(DashboardPage),
-        ),
+        React.createElement(RouteGuard, null, React.createElement(DashboardPage)),
       ),
     );
 
     await waitFor(() => {
       // Dashboard headings confirm DashboardPage rendered
-      expect(
-        screen.queryByText(/My Canvases|我的畫布/),
-      ).not.toBeNull();
+      expect(screen.queryByText(/My Canvases|我的畫布/)).not.toBeNull();
     });
   });
 });

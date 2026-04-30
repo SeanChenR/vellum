@@ -15,9 +15,7 @@ export function getDb(): Database {
   if (!cached) {
     const url = Bun.env.DATABASE_URL;
     if (!url) {
-      throw new Error(
-        "DATABASE_URL is not set. Set it in apps/api/.env (see .env.example).",
-      );
+      throw new Error("DATABASE_URL is not set. Set it in apps/api/.env (see .env.example).");
     }
     cached = drizzle(url, { schema });
   }

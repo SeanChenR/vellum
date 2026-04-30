@@ -2,8 +2,8 @@
   "name": "@vellum/api",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "description": "Vellum backend — Bun.serve handling HTTP, WebSocket, and static frontend",
+  "type": "module",
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "start": "bun src/index.ts",

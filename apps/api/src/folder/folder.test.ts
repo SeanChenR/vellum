@@ -20,11 +20,7 @@ import type { RateLimiter } from "../lib/rate-limiter";
 
 const BASE = "http://localhost:3000";
 
-function req(
-  method: string,
-  path: string,
-  options: { body?: unknown } = {},
-): Request {
+function req(method: string, path: string, options: { body?: unknown } = {}): Request {
   return new Request(`${BASE}${path}`, {
     method,
     headers: { "content-type": "application/json" },
@@ -57,7 +53,7 @@ describe("POST /api/folder — Folder creation", () => {
     const r = req("POST", "/api/folder", { body: { name: "Sketches" } });
     const resp = await handleFolderRequest(r, null, allowRateLimiter);
     expect(resp?.status).toBe(401);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.auth.unauthorized");
   });
 
@@ -65,7 +61,7 @@ describe("POST /api/folder — Folder creation", () => {
     const r = req("POST", "/api/folder", { body: {} });
     const resp = await handleFolderRequest(r, { userId: "u1" }, allowRateLimiter);
     expect(resp?.status).toBe(400);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.validation");
   });
 
@@ -86,7 +82,7 @@ describe("POST /api/folder — Folder creation", () => {
     const resp = await handleFolderRequest(r, { userId: "u1" }, denyRateLimiter);
     expect(resp?.status).toBe(429);
     expect(resp?.headers.get("retry-after")).toBeTruthy();
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.rateLimit");
   });
 });
@@ -100,7 +96,7 @@ describe("GET /api/folder — Folder list", () => {
     const r = req("GET", "/api/folder");
     const resp = await handleFolderRequest(r, null, allowRateLimiter);
     expect(resp?.status).toBe(401);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.auth.unauthorized");
   });
 });
@@ -122,7 +118,7 @@ describe("PATCH /api/folder/:id — Folder rename", () => {
     const r = req("PATCH", `/api/folder/${folderId}`, { body: { name: "New" } });
     const resp = await handleFolderRequest(r, { userId: "u1" }, allowRateLimiter);
     expect(resp?.status).toBe(404);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.folder.notFound");
   });
 
@@ -131,7 +127,7 @@ describe("PATCH /api/folder/:id — Folder rename", () => {
     const r = req("PATCH", `/api/folder/${folderId}`, { body: { name: "" } });
     const resp = await handleFolderRequest(r, { userId: "u1" }, allowRateLimiter);
     expect(resp?.status).toBe(400);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.validation");
   });
 });
@@ -153,7 +149,7 @@ describe("DELETE /api/folder/:id — Folder delete", () => {
     const r = req("DELETE", `/api/folder/${folderId}`);
     const resp = await handleFolderRequest(r, { userId: "u1" }, allowRateLimiter);
     expect(resp?.status).toBe(404);
-    const body = await resp!.json() as { error: string };
+    const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.folder.notFound");
   });
 });

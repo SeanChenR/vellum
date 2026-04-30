@@ -16,9 +16,7 @@ export interface RateLimitRule {
   max: number;
 }
 
-export type RateLimitResult =
-  | { allowed: true }
-  | { allowed: false; retryAfterSeconds: number };
+export type RateLimitResult = { allowed: true } | { allowed: false; retryAfterSeconds: number };
 
 interface Bucket {
   tokens: number;
