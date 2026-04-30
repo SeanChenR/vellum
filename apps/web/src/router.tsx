@@ -2,11 +2,13 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  Navigate,
   Outlet,
 } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { VELLUM_VERSION } from "@vellum/shared";
 import { RouteGuard } from "./auth/RouteGuard";
+import { useAuth } from "./auth/useAuth";
 import { LoginPage } from "./auth/LoginPage";
 import { OAuthCallbackPage } from "./auth/OAuthCallbackPage";
 import { MagicLinkVerifyPage } from "./auth/MagicLinkVerifyPage";
@@ -14,6 +16,7 @@ import { ProfilePage } from "./account/ProfilePage";
 import { SessionsPage } from "./account/SessionsPage";
 import { DashboardPage } from "./dashboard/DashboardPage";
 import { CanvasPage } from "./canvas/CanvasPage";
+import vellumLogo from "./assets/vellum-logo.png";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -37,8 +40,7 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
-    redirect:
-      typeof search["redirect"] === "string" ? search["redirect"] : undefined,
+    redirect: typeof search["redirect"] === "string" ? search["redirect"] : undefined,
   }),
   component: LoginPage,
 });
@@ -105,20 +107,37 @@ const canvasRoute = createRoute({
 
 function HomePage() {
   const { t } = useTranslation();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <span className="text-warm-sepia">Loading…</span>
+      </main>
+    );
+  }
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" />;
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center p-8">
-      <div className="text-center">
-        <h1 className="font-serif text-4xl text-ink-navy">
-          {t("app.name", "Vellum")}
-        </h1>
+      <div className="flex flex-col items-center text-center">
+        <img
+          src={vellumLogo}
+          alt={t("app.name")}
+          className="h-16 w-16 select-none"
+          draggable={false}
+        />
+        <h1 className="mt-4 font-serif text-4xl text-ink-navy">{t("app.name", "Vellum")}</h1>
         <p className="mt-2 text-warm-sepia">
           {t("app.tagline", "Scaffolding stub")} · v{VELLUM_VERSION}
         </p>
         <a
           href="/login"
-          className="mt-6 inline-block rounded-lg bg-ink-navy px-6 py-3 text-sm font-semibold text-white"
+          className="mt-6 inline-block rounded-lg bg-ink-navy px-6 py-3 text-sm font-semibold text-white hover:bg-ink-navy/90"
         >
-          Get started
+          {t("app.getStarted", "Get started")}
         </a>
       </div>
     </main>

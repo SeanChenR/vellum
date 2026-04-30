@@ -18,6 +18,7 @@ import { useParams } from "@tanstack/react-router";
 import { useAuth } from "../auth/useAuth";
 import { useCanvasQuery } from "./useCanvasQuery";
 import { useCanvasList } from "../dashboard/useCanvasList";
+import { useFolderList } from "../dashboard/useFolderList";
 import { Editor } from "./Editor";
 
 // ---------------------------------------------------------------------------
@@ -32,6 +33,7 @@ export function CanvasPage() {
 
   // Mutations from the canvas list hook (scope=owned — canvas is assumed owned)
   const { renameCanvas, deleteCanvas, createCanvas } = useCanvasList("owned");
+  const { folders } = useFolderList();
 
   function handleShareClick() {
     // Phase 1 placeholder — fire vellum:toast so any listener can display it
@@ -77,12 +79,14 @@ export function CanvasPage() {
   // Guard: currentUser must be available (route is auth-protected)
   if (!user) return null;
 
+  const folderRecord = canvas.folderId ? folders.find((f) => f.id === canvas.folderId) : null;
+
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden">
       <Editor
         canvasId={canvas.id}
         title={canvas.title}
-        folder={canvas.folderId ? { id: canvas.folderId, name: canvas.folderId } : null}
+        folder={folderRecord ? { id: folderRecord.id, name: folderRecord.name } : null}
         onRenameSubmit={(newTitle) => {
           renameCanvas.mutate({ id: canvas.id, title: newTitle });
         }}

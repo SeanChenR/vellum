@@ -12,6 +12,7 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 // ---------------------------------------------------------------------------
@@ -48,12 +49,14 @@ function DeleteConfirmDialog({ open, onConfirm, onClose }: DeleteConfirmDialogPr
 
   if (!open) return null;
 
-  return (
+  // Portal to body so the dialog escapes tldraw's `pointer-events: none`
+  // chrome container.
+  return createPortal(
     <div
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="delete-confirm-title"
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
+      className="pointer-events-auto fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
     >
       <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
         <h2 id="delete-confirm-title" className="mb-2 text-base font-semibold text-ink-navy">
@@ -82,7 +85,8 @@ function DeleteConfirmDialog({ open, onConfirm, onClose }: DeleteConfirmDialogPr
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

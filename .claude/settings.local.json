@@ -5,7 +5,15 @@
       "Bash(rtk git *)",
       "Bash(rtk gh *)",
       "Bash(git commit *)",
-      "Bash(bun --version)"
+      "Bash(bun --version)",
+      "Bash(rtk read *)",
+      "Bash(tmux ls *)",
+      "Bash(rtk ps *)",
+      "Bash(spectra status *)",
+      "Bash(spectra list *)",
+      "Bash(spectra in-progress *)",
+      "Bash(spectra instructions *)",
+      "Bash(spectra analyze *)"
     ]
   }
 }

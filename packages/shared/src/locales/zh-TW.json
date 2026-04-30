@@ -1,7 +1,17 @@
 {
   "app": {
     "name": "Vellum",
-    "tagline": "Scaffolding 進行中"
+    "tagline": "Scaffolding 進行中",
+    "getStarted": "開始使用"
+  },
+  "nav": {
+    "backToDashboard": "返回首頁",
+    "userMenu": {
+      "label": "使用者選單",
+      "profile": "個人資料",
+      "sessions": "登入裝置",
+      "signOut": "登出"
+    }
   },
   "auth": {
     "login": {
@@ -63,16 +73,19 @@
       "delete": {
         "title": "刪除畫布",
         "confirm": "確定要刪除「{{title}}」嗎？此動作無法復原。"
+      },
+      "move": {
+        "title": "移動畫布",
+        "unfiled": "未分類",
+        "currentBadge": "目前位置",
+        "confirmButton": "移動",
+        "cancelButton": "取消"
       }
     },
     "chrome": {
       "topbar": {
         "shareButton": "分享",
         "sharePlaceholderToast": "分享功能尚未啟用，將於後續版本上線",
-        "userMenu": {
-          "label": "使用者選單",
-          "signOut": "登出"
-        },
         "breadcrumb": {
           "myCanvases": "我的畫布"
         }

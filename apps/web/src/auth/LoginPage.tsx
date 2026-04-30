@@ -13,7 +13,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { Navigate } from "@tanstack/react-router";
 import { z } from "zod";
+import { useAuth } from "./useAuth";
+import vellumLogo from "../assets/vellum-logo.png";
 
 const schema = z.object({
   email: z.string().email(),
@@ -28,6 +31,7 @@ interface MagicLinkResponse {
 
 export function LoginPage() {
   const { t } = useTranslation();
+  const { isAuthenticated, isLoading } = useAuth();
   const [sent, setSent] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
@@ -36,6 +40,18 @@ export function LoginPage() {
     handleSubmit,
     formState: { isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
+
+  // Already-signed-in visitors skip the login form entirely.
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <span className="text-warm-sepia">Loading…</span>
+      </main>
+    );
+  }
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" />;
+  }
 
   const onSubmit = async (values: FormValues) => {
     setErrorKey(null);
@@ -60,8 +76,14 @@ export function LoginPage() {
     <main className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-8">
         {/* Logo / Title */}
-        <div className="text-center">
-          <h1 className="font-serif text-3xl text-ink-navy">{t("app.name")}</h1>
+        <div className="flex flex-col items-center text-center">
+          <img
+            src={vellumLogo}
+            alt={t("app.name")}
+            className="h-14 w-14 select-none"
+            draggable={false}
+          />
+          <h1 className="mt-3 font-serif text-3xl text-ink-navy">{t("app.name")}</h1>
           <p className="mt-2 text-sm text-warm-sepia">{t("auth.login.subtitle")}</p>
         </div>
 

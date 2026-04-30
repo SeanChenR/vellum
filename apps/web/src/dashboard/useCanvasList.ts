@@ -32,10 +32,7 @@ interface ListResponse {
   meta: { total: number };
 }
 
-async function fetchCanvases(
-  scope: CanvasScope,
-  folderId?: string | null,
-): Promise<Canvas[]> {
+async function fetchCanvases(scope: CanvasScope, folderId?: string | null): Promise<Canvas[]> {
   const params = new URLSearchParams({ scope });
   if (folderId !== undefined) {
     params.set("folderId", folderId === null ? "null" : folderId);
@@ -69,10 +66,7 @@ async function deleteCanvasById(id: string): Promise<void> {
   }
 }
 
-async function createCanvasApi(
-  title: string,
-  folderId?: string | null,
-): Promise<Canvas> {
+async function createCanvasApi(title: string, folderId?: string | null): Promise<Canvas> {
   const resp = await fetch("/api/canvas", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -85,11 +79,13 @@ async function createCanvasApi(
   return body.data;
 }
 
-export function canvasListKey(
-  scope: CanvasScope,
-  folderId?: string | null,
-): unknown[] {
-  return ["canvas", "list", scope, folderId ?? "all"];
+export function canvasListKey(scope: CanvasScope, folderId?: string | null): unknown[] {
+  // Distinct sentinels: "all" (no filter) vs "unfiled" (folderId IS NULL).
+  // Using `?? "all"` would collide because `null ?? "all" === "all"`, leaking
+  // every canvas into the Unfiled view.
+  if (folderId === undefined) return ["canvas", "list", scope, "all"];
+  if (folderId === null) return ["canvas", "list", scope, "unfiled"];
+  return ["canvas", "list", scope, folderId];
 }
 
 export function useCanvasList(scope: CanvasScope, folderId?: string | null) {
@@ -101,58 +97,76 @@ export function useCanvasList(scope: CanvasScope, folderId?: string | null) {
     staleTime: 30_000,
   });
 
+  // Broad invalidate covers both list queries (`["canvas","list",...]`) and
+  // single-canvas queries (`["canvas","single",id]`). Without this, the
+  // in-canvas TopBar shows stale title/folder after rename or move because
+  // CanvasPage subscribes to the single-canvas key.
   const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ["canvas", "list"] });
+    void queryClient.invalidateQueries({ queryKey: ["canvas"], refetchType: "all" });
   };
 
   const renameCanvas = useMutation({
-    mutationFn: ({ id, title }: { id: string; title: string }) =>
-      patchCanvas(id, { title }),
-    // Optimistic update
+    mutationFn: ({ id, title }: { id: string; title: string }) => patchCanvas(id, { title }),
+    // Optimistic update: list (current view) + single-canvas cache.
     onMutate: async ({ id, title }) => {
-      await queryClient.cancelQueries({ queryKey: ["canvas", "list"] });
-      const prev = queryClient.getQueryData<Canvas[]>(canvasListKey(scope, folderId));
+      await queryClient.cancelQueries({ queryKey: ["canvas"] });
+      const prevList = queryClient.getQueryData<Canvas[]>(canvasListKey(scope, folderId));
+      const prevSingle = queryClient.getQueryData<Canvas>(["canvas", "single", id]);
       queryClient.setQueryData<Canvas[]>(
         canvasListKey(scope, folderId),
         (old) => old?.map((c) => (c.id === id ? { ...c, title } : c)) ?? [],
       );
-      return { prev };
+      if (prevSingle) {
+        queryClient.setQueryData<Canvas>(["canvas", "single", id], { ...prevSingle, title });
+      }
+      return { prevList, prevSingle };
     },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) {
-        queryClient.setQueryData(canvasListKey(scope, folderId), ctx.prev);
+    onError: (_err, vars, ctx) => {
+      if (ctx?.prevList) {
+        queryClient.setQueryData(canvasListKey(scope, folderId), ctx.prevList);
+      }
+      if (ctx?.prevSingle) {
+        queryClient.setQueryData(["canvas", "single", vars.id], ctx.prevSingle);
       }
     },
     onSettled: invalidate,
   });
 
   const moveCanvas = useMutation({
-    mutationFn: ({
-      id,
-      folderId: targetFolderId,
-    }: {
-      id: string;
-      folderId: string | null;
-    }) => patchCanvas(id, { folderId: targetFolderId }),
-    // Optimistic update
+    mutationFn: ({ id, folderId: targetFolderId }: { id: string; folderId: string | null }) =>
+      patchCanvas(id, { folderId: targetFolderId }),
+    // Walk every cached canvas list — when the moved canvas no longer matches
+    // a list's folder filter, drop it so the source folder doesn't keep
+    // showing the canvas after the move settles.
     onMutate: async ({ id, folderId: targetFolderId }) => {
       await queryClient.cancelQueries({ queryKey: ["canvas", "list"] });
-      const prev = queryClient.getQueryData<Canvas[]>(canvasListKey(scope, folderId));
-      queryClient.setQueryData<Canvas[]>(
-        canvasListKey(scope, folderId),
-        (old) =>
-          old?.map((c) =>
-            c.id === id ? { ...c, folderId: targetFolderId } : c,
-          ) ?? [],
-      );
-      return { prev };
+      const snapshots: Array<[unknown[], Canvas[] | undefined]> = [];
+      const entries = queryClient.getQueriesData<Canvas[]>({ queryKey: ["canvas", "list"] });
+      for (const [key, data] of entries) {
+        snapshots.push([key as unknown[], data]);
+        const filter = (key as unknown[])[3];
+        queryClient.setQueryData<Canvas[]>(key as unknown[], (old) => {
+          if (!old) return old;
+          if (filter === "all") {
+            return old.map((c) => (c.id === id ? { ...c, folderId: targetFolderId } : c));
+          }
+          const filterFolderId = filter === "unfiled" ? null : (filter as string);
+          if (filterFolderId !== targetFolderId) {
+            return old.filter((c) => c.id !== id);
+          }
+          return old.map((c) => (c.id === id ? { ...c, folderId: targetFolderId } : c));
+        });
+      }
+      return { snapshots };
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) {
-        queryClient.setQueryData(canvasListKey(scope, folderId), ctx.prev);
+      if (!ctx) return;
+      for (const [key, data] of ctx.snapshots) {
+        queryClient.setQueryData(key, data);
       }
     },
-    onSettled: invalidate,
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["canvas", "list"], refetchType: "all" }),
   });
 
   // Non-optimistic (destructive) — no local state update before server confirm

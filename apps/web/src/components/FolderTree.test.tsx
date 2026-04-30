@@ -19,12 +19,14 @@ import type { Folder } from "../dashboard/useFolderList";
 
 // dnd-kit requires pointer event support — provide minimal stubs
 mock.module("@dnd-kit/core", () => ({
-  DndContext: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+  DndContext: ({ children }: { children: React.ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
   useDroppable: () => ({ isOver: false, setNodeRef: () => {} }),
   useSensor: () => ({}),
   useSensors: (...args: unknown[]) => args,
   PointerSensor: {},
-  DragOverlay: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+  DragOverlay: ({ children }: { children: React.ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
 }));
 
 afterEach(() => {
@@ -74,7 +76,6 @@ describe("FolderTree", () => {
         folders: FOLDERS,
         activeFolderId: null,
         onSelectFolder: onSelect,
-        onMoveCanvas: mock(() => {}),
       }),
       { wrapper: makeWrapper() },
     );
@@ -116,7 +117,6 @@ describe("FolderTree", () => {
         folders: FOLDERS,
         activeFolderId: null,
         onSelectFolder: onSelect,
-        onMoveCanvas: mock(() => {}),
       }),
       { wrapper: makeWrapper() },
     );
@@ -140,7 +140,6 @@ describe("FolderTree", () => {
         folders: FOLDERS,
         activeFolderId: "f-a",
         onSelectFolder: onSelect,
-        onMoveCanvas: mock(() => {}),
       }),
       { wrapper: makeWrapper() },
     );

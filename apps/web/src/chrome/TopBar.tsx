@@ -15,11 +15,13 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { AuthUser } from "../auth/useAuth";
+import { UserAvatarMenu } from "../components/UserAvatarMenu";
 import vellumLogo from "../assets/vellum-logo.png";
 
 // ---------------------------------------------------------------------------
@@ -99,12 +101,15 @@ function RenameTitleDialog({ open, currentTitle, onConfirm, onClose }: RenameTit
 
   if (!open) return null;
 
-  return (
+  // Portal to body — TopBar is rendered inside tldraw's TopPanel slot which
+  // has `pointer-events: none` to let the canvas receive clicks. Without
+  // portaling, the dialog backdrop inherits `none` and clicks pass through.
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label={t("canvas.title.renameDialog.label")}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+      className="pointer-events-auto fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
     >
       <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
         <h2 className="mb-4 text-base font-semibold text-ink-navy">
@@ -144,7 +149,8 @@ function RenameTitleDialog({ open, currentTitle, onConfirm, onClose }: RenameTit
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -162,39 +168,34 @@ export function TopBar({
 }: TopBarProps) {
   const { t } = useTranslation();
   const [renameOpen, setRenameOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close user menu on outside click
-  useEffect(() => {
-    if (!userMenuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setUserMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [userMenuOpen]);
 
   const breadcrumb = folder?.name ?? t("canvas.chrome.topbar.breadcrumb.myCanvases");
 
   return (
     <>
       <header className="pointer-events-auto flex h-14 shrink-0 items-center gap-3 border-b border-ink-navy/10 bg-white px-4">
-        {/* Logo */}
-        <div className="flex shrink-0 items-center gap-2">
+        {/* Logo — clickable, returns to dashboard */}
+        <a
+          href="/dashboard"
+          aria-label={t("nav.backToDashboard")}
+          className="flex shrink-0 items-center gap-2 rounded-md p-1 hover:bg-parchment-cream"
+        >
           <img
             src={vellumLogo}
             alt={t("app.name")}
             className="h-8 w-8 select-none"
             draggable={false}
           />
-        </div>
+        </a>
 
-        {/* Breadcrumb + title */}
+        {/* Breadcrumb + title — folder/all-canvases segment links back to dashboard */}
         <div className="flex min-w-0 flex-1 items-center gap-1 text-sm">
-          <span className="shrink-0 text-warm-sepia">{breadcrumb}</span>
+          <a
+            href="/dashboard"
+            className="shrink-0 rounded px-1 text-warm-sepia hover:bg-parchment-cream hover:text-ink-navy"
+          >
+            {breadcrumb}
+          </a>
           <span className="shrink-0 text-ink-navy/40">/</span>
           <button
             type="button"
@@ -217,39 +218,7 @@ export function TopBar({
             {t("canvas.chrome.topbar.shareButton")}
           </button>
 
-          {/* User menu */}
-          <div ref={userMenuRef} className="relative">
-            <button
-              type="button"
-              aria-label={t("canvas.chrome.topbar.userMenu.label")}
-              onClick={() => setUserMenuOpen((v) => !v)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-ink-navy text-xs font-bold text-white hover:bg-ink-navy/80"
-            >
-              {currentUser.name.charAt(0).toUpperCase()}
-            </button>
-            {userMenuOpen && (
-              <div
-                role="menu"
-                className="absolute right-0 z-50 mt-1 w-40 rounded-lg border border-ink-navy/10 bg-white py-1 shadow-lg"
-              >
-                <div className="border-b border-ink-navy/10 px-3 py-2">
-                  <p className="truncate text-xs font-medium text-ink-navy">{currentUser.name}</p>
-                  <p className="truncate text-xs text-warm-sepia">{currentUser.email}</p>
-                </div>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    onSignOut();
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
-                >
-                  {t("canvas.chrome.topbar.userMenu.signOut")}
-                </button>
-              </div>
-            )}
-          </div>
+          <UserAvatarMenu user={currentUser} onSignOut={onSignOut} />
         </div>
       </header>
 

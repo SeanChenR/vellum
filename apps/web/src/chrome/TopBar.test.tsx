@@ -131,6 +131,26 @@ describe("TopBar", () => {
     expect(onRenameSubmit).not.toHaveBeenCalled();
   });
 
+  // (g) user menu opens and exposes Profile, Sessions links and Sign out button
+  test("user menu has Profile and Sessions links + Sign out button", async () => {
+    const user = userEvent.setup();
+    const onSignOut = mock(() => {});
+    renderTopBar({ onSignOut });
+    await user.click(screen.getByRole("button", { name: /user menu/i }));
+    await waitFor(() => {
+      expect(screen.queryByRole("menu")).not.toBeNull();
+    });
+    const profileLink = screen.getByRole("menuitem", { name: /^profile$/i });
+    expect((profileLink as HTMLAnchorElement).getAttribute("href")).toBe("/account/profile");
+    const sessionsLink = screen.getByRole("menuitem", {
+      name: /active sessions/i,
+    });
+    expect((sessionsLink as HTMLAnchorElement).getAttribute("href")).toBe("/account/sessions");
+    const signOutBtn = screen.getByRole("menuitem", { name: /sign out/i });
+    await user.click(signOutBtn);
+    expect(onSignOut).toHaveBeenCalledTimes(1);
+  });
+
   // (f) Enter in rename dialog with new name calls rename mutation and closes dialog
   test("submitting new name in rename dialog calls onRenameSubmit and closes", async () => {
     const user = userEvent.setup();

@@ -16,6 +16,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
+import { useDraggable } from "@dnd-kit/core";
 import type { Canvas } from "../dashboard/useCanvasList";
 
 // ---------------------------------------------------------------------------
@@ -60,21 +61,39 @@ export function CanvasCard({ canvas, onRename, onDelete, onMove }: CanvasCardPro
 
   const relTime = relativeTime(canvas.updatedAt);
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragRef,
+    transform,
+    isDragging,
+  } = useDraggable({ id: canvas.id });
+
+  const dragStyle = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+
   return (
     <div
-      className="group relative rounded-xl border border-warm-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+      ref={setDragRef}
+      style={dragStyle}
+      className={`group relative rounded-xl border border-warm-200 bg-white shadow-sm transition-shadow hover:shadow-md ${
+        isDragging ? "z-50 cursor-grabbing opacity-80 shadow-2xl" : ""
+      }`}
       data-canvas-id={canvas.id}
     >
-      {/* Thumbnail placeholder */}
+      {/* Thumbnail placeholder — also the drag handle */}
       {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
       {/* @ts-expect-error canvas route registered in add-canvas-editor-shell */}
       <Link to={`/canvas/${canvas.id}`} className="block">
         <div
-          className="h-36 w-full rounded-t-xl"
+          className="h-36 w-full cursor-grab rounded-t-xl active:cursor-grabbing"
           style={{
             background: `linear-gradient(135deg, hsl(${parseInt(canvas.id.slice(-6), 16) % 360}, 60%, 80%), hsl(${(parseInt(canvas.id.slice(-6), 16) + 60) % 360}, 60%, 90%))`,
           }}
           aria-hidden="true"
+          {...attributes}
+          {...listeners}
         />
       </Link>
 
@@ -82,13 +101,8 @@ export function CanvasCard({ canvas, onRename, onDelete, onMove }: CanvasCardPro
       <div className="px-3 py-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-gray-900">
-              {canvas.title}
-            </p>
-            <time
-              dateTime={canvas.updatedAt}
-              className="mt-0.5 block text-xs text-gray-500"
-            >
+            <p className="truncate text-sm font-semibold text-gray-900">{canvas.title}</p>
+            <time dateTime={canvas.updatedAt} className="mt-0.5 block text-xs text-gray-500">
               {t("canvas.card.lastEdited", { time: relTime })}
             </time>
           </div>

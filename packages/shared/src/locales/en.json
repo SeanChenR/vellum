@@ -1,7 +1,17 @@
 {
   "app": {
     "name": "Vellum",
-    "tagline": "Scaffolding in progress"
+    "tagline": "Scaffolding in progress",
+    "getStarted": "Get started"
+  },
+  "nav": {
+    "backToDashboard": "Back to dashboard",
+    "userMenu": {
+      "label": "User menu",
+      "profile": "Profile",
+      "sessions": "Active sessions",
+      "signOut": "Sign out"
+    }
   },
   "auth": {
     "login": {
@@ -63,16 +73,19 @@
       "delete": {
         "title": "Delete canvas",
         "confirm": "Delete \"{{title}}\"? This cannot be undone."
+      },
+      "move": {
+        "title": "Move canvas",
+        "unfiled": "Unfiled",
+        "currentBadge": "Current",
+        "confirmButton": "Move",
+        "cancelButton": "Cancel"
       }
     },
     "chrome": {
       "topbar": {
         "shareButton": "Share",
         "sharePlaceholderToast": "Sharing is not yet available — coming in a future update",
-        "userMenu": {
-          "label": "User menu",
-          "signOut": "Sign out"
-        },
         "breadcrumb": {
           "myCanvases": "My canvases"
         }
