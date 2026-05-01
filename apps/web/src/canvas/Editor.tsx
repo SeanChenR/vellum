@@ -1,28 +1,27 @@
 /**
- * Editor.tsx — tldraw canvas editor with Vellum chrome.
+ * Editor.tsx — tldraw canvas editor with Vellum chrome, mounted on a
+ * multiplayer sync store.
  *
  * Responsibilities:
- *   1. Load initial snapshot from persistence (once on mount)
- *   2. Autosave via useAutosave hook (800ms debounce + beforeunload flush)
+ *   1. Resolve the sync store via `useSyncStore(canvasId)` (lazy WS connect
+ *      + DB hydrate are owned by the multiplayer-sync server)
+ *   2. Render a loading branch until the store is ready
  *   3. Provide VellumChromeContext to tldraw component slots
- *   4. Pass customShapeUtils/Tools, maxPages=1, vellumChromeComponents to <Tldraw>
+ *   4. Pass customShapeUtils / customShapeTools / maxPages=1 / chrome
+ *      components to <Tldraw>
  *
- * Design: "autosave 用 800ms debounce + tldraw store.listen"
- * Spec: "Canvas editor route renders Vellum chrome around tldraw"
+ * Spec: canvas-editor — "Editor mounts with a multiplayer-aware sync store"
  */
 
-import React, { useState } from "react";
-import { Tldraw, getSnapshot } from "tldraw";
-import type { Editor as TldrawEditor } from "tldraw";
+import { useTranslation } from "react-i18next";
+import { Tldraw } from "tldraw";
 import "tldraw/tldraw.css";
-import { loadSnapshot } from "./persistence";
-import type { Snapshot } from "./persistence";
-import { useAutosave } from "./use-autosave";
 import { customShapeUtils, customShapeTools } from "@vellum/shared/shape-types";
 import { VellumChromeContext, vellumChromeComponents } from "../chrome/index";
 import type { VellumChromeContextValue } from "../chrome/index";
 import type { AuthUser } from "../auth/useAuth";
 import type { TopBarFolder } from "../chrome/TopBar";
+import { useSyncStore } from "./use-sync-store";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,18 +54,8 @@ export function Editor({
   currentUser,
   onSignOut,
 }: EditorProps) {
-  // Load snapshot once on mount
-  const [initialSnapshot] = useState<Snapshot | null>(() => loadSnapshot(canvasId));
-
-  // editor is stored in state so useAutosave re-subscribes when it's available
-  const [editor, setEditor] = useState<TldrawEditor | null>(null);
-
-  // Autosave: debounced writes to localStorage
-  useAutosave({
-    canvasId,
-    editor,
-    getSnapshot: () => getSnapshot(editor!.store) as Snapshot,
-  });
+  const { t } = useTranslation();
+  const sync = useSyncStore(canvasId);
 
   const chromeContext: VellumChromeContextValue = {
     topBar: {
@@ -89,24 +78,29 @@ export function Editor({
     },
   };
 
-  function handleMount(mountedEditor: TldrawEditor) {
-    setEditor(mountedEditor);
-  }
-
   return (
     <VellumChromeContext.Provider value={chromeContext}>
-      {/* tldraw needs a positioned, fully-sized container; use absolute inset so
-          the infinite-canvas surface does not push siblings (chrome) off-screen. */}
       <div className="relative h-full w-full">
         <div className="absolute inset-0">
-          <Tldraw
-            shapeUtils={customShapeUtils}
-            tools={customShapeTools}
-            components={vellumChromeComponents}
-            options={{ maxPages: 1 }}
-            snapshot={initialSnapshot ?? undefined}
-            onMount={handleMount}
-          />
+          {sync.status === "ready" && sync.store ? (
+            <Tldraw
+              store={sync.store}
+              shapeUtils={customShapeUtils}
+              tools={customShapeTools}
+              components={vellumChromeComponents}
+              options={{ maxPages: 1 }}
+            />
+          ) : sync.status === "error" ? (
+            <div className="flex h-full w-full items-center justify-center">
+              <span className="text-sm text-red-600">
+                {t("canvas.chrome.connection.disconnectedBanner")}
+              </span>
+            </div>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <span className="text-sm text-warm-sepia">{t("canvas.chrome.loading")}</span>
+            </div>
+          )}
         </div>
       </div>
     </VellumChromeContext.Provider>

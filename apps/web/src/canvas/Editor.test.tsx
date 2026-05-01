@@ -1,19 +1,15 @@
 /**
- * Editor.test.tsx — TDD tests for snapshot loading and tldraw prop wiring.
+ * Editor.test.tsx — TDD tests for the sync-aware Editor (task 4.4).
  *
- * Strategy: Editor.tsx uses <Tldraw> which is a heavyweight DOM component.
- * We mock tldraw so tests run fast. The mock captures props for assertion.
+ * Covers spec requirement:
+ *   "Editor mounts with a multiplayer-aware sync store"
  *
- * Persistence is NOT mocked here. Instead, we inject a custom storage via
- * _setStorage so that loadSnapshot returns controlled values without
- * polluting the shared ./persistence ESM namespace (which would break
- * persistence.test.ts).
+ * Strategy: Editor uses `useSyncStore(canvasId)` to obtain a tldraw sync
+ * store. We mock the hook so each test controls the returned status (and
+ * thus the Editor's render branch) without spinning up a real WebSocket.
  *
- * Autosave behaviour (debounce / beforeunload / quota) is tested in
- * use-autosave.test.ts — not duplicated here.
- *
- * Spec: "Editor autosaves snapshots on a debounced cadence and on page unload"
- * Spec: "Single-page document and custom shape registry are wired at the integration point"
+ * The localStorage persistence module is NOT touched; the Editor MUST NOT
+ * import or call `loadSnapshot` / `saveSnapshot` after this change.
  */
 
 import "../i18n";
@@ -22,54 +18,58 @@ import { cleanup, render } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import React from "react";
 import i18n from "../i18n";
-// Static import — always resolves to real persistence (no module mock registered)
-import { _setStorage } from "./persistence";
 
 // ---------------------------------------------------------------------------
 // Mocks — must come before importing the module under test
 // ---------------------------------------------------------------------------
 
-// Track what props were passed to <Tldraw>
 let capturedTldrawProps: Record<string, unknown> = {};
 
 mock.module("tldraw", () => ({
   Tldraw: (props: Record<string, unknown>) => {
     capturedTldrawProps = props;
-    // Simulate onMount once (matches real tldraw lifecycle — fires on mount only).
-    React.useEffect(() => {
-      if (typeof props.onMount === "function") {
-        (props.onMount as (e: unknown) => void)({
-          store: { listen: () => () => {} },
-        });
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
     return null;
   },
   getSnapshot: mock(() => ({ store: {}, schema: {} })),
 }));
 
-// Mock shape-types registry
 const fakeShapeUtil = { type: "fake-shape" };
 mock.module("@vellum/shared/shape-types", () => ({
   customShapeUtils: [fakeShapeUtil],
   customShapeTools: [],
 }));
 
-// Mock chrome context (avoids needing full chrome tree)
 mock.module("../chrome/index", () => ({
   VellumChromeContext: React.createContext(null),
   vellumChromeComponents: {},
 }));
 
-// Mock use-autosave — autosave is tested in use-autosave.test.ts; here it
-// should be a no-op so it doesn't interfere with snapshot assertions.
-mock.module("./use-autosave", () => ({
-  useAutosave: mock(() => {}),
+// useSyncStore mock — controllable per-test via the helper below.
+type SyncStatus = "loading" | "ready" | "error";
+interface MockSyncStoreResult {
+  status: SyncStatus;
+  store: unknown | null;
+}
+
+let nextSyncResult: MockSyncStoreResult = { status: "loading", store: null };
+const useSyncStoreCalls: string[] = [];
+const disposedCanvasIds: string[] = [];
+
+mock.module("./use-sync-store", () => ({
+  useSyncStore: (canvasId: string) => {
+    useSyncStoreCalls.push(canvasId);
+    React.useEffect(() => {
+      return () => {
+        disposedCanvasIds.push(canvasId);
+      };
+    }, [canvasId]);
+    return nextSyncResult;
+  },
+  useSyncConnectionStore: { getState: () => ({ state: "connecting", attempt: 0 }) },
 }));
 
 // ---------------------------------------------------------------------------
-// Import the module under test AFTER setting up mocks
+// Import the module under test AFTER mocks
 // ---------------------------------------------------------------------------
 
 const { Editor } = await import("./Editor");
@@ -114,51 +114,87 @@ function renderEditor(overrides = {}) {
 
 beforeEach(() => {
   capturedTldrawProps = {};
-  localStorage.clear();
-  // Restore real localStorage so loadSnapshot reads from it by default
-  _setStorage(localStorage);
+  useSyncStoreCalls.length = 0;
+  disposedCanvasIds.length = 0;
+  nextSyncResult = { status: "loading", store: null };
 });
 
 afterEach(() => {
   cleanup();
-  // Always restore real localStorage to avoid leaking custom storage
-  _setStorage(localStorage);
 });
 
 // ---------------------------------------------------------------------------
-// Task 7.1 — snapshot loading
+// Hook wiring
 // ---------------------------------------------------------------------------
 
-describe("Editor — snapshot loading (task 7.1)", () => {
-  // (a) non-null loadSnapshot → passed as initial snapshot to tldraw
-  test("loads existing snapshot from persistence on mount", () => {
-    const fakeSnapshot = { store: { shapes: [] }, schema: {} };
-    // Inject a storage pre-populated with the snapshot for canvasId "c1"
-    _setStorage({
-      getItem: (k: string) =>
-        k === "vellum:canvas:c1:snapshot" ? JSON.stringify(fakeSnapshot) : null,
-      setItem: () => {},
-    });
-    renderEditor();
-    expect(capturedTldrawProps["snapshot"]).toEqual(fakeSnapshot);
+describe("Editor — sync store hook wiring", () => {
+  test("Editor calls useSyncStore exactly once with the canvas id", () => {
+    nextSyncResult = { status: "loading", store: null };
+    renderEditor({ canvasId: "canvas-xyz" });
+    expect(useSyncStoreCalls).toContain("canvas-xyz");
+    expect(useSyncStoreCalls).toHaveLength(1);
   });
 
-  // (b) null loadSnapshot → snapshot prop is undefined (empty store)
-  test("starts blank when loadSnapshot returns null", () => {
-    // localStorage is empty (cleared in beforeEach) → loadSnapshot returns null
+  test("Editor does NOT pass a `snapshot` prop derived from localStorage to tldraw", () => {
+    nextSyncResult = {
+      status: "ready",
+      store: { id: "fake-store" },
+    };
     renderEditor();
-    expect(
-      capturedTldrawProps["snapshot"] === null || capturedTldrawProps["snapshot"] === undefined,
-    ).toBe(true);
+    // The new Editor MUST NOT supply `snapshot` — the sync store carries
+    // initial state through tldraw's `store` prop.
+    expect(capturedTldrawProps["snapshot"]).toBeUndefined();
   });
 });
 
 // ---------------------------------------------------------------------------
-// Task 7.2 — shape registry and single-page (tldraw props)
+// Loading state
 // ---------------------------------------------------------------------------
 
-describe("Editor — tldraw props (task 7.2)", () => {
+describe("Editor — loading state until the sync store is ready", () => {
+  test("renders a loading indicator and does NOT mount tldraw while status=loading", () => {
+    nextSyncResult = { status: "loading", store: null };
+    renderEditor();
+    expect(capturedTldrawProps).toEqual({});
+  });
+
+  test("mounts tldraw with the sync store once status=ready", () => {
+    const fakeStore = { id: "fake-store" };
+    nextSyncResult = { status: "ready", store: fakeStore };
+    renderEditor();
+    expect(capturedTldrawProps["store"]).toBe(fakeStore);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Mount / dispose lifecycle
+// ---------------------------------------------------------------------------
+
+describe("Editor — remount on canvas id change", () => {
+  test("changing canvasId disposes the previous sync store and reacquires for the new id", () => {
+    nextSyncResult = { status: "ready", store: { id: "store-1" } };
+    const { rerender } = renderEditor({ canvasId: "c1" });
+    expect(useSyncStoreCalls).toEqual(["c1"]);
+
+    nextSyncResult = { status: "ready", store: { id: "store-2" } };
+    rerender(
+      <I18nextProvider i18n={i18n}>
+        <Editor {...makeEditorProps({ canvasId: "c2" })} />
+      </I18nextProvider>,
+    );
+    // Cleanup ran for c1; useSyncStore re-invoked with c2.
+    expect(disposedCanvasIds).toContain("c1");
+    expect(useSyncStoreCalls).toContain("c2");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tldraw integration props (still required after migration)
+// ---------------------------------------------------------------------------
+
+describe("Editor — tldraw props once mounted", () => {
   test("passes customShapeUtils from shape-types registry to Tldraw", () => {
+    nextSyncResult = { status: "ready", store: { id: "ok" } };
     renderEditor();
     const shapeUtils = capturedTldrawProps["shapeUtils"] as unknown[];
     expect(Array.isArray(shapeUtils)).toBe(true);
@@ -166,6 +202,7 @@ describe("Editor — tldraw props (task 7.2)", () => {
   });
 
   test("passes options.maxPages=1 to disable multi-page", () => {
+    nextSyncResult = { status: "ready", store: { id: "ok" } };
     renderEditor();
     const options = capturedTldrawProps["options"] as { maxPages?: number };
     expect(options).toBeDefined();

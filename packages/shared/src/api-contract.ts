@@ -23,6 +23,7 @@ export type ErrorKey =
   | "errors.auth.unauthorized"
   | "errors.canvas.notFound"
   | "errors.canvas.forbidden"
+  | "errors.canvas.activeRoom"
   | "errors.folder.notFound"
   | "errors.folder.forbidden"
   | "errors.folder.notEmpty"
@@ -62,13 +63,20 @@ export const canvasCreateInputSchema = z.object({
 export type CanvasCreateInput = z.infer<typeof canvasCreateInputSchema>;
 
 /**
- * PATCH /api/canvas/:id — partial update of title and/or folderId.
- * All fields are optional (empty patch is a no-op).
+ * PATCH /api/canvas/:id — partial update of title, folderId, and/or
+ * snapshot. All fields are optional (empty patch is a no-op).
  * folderId: null means "move to unfiled".
+ *
+ * `snapshot` is the full tldraw room snapshot blob. Snapshots are normally
+ * persisted by the multiplayer-sync server's debounced flush; the HTTP path
+ * is reserved for owner-only flows that run while no sync room is active
+ * (export/import). The route handler MUST reject snapshot writes with
+ * HTTP 409 `errors.canvas.activeRoom` when a sync room is currently open.
  */
 export const canvasUpdateInputSchema = z.object({
   title: z.string().min(1).max(120).optional(),
   folderId: z.string().uuid().nullable().optional(),
+  snapshot: z.unknown().optional(),
 });
 
 export type CanvasUpdateInput = z.infer<typeof canvasUpdateInputSchema>;

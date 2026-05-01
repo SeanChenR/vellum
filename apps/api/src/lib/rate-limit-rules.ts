@@ -48,3 +48,20 @@ export const FOLDER_DELETE_RULE: RateLimitRule = { windowMs: s(60), max: 10 };
 
 /** GET /api/folder — 60 list requests per 60 seconds per user */
 export const FOLDER_LIST_RULE: RateLimitRule = { windowMs: s(60), max: 60 };
+
+/**
+ * WS /sync/:canvasId — concurrent connection cap of 5 per (userId, canvasId).
+ *
+ * Tracked outside the token-bucket RateLimiter (it is a connection counter,
+ * not a rate). Caps the same user's open tabs against one canvas; defends
+ * against runaway scripts that re-open without disconnecting.
+ *
+ * Design: "WebSocket 連線層 rate limit"
+ */
+export const SYNC_CONNECT_PER_USER_CANVAS_MAX = 5;
+
+/**
+ * WS /sync/:canvasId — token-bucket cap of 30 new connections per minute per
+ * source IP. Defends against rapid reconnect loops.
+ */
+export const SYNC_CONNECT_PER_IP_RULE: RateLimitRule = { windowMs: s(60), max: 30 };

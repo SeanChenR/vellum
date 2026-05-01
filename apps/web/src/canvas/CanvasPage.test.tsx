@@ -59,6 +59,32 @@ mock.module("@vellum/shared/shape-types", () => ({
   customShapeTools: [],
 }));
 
+// Mock the sync hook — Editor calls useSyncStore(canvasId). Returning
+// `ready` keeps the success path testing the chrome wiring while avoiding
+// the heavyweight @tldraw/sync initialization (which expects useValue/atom
+// from the real tldraw module — incompatible with our local mock).
+//
+// `useSyncConnectionStore` must behave like a callable Zustand hook:
+// invoking it with a selector returns the selected slice. ConnectionStatus
+// (rendered inside TopBar) depends on that callable shape.
+mock.module("./use-sync-store", () => {
+  const fakeConnectionState = { state: "connected" as const, attempt: 0 };
+  function useSyncConnectionStore<T>(selector: (s: typeof fakeConnectionState) => T): T {
+    return selector(fakeConnectionState);
+  }
+  (useSyncConnectionStore as unknown as { getState: () => typeof fakeConnectionState }).getState =
+    () => fakeConnectionState;
+  (
+    useSyncConnectionStore as unknown as {
+      setState: (next: Partial<typeof fakeConnectionState>) => void;
+    }
+  ).setState = () => {};
+  return {
+    useSyncStore: mock(() => ({ status: "ready", store: { id: "mock-store" } })),
+    useSyncConnectionStore,
+  };
+});
+
 // Mock useCanvasList so CanvasPage's mutations are no-ops
 mock.module("../dashboard/useCanvasList", () => ({
   useCanvasList: mock(() => ({

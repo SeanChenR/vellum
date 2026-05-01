@@ -108,8 +108,18 @@
         "exportMarkdown": "Export as Markdown"
       },
       "persistence": {
-        "quotaExceededToast": "Local storage is full — please export your canvas and clear space",
         "loadFailedToast": "Could not load canvas contents — opening with a blank canvas"
+      },
+      "connection": {
+        "connecting": "Connecting…",
+        "connected": "Connected",
+        "reconnecting": "Reconnecting…",
+        "disconnected": "Disconnected",
+        "disconnectedBanner": "Lost connection to the canvas. Refresh to retry.",
+        "refresh": "Refresh"
+      },
+      "collaborators": {
+        "overflow": "+{{count}}"
       },
       "loading": "Loading…",
       "duplicateSuffix": "(copy)"
@@ -137,7 +147,8 @@
     },
     "canvas": {
       "notFound": "Canvas not found",
-      "forbidden": "You do not have access to this canvas"
+      "forbidden": "You do not have access to this canvas",
+      "activeRoom": "This canvas is being edited live. Try again in a moment."
     },
     "folder": {
       "notFound": "Folder not found",

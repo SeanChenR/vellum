@@ -41,6 +41,16 @@ interface SessionLike {
   userId: string;
 }
 
+/**
+ * Optional dependencies the canvas handler consults but does not own:
+ *   - `isCanvasInActiveRoom`: query the multiplayer-sync server's room
+ *     registry to gate HTTP snapshot writes. Tests omit this so behavior
+ *     remains opt-in.
+ */
+export interface CanvasHandlerDeps {
+  isCanvasInActiveRoom?(canvasId: string): boolean;
+}
+
 function errorResp(status: number, error: string, extra?: object): Response {
   return Response.json({ error, ...extra }, { status });
 }
@@ -209,6 +219,7 @@ async function handleUpdate(
   session: SessionLike,
   rateLimiter: RateLimiter,
   canvasId: string,
+  deps: CanvasHandlerDeps,
 ): Promise<Response> {
   const rl = rateLimiter.limit(rlKey("update", session.userId), CANVAS_UPDATE_RULE);
   if (!rl.allowed) return rateLimitResp(rl.retryAfterSeconds);
@@ -238,7 +249,14 @@ async function handleUpdate(
     return errorResp(403, "errors.canvas.forbidden");
   }
 
-  const { title, folderId } = parsed.data;
+  const { title, folderId, snapshot } = parsed.data;
+
+  // Multiplayer-sync: HTTP-driven snapshot writes MUST NOT race with the
+  // server-authoritative room state. If a sync room is currently active for
+  // this canvas, reject with 409 (per `multiplayer-sync` spec).
+  if (snapshot !== undefined && deps.isCanvasInActiveRoom?.(canvasId)) {
+    return errorResp(409, "errors.canvas.activeRoom");
+  }
 
   // If folderId is being set (not null and not undefined), verify ownership
   if (folderId !== undefined && folderId !== null) {
@@ -250,11 +268,17 @@ async function handleUpdate(
     }
   }
 
-  const updateValues: Partial<{ title: string; folderId: string | null; updatedAt: Date }> = {
+  const updateValues: Partial<{
+    title: string;
+    folderId: string | null;
+    snapshot: unknown;
+    updatedAt: Date;
+  }> = {
     updatedAt: new Date(),
   };
   if (title !== undefined) updateValues.title = title;
   if (folderId !== undefined) updateValues.folderId = folderId;
+  if (snapshot !== undefined) updateValues.snapshot = snapshot;
 
   const [updated] = await db
     .update(canvases)
@@ -332,6 +356,7 @@ export async function handleCanvasRequest(
   req: Request,
   session: SessionLike | null,
   rateLimiter: RateLimiter,
+  deps: CanvasHandlerDeps = {},
 ): Promise<Response | null> {
   const url = new URL(req.url);
   const path = url.pathname;
@@ -365,7 +390,7 @@ export async function handleCanvasRequest(
       return handleRead(req, session, rateLimiter, canvasId);
     }
     if (method === "PATCH") {
-      return handleUpdate(req, session, rateLimiter, canvasId);
+      return handleUpdate(req, session, rateLimiter, canvasId, deps);
     }
     if (method === "DELETE") {
       return handleDelete(req, session, rateLimiter, canvasId);

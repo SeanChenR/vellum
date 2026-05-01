@@ -14,7 +14,24 @@ import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import React from "react";
 import i18n from "../i18n";
-import { TopBar } from "./TopBar";
+
+// TopBar embeds ConnectionStatus which subscribes to the sync connection
+// store. Stub it out here so this test does not depend on @tldraw/sync (and
+// is robust against module-mock leakage from sibling test files).
+mock.module("../canvas/use-sync-store", () => {
+  const state = { state: "connected" as const, attempt: 0 };
+  function useSyncConnectionStore<T>(selector: (s: typeof state) => T): T {
+    return selector(state);
+  }
+  (useSyncConnectionStore as unknown as { getState: () => typeof state }).getState = () => state;
+  (useSyncConnectionStore as unknown as { setState: () => void }).setState = () => {};
+  return {
+    useSyncConnectionStore,
+    useSyncStore: () => ({ status: "ready", store: { id: "stub" } }),
+  };
+});
+
+const { TopBar } = await import("./TopBar");
 
 // ---------------------------------------------------------------------------
 // Test helpers

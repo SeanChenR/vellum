@@ -21,6 +21,7 @@
     "@tanstack/react-query-devtools": "^5.100.6",
     "@tanstack/react-router": "^1.168.25",
     "@tanstack/react-router-devtools": "^1.166.13",
+    "@tldraw/sync": "4.5.10",
     "@vellum/shared": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

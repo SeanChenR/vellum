@@ -108,8 +108,18 @@
         "exportMarkdown": "匯出為 Markdown"
       },
       "persistence": {
-        "quotaExceededToast": "本地儲存空間已滿，請匯出後清理",
         "loadFailedToast": "無法載入畫布內容，將以空白畫布開啟"
+      },
+      "connection": {
+        "connecting": "連線中…",
+        "connected": "已連線",
+        "reconnecting": "重新連線中…",
+        "disconnected": "已中斷連線",
+        "disconnectedBanner": "與畫布的連線已中斷，請重新整理以重試",
+        "refresh": "重新整理"
+      },
+      "collaborators": {
+        "overflow": "+{{count}}"
       },
       "loading": "載入中…",
       "duplicateSuffix": "（副本）"
@@ -137,7 +147,8 @@
     },
     "canvas": {
       "notFound": "找不到此畫布",
-      "forbidden": "您沒有存取此畫布的權限"
+      "forbidden": "您沒有存取此畫布的權限",
+      "activeRoom": "此畫布正在編輯中，請稍後再試"
     },
     "folder": {
       "notFound": "找不到此資料夾",

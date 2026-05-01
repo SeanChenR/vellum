@@ -22,6 +22,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { AuthUser } from "../auth/useAuth";
 import { UserAvatarMenu } from "../components/UserAvatarMenu";
+import { CollaboratorAvatars } from "../canvas/CollaboratorAvatars";
+import type { CollaboratorPresence } from "../canvas/CollaboratorAvatars";
+import { ConnectionStatus } from "../canvas/ConnectionStatus";
 import vellumLogo from "../assets/vellum-logo.png";
 
 // ---------------------------------------------------------------------------
@@ -41,6 +44,12 @@ export interface TopBarProps {
   onRenameSubmit: (newTitle: string) => void;
   currentUser: AuthUser;
   onSignOut: () => void;
+  /**
+   * Active collaborators in the same sync room as the local user. Defaults
+   * to an empty list so the chrome renders cleanly before presence data is
+   * available.
+   */
+  collaborators?: CollaboratorPresence[];
 }
 
 // ---------------------------------------------------------------------------
@@ -165,6 +174,7 @@ export function TopBar({
   onRenameSubmit,
   currentUser,
   onSignOut,
+  collaborators = [],
 }: TopBarProps) {
   const { t } = useTranslation();
   const [renameOpen, setRenameOpen] = useState(false);
@@ -208,7 +218,11 @@ export function TopBar({
         </div>
 
         {/* Right actions */}
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-3">
+          {/* Multiplayer presence — collaborator avatars + connection state */}
+          <CollaboratorAvatars localUserId={currentUser.id} collaborators={collaborators} />
+          <ConnectionStatus />
+
           {/* Share button */}
           <button
             type="button"
