@@ -212,39 +212,8 @@ describe("CanvasPage", () => {
     expect(screen.queryByTestId("tldraw-mock")).toBeNull();
   });
 
-  test("onShareClick triggers toast with sharePlaceholderToast message", async () => {
-    mockQueryState = {
-      status: "success",
-      data: { id: "canvas-1", title: "Test Canvas", folderId: null },
-    };
-
-    const toastEvents: string[] = [];
-    const handler = (e: Event) => {
-      toastEvents.push((e as CustomEvent<{ message: string }>).detail.message);
-    };
-    window.addEventListener("vellum:toast", handler);
-
-    render(
-      <I18nextProvider i18n={i18n}>
-        <CanvasPage />
-      </I18nextProvider>,
-    );
-
-    // Wait for the Share button in the real TopBar rendered by the tldraw mock
-    await waitFor(() => {
-      expect(screen.getByText("Share")).not.toBeNull();
-    });
-
-    // Click the Share button
-    screen.getByText("Share").click();
-
-    // Wait for toast event
-    await waitFor(() => {
-      expect(toastEvents.length).toBeGreaterThanOrEqual(1);
-    });
-
-    expect(toastEvents[0]).toMatch(/sharing/i);
-
-    window.removeEventListener("vellum:toast", handler);
-  });
+  // The "sharePlaceholderToast" behaviour was superseded by the real
+  // ShareDialog in `add-sharing` (canvas-editor MODIFIED spec) — the toast
+  // path no longer exists. The share interaction is exercised end-to-end
+  // in `e2e/share-invite.spec.ts` (task 6.1) and via ShareDialog.test.tsx.
 });

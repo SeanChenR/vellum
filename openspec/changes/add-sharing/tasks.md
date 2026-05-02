@@ -39,26 +39,26 @@
 
 ## 4. Tests First — Frontend (TDD red)
 
-- [ ] 4.1 寫 `apps/web/src/canvas/ShareDialog.test.tsx` 蓋「ShareDialog opens from the TopBar Share button」（三段 section render、Send invite 觸發 mutation、role select 改變呼叫 PATCH、remove 按鈕呼叫 DELETE、public link 三檔 radio 切換呼叫 PUT、Copy 按鈕拷貝 link、Rotate 按鈕呼叫 POST rotate）
-- [ ] 4.2 [P] 寫 `apps/web/src/canvas/useShareState.test.ts` 蓋 hook 對應的 React Query 行為（initial fetch、optimistic update on invite/patch/remove、`invalidateQueries(['share', canvasId])` 在 mutation settle 觸發）
-- [ ] 4.3 [P] 寫 `apps/web/src/auth/AnonymousCanvasGuard.test.tsx` 蓋「Anonymous visitors enter via public link without login redirect」（無 user + 有 ?share token → 直接 render；無 user + 無 token → redirect /login；有 user → 直接 render 不在意 token）
-- [ ] 4.4 [P] 改 `apps/web/src/canvas/use-sync-store.test.ts` 加新 case：sync hook 接受 token from URL → 帶到 useSync 的 uri；handshake 拒絕（4403）→ disconnect；role=viewer 時 result 含 `role: 'viewer'`、role=editor 時含 `role: 'editor'`
-- [ ] 4.5 [P] 改 `apps/web/src/chrome/TopBar.test.tsx`：蓋「TopBar exposes canvas title, folder breadcrumb, share dialog, and user menu」MODIFIED（owner 看見 share 按鈕並開 dialog；非 owner / anonymous 看不到 share 按鈕；role=viewer 顯示 viewOnlyBadge）
+- [x] 4.1 寫 `apps/web/src/canvas/ShareDialog.test.tsx` 蓋「ShareDialog opens from the TopBar Share button」（三段 section render、Send invite 觸發 mutation、role select 改變呼叫 PATCH、remove 按鈕呼叫 DELETE、public link 三檔 radio 切換呼叫 PUT、Copy 按鈕拷貝 link、Rotate 按鈕呼叫 POST rotate）
+- [x] 4.2 [P] 寫 `apps/web/src/canvas/useShareState.test.ts` 蓋 hook 對應的 React Query 行為（initial fetch、optimistic update on invite/patch/remove、`invalidateQueries(['share', canvasId])` 在 mutation settle 觸發）
+- [x] 4.3 [P] 寫 `apps/web/src/auth/AnonymousCanvasGuard.test.tsx` 蓋「Anonymous visitors enter via public link without login redirect」（無 user + 有 ?share token → 直接 render；無 user + 無 token → redirect /login；有 user → 直接 render 不在意 token）
+- [x] 4.4 [P] 改 `apps/web/src/canvas/use-sync-store.test.ts` 加新 case：sync hook 接受 token from URL → 帶到 useSync 的 uri；handshake 拒絕（4403）→ disconnect；role=viewer 時 result 含 `role: 'viewer'`、role=editor 時含 `role: 'editor'`
+- [x] 4.5 [P] 改 `apps/web/src/chrome/TopBar.test.tsx`：蓋「TopBar exposes canvas title, folder breadcrumb, share dialog, and user menu」MODIFIED（owner 看見 share 按鈕並開 dialog；非 owner / anonymous 看不到 share 按鈕；role=viewer 顯示 viewOnlyBadge）
 
 ## 5. Implementation — Frontend (TDD green)
 
-- [ ] 5.1 實作 `apps/web/src/canvas/useShareState.ts`：用 TanStack Query 拉 `GET /api/canvas/:id/share`，提供 invite / patchRole / removeMember / revokeInvite / setLinkMode / rotateLink 六個 mutation，每個 settle 時 `invalidateQueries(['share', canvasId])`，使 4.2 通過
-- [ ] 5.2 [P] 實作 `apps/web/src/canvas/ShareDialog.tsx`（依 design「ShareDialog UI：modal + 三段式」），用 motion 做 dialog enter/exit（CLAUDE.md hard rule #5 在 dialog 用 motion 是允許的），使 4.1 通過
-- [ ] 5.3 [P] 實作 `apps/web/src/auth/AnonymousCanvasGuard.tsx`（依 design「Anonymous 訪客 client 路徑：`AnonymousCanvasGuard`」）：讀 useAuth + URL `?share` query，無 user 但有 token → render children；無 user 無 token → redirect /login，使 4.3 通過
-- [ ] 5.4 [P] 改 `apps/web/src/canvas/use-sync-store.ts`：syncOriginForCanvas 帶上 `?token=` query；useSyncStore signature 加可選 `shareToken` 參數；hook 結果型別加 `role: 'editor' | 'viewer' | null`；token path connecting 期間不需 user.id（anonymous user.info 用 tldraw 內建 random animal name），使 4.4 通過
-- [ ] 5.5 改 `apps/web/src/chrome/TopBar.tsx`：share button 改成 onClick 開 ShareDialog（透過 chromeContext 傳入 canvasId 與 share callback）、share button 只在 owner role 時 render、加 `<ViewOnlyBadge>` 在 viewer role 時顯示（依 design「ShareDialog UI」與 spec MODIFIED「TopBar exposes canvas title, folder breadcrumb, share placeholder, and user menu」），使 4.5 通過
-- [ ] 5.6 [P] 改 `apps/web/src/canvas/Editor.tsx`：把 `useSyncStore` 回傳的 role 透過 chromeContext 傳給 TopBar（讓它決定顯不顯 share / viewOnlyBadge），並把 `isReadonly={role === 'viewer'}` 傳給 `<Tldraw>`，覆蓋「Editor reflects the resolved sync role on the tldraw component」spec
-- [ ] 5.7 [P] 改 `apps/web/src/router.tsx`：`/canvas/:id` 路由改用 `<AnonymousCanvasGuard>` 包住而非既有的 `<RouteGuard>`（後者強制 redirect 未登入到 /login，會擋公開 link 訪客）
+- [x] 5.1 實作 `apps/web/src/canvas/useShareState.ts`：用 TanStack Query 拉 `GET /api/canvas/:id/share`，提供 invite / patchRole / removeMember / revokeInvite / setLinkMode / rotateLink 六個 mutation，每個 settle 時 `invalidateQueries(['share', canvasId])`，使 4.2 通過
+- [x] 5.2 [P] 實作 `apps/web/src/canvas/ShareDialog.tsx`（依 design「ShareDialog UI：modal + 三段式」），用 motion 做 dialog enter/exit（CLAUDE.md hard rule #5 在 dialog 用 motion 是允許的），使 4.1 通過
+- [x] 5.3 [P] 實作 `apps/web/src/auth/AnonymousCanvasGuard.tsx`（依 design「Anonymous 訪客 client 路徑：`AnonymousCanvasGuard`」）：讀 useAuth + URL `?share` query，無 user 但有 token → render children；無 user 無 token → redirect /login，使 4.3 通過
+- [x] 5.4 [P] 改 `apps/web/src/canvas/use-sync-store.ts`：syncOriginForCanvas 帶上 `?token=` query；useSyncStore signature 加可選 `shareToken` 參數；hook 結果型別加 `role: 'editor' | 'viewer' | null`；token path connecting 期間不需 user.id（anonymous user.info 用 tldraw 內建 random animal name），使 4.4 通過
+- [x] 5.5 改 `apps/web/src/chrome/TopBar.tsx`：share button 改成 onClick 開 ShareDialog（透過 chromeContext 傳入 canvasId 與 share callback）、share button 只在 owner role 時 render、加 `<ViewOnlyBadge>` 在 viewer role 時顯示（依 design「ShareDialog UI」與 spec MODIFIED「TopBar exposes canvas title, folder breadcrumb, share placeholder, and user menu」），使 4.5 通過
+- [x] 5.6 [P] 改 `apps/web/src/canvas/Editor.tsx`：把 `useSyncStore` 回傳的 role 透過 chromeContext 傳給 TopBar（讓它決定顯不顯 share / viewOnlyBadge），並把 `isReadonly={role === 'viewer'}` 傳給 `<Tldraw>`，覆蓋「Editor reflects the resolved sync role on the tldraw component」spec
+- [x] 5.7 [P] 改 `apps/web/src/router.tsx`：`/canvas/:id` 路由改用 `<AnonymousCanvasGuard>` 包住而非既有的 `<RouteGuard>`（後者強制 redirect 未登入到 /login，會擋公開 link 訪客）
 
 ## 6. E2E + 收尾
 
-- [ ] 6.1 寫 `e2e/share-invite.spec.ts` happy path：owner 登入並建 canvas → 開 ShareDialog → 邀請第二個 email（用 Mailpit 抓信）→ 第二個 browser context 點 invite link → 完成 magic-link 登入 → 進入同 canvas → 兩個 context 在 multiplayer 中互看 cursor（涵蓋 E2E 行為「Owner invites an unknown email creates a pending invite and sends mail」與「Invite acceptance route requires email match and writes a share」）
-- [ ] 6.2 [P] 寫 `e2e/share-public-link.spec.ts` happy path：owner 開 link mode=view → copy link → 第二個 browser context（無 cookie）打開該 link → 成功進唯讀 canvas（看到 owner 畫的東西、自己工具列灰掉）→ owner 改 mode=closed → 第二個 context 的 WS 被踢出（紅 banner 出現）（涵蓋 E2E 行為「Owner toggles the public link mode」「Anonymous visitors enter via public link without login redirect」「Sync server kicks affected sessions when access is revoked」「Viewer role connects in read-only mode」）
-- [ ] 6.3 [P] 跑 `bun test` 全綠 + `bunx oxlint` + `bunx oxfmt --check` + `bun --filter '*' typecheck`；coverage ≥ 70% 對 `apps/api/src/share/**`、`apps/api/src/sync/auth.ts`（修改部分）、`apps/web/src/canvas/ShareDialog.tsx` 與 `useShareState.ts` 與 `AnonymousCanvasGuard.tsx`
-- [ ] 6.4 [P] 在 `docs/adr/` 新增 ADR-0007 紀錄「viewer 降權無法立即斷送 in-flight 寫入」與「公開 link token 外流唯一止血是 rotate」兩個 trade-off
+- [x] 6.1 寫 `e2e/share-invite.spec.ts` happy path：owner 登入並建 canvas → 開 ShareDialog → 邀請第二個 email（用 Mailpit 抓信）→ 第二個 browser context 點 invite link → 完成 magic-link 登入 → 進入同 canvas → 兩個 context 在 multiplayer 中互看 cursor（涵蓋 E2E 行為「Owner invites an unknown email creates a pending invite and sends mail」與「Invite acceptance route requires email match and writes a share」）
+- [x] 6.2 [P] 寫 `e2e/share-public-link.spec.ts` happy path：owner 開 link mode=view → copy link → 第二個 browser context（無 cookie）打開該 link → 成功進唯讀 canvas（看到 owner 畫的東西、自己工具列灰掉）→ owner 改 mode=closed → 第二個 context 的 WS 被踢出（紅 banner 出現）（涵蓋 E2E 行為「Owner toggles the public link mode」「Anonymous visitors enter via public link without login redirect」「Sync server kicks affected sessions when access is revoked」「Viewer role connects in read-only mode」）
+- [x] 6.3 [P] 跑 `bun test` 全綠 + `bunx oxlint` + `bunx oxfmt --check` + `bun --filter '*' typecheck`；coverage ≥ 70% 對 `apps/api/src/share/**`、`apps/api/src/sync/auth.ts`（修改部分）、`apps/web/src/canvas/ShareDialog.tsx` 與 `useShareState.ts` 與 `AnonymousCanvasGuard.tsx`
+- [x] 6.4 [P] 在 `docs/adr/` 新增 ADR-0007 紀錄「viewer 降權無法立即斷送 in-flight 寫入」與「公開 link token 外流唯一止血是 rotate」兩個 trade-off
 - [ ] 6.5 [P] 手動瀏覽器驗收：(a) email invite 流程（從 Mailpit 抓信點 link 進 canvas）、(b) public link view-mode 訪客（無痕視窗測未登入訪客 UX）、(c) public link rotate 後舊 link 失效、(d) member role 改 viewer 後 viewer 工具列灰掉、(e) ShareDialog 三段 section 視覺與互動順暢。給 user 視覺驗證 sharing 感受

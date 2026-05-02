@@ -83,10 +83,10 @@ function makeEditorProps(overrides = {}) {
     canvasId: "c1",
     title: "Test Canvas",
     folder: null,
+    ownerId: "u1",
     onRenameSubmit: mock((_t: string) => {}),
     onDuplicate: mock(() => {}),
     onDelete: mock(() => {}),
-    onShareClick: mock(() => {}),
     currentUser: {
       id: "u1",
       email: "user@example.com",

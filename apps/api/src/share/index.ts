@@ -139,7 +139,10 @@ function isValidMode(value: unknown): value is LinkMode {
   return value === "closed" || value === "view" || value === "edit";
 }
 
-function shareToDto(record: ShareRecord, user?: { id: string; email: string; name: string } | null) {
+function shareToDto(
+  record: ShareRecord,
+  user?: { id: string; email: string; name: string } | null,
+) {
   return {
     canvasId: record.canvasId,
     userId: record.userId,
@@ -178,7 +181,10 @@ async function requireOwner(
   canvasId: string,
   session: SessionLike,
   deps: ShareHandlerDeps,
-): Promise<{ kind: "ok"; canvas: { id: string; ownerId: string; title: string } } | { kind: "err"; resp: Response }> {
+): Promise<
+  | { kind: "ok"; canvas: { id: string; ownerId: string; title: string } }
+  | { kind: "err"; resp: Response }
+> {
   const canvas = await deps.loadCanvas(canvasId);
   if (!canvas) return { kind: "err", resp: err(404, "errors.canvas.notFound") };
   if (canvas.ownerId !== session.userId)

@@ -251,3 +251,46 @@ describe("useSyncConnectionStore — Zustand connection store", () => {
     expect(seen).toEqual(["connected", "reconnecting", "disconnected"]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// add-sharing extension (task 4.4): public-link token plumbing + role
+// ---------------------------------------------------------------------------
+
+describe("buildSyncUri — public-link token plumbing", () => {
+  test("builds a same-origin URI without token", async () => {
+    const { buildSyncUri } = await import("./use-sync-store");
+    const uri = buildSyncUri({
+      protocol: "http:",
+      host: "example.com",
+      port: "",
+      hostname: "example.com",
+      canvasId: "c1",
+    });
+    expect(uri).toBe("ws://example.com/sync/c1");
+  });
+
+  test("appends ?token=... when shareToken is given", async () => {
+    const { buildSyncUri } = await import("./use-sync-store");
+    const uri = buildSyncUri({
+      protocol: "https:",
+      host: "vellum.app",
+      port: "",
+      hostname: "vellum.app",
+      canvasId: "c1",
+      shareToken: "abc123",
+    });
+    expect(uri).toBe("wss://vellum.app/sync/c1?token=abc123");
+  });
+
+  test("dev mode at :3002 routes WS straight to :3000", async () => {
+    const { buildSyncUri } = await import("./use-sync-store");
+    const uri = buildSyncUri({
+      protocol: "http:",
+      host: "localhost:3002",
+      port: "3002",
+      hostname: "localhost",
+      canvasId: "c1",
+    });
+    expect(uri).toBe("ws://localhost:3000/sync/c1");
+  });
+});

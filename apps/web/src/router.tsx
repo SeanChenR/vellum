@@ -8,6 +8,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { VELLUM_VERSION } from "@vellum/shared";
 import { RouteGuard } from "./auth/RouteGuard";
+import { AnonymousCanvasGuard } from "./auth/AnonymousCanvasGuard";
 import { useAuth } from "./auth/useAuth";
 import { LoginPage } from "./auth/LoginPage";
 import { OAuthCallbackPage } from "./auth/OAuthCallbackPage";
@@ -91,13 +92,15 @@ const sessionsRoute = createRoute({
   ),
 });
 
+// Canvas route uses the anonymous-aware guard so visitors with a
+// `?share=<token>` query can enter without bouncing through /login.
 const canvasRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/canvas/$id",
   component: () => (
-    <RouteGuard>
+    <AnonymousCanvasGuard>
       <CanvasPage />
-    </RouteGuard>
+    </AnonymousCanvasGuard>
   ),
 });
 

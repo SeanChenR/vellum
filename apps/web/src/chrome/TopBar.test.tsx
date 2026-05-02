@@ -54,6 +54,8 @@ interface RenderTopBarOptions {
   onShareClick?: () => void;
   onRenameSubmit?: (_newTitle: string) => void;
   onSignOut?: () => void;
+  isOwner?: boolean;
+  isReadOnly?: boolean;
 }
 
 function renderTopBar(opts: RenderTopBarOptions = {}) {
@@ -71,6 +73,8 @@ function renderTopBar(opts: RenderTopBarOptions = {}) {
         onRenameSubmit={onRenameSubmit}
         currentUser={makeUser()}
         onSignOut={onSignOut}
+        isOwner={opts.isOwner ?? true}
+        isReadOnly={opts.isReadOnly ?? false}
       />
     </I18nextProvider>,
   );
@@ -166,6 +170,32 @@ describe("TopBar", () => {
     const signOutBtn = screen.getByRole("menuitem", { name: /sign out/i });
     await user.click(signOutBtn);
     expect(onSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  // ---------------------------------------------------------------------
+  // add-sharing additions (task 4.5)
+  // Spec: canvas-editor MODIFIED "TopBar exposes canvas title, folder
+  // breadcrumb, share placeholder, and user menu"
+  // ---------------------------------------------------------------------
+
+  test("Share button is rendered for the owner", () => {
+    renderTopBar({ isOwner: true });
+    expect(screen.queryByRole("button", { name: /share/i })).not.toBeNull();
+  });
+
+  test("Share button is HIDDEN for non-owner (shared editor / viewer / anonymous)", () => {
+    renderTopBar({ isOwner: false });
+    expect(screen.queryByRole("button", { name: /share/i })).toBeNull();
+  });
+
+  test("Read-only badge appears when isReadOnly=true", () => {
+    renderTopBar({ isReadOnly: true });
+    expect(screen.queryByText(/view only/i)).not.toBeNull();
+  });
+
+  test("Read-only badge does NOT appear when isReadOnly=false (default)", () => {
+    renderTopBar({ isReadOnly: false });
+    expect(screen.queryByText(/view only/i)).toBeNull();
   });
 
   // (f) Enter in rename dialog with new name calls rename mutation and closes dialog

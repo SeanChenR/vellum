@@ -49,14 +49,9 @@ interface FakeState {
 
 function makeState(): FakeState {
   return {
-    canvases: new Map([
-      [CANVAS_ID, { id: CANVAS_ID, ownerId: OWNER_ID, title: "Test Canvas" }],
-    ]),
+    canvases: new Map([[CANVAS_ID, { id: CANVAS_ID, ownerId: OWNER_ID, title: "Test Canvas" }]]),
     users: new Map([
-      [
-        EXISTING_USER_ID,
-        { id: EXISTING_USER_ID, email: EXISTING_USER_EMAIL, name: "Bob" },
-      ],
+      [EXISTING_USER_ID, { id: EXISTING_USER_ID, email: EXISTING_USER_EMAIL, name: "Bob" }],
       [OWNER_ID, { id: OWNER_ID, email: "owner@example.com", name: "Owner" }],
     ]),
     shares: new Map(),
@@ -143,11 +138,7 @@ function makeDeps(state: FakeState): ShareHandlerDeps {
 
 const BASE = "http://localhost";
 
-function req(
-  method: string,
-  path: string,
-  body?: unknown,
-): Request {
+function req(method: string, path: string, body?: unknown): Request {
   return new Request(`${BASE}${path}`, {
     method,
     headers: { "content-type": "application/json" },

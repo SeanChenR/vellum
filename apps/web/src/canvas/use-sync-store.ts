@@ -158,24 +158,62 @@ const inlineAssetStore: TLAssetStore = {
 export interface UseSyncStoreResult {
   status: "loading" | "ready" | "error";
   store: RemoteTLStoreWithStatus["store"] | null;
+  /**
+   * Role resolved by the sync handshake — `editor` (full read+write) or
+   * `viewer` (read-only). Null while loading. The Editor uses this to
+   * pass `isReadonly` into tldraw and to gate the TopBar Share button.
+   */
+  role: "editor" | "viewer" | null;
 }
 
-function syncOriginForCanvas(canvasId: string): string {
-  // In production the single-binary Bun.serve handles HTTP and the sync
-  // WebSocket on the same host — same-origin URI works.
-  //
-  // In `bun run dev:up` the browser hits the proxy on :3002 which forwards
-  // `/api/*` to the API on :3000 but NOT `/sync/*` (Bun has no built-in WS
-  // proxy). So in dev we bypass the proxy for WS and connect straight to
-  // the API; the better-auth session cookie has no Domain attribute and
-  // localhost:3000 / localhost:3002 are same-site, so SameSite=Lax still
-  // sends it on the upgrade request.
-  if (typeof window === "undefined") return `ws://localhost:3000/sync/${canvasId}`;
-  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  if (window.location.port === "3002") {
-    return `${proto}//${window.location.hostname}:3000/sync/${canvasId}`;
-  }
-  return `${proto}//${window.location.host}/sync/${canvasId}`;
+export interface UseSyncStoreOptions {
+  /** Public-link share token; when given, WS uses anonymous handshake. */
+  shareToken?: string;
+}
+
+/**
+ * Pure URI builder — exported for unit testing without `window`.
+ *
+ * Production callers pass the live `window.location` fields. Public-link
+ * visitors pass `shareToken` so the WS handshake routes through the
+ * token path instead of session-cookie auth.
+ */
+export interface BuildSyncUriArgs {
+  protocol: string;
+  host: string;
+  port: string;
+  hostname: string;
+  canvasId: string;
+  shareToken?: string;
+}
+
+export function buildSyncUri(args: BuildSyncUriArgs): string {
+  const proto = args.protocol === "https:" ? "wss:" : "ws:";
+  // Dev proxy at :3002 doesn't forward /sync/* — connect directly to :3000.
+  // SameSite=Lax cookies still flow because both ports share the localhost site.
+  const host = args.port === "3002" ? `${args.hostname}:3000` : args.host || args.hostname;
+  const base = `${proto}//${host}/sync/${args.canvasId}`;
+  return args.shareToken ? `${base}?token=${args.shareToken}` : base;
+}
+
+function syncOriginForCanvas(canvasId: string, shareToken?: string): string {
+  if (typeof window === "undefined")
+    return buildSyncUri({
+      protocol: "http:",
+      host: "localhost:3000",
+      port: "3000",
+      hostname: "localhost",
+      canvasId,
+      shareToken,
+    });
+  return buildSyncUri({
+    protocol: window.location.protocol,
+    host: window.location.host,
+    port: window.location.port,
+    hostname: window.location.hostname,
+    canvasId,
+    shareToken,
+  });
 }
 
 /**
@@ -207,9 +245,10 @@ function colorFromUserId(userId: string): string {
  * `@tldraw/sync` and forwards its status into `useSyncConnectionStore` so
  * chrome components can subscribe without each rolling their own listener.
  */
-export function useSyncStore(canvasId: string): UseSyncStoreResult {
+export function useSyncStore(canvasId: string, options?: UseSyncStoreOptions): UseSyncStoreResult {
   const { user } = useAuth();
-  const uri = useMemo(() => syncOriginForCanvas(canvasId), [canvasId]);
+  const shareToken = options?.shareToken;
+  const uri = useMemo(() => syncOriginForCanvas(canvasId, shareToken), [canvasId, shareToken]);
 
   const userInfo = useMemo(() => {
     if (!user) {
@@ -270,7 +309,18 @@ export function useSyncStore(canvasId: string): UseSyncStoreResult {
     };
   }, [remote.status, connectionFlag]);
 
-  if (remote.status === "loading") return { status: "loading", store: null };
-  if (remote.status === "error") return { status: "error", store: null };
-  return { status: "ready", store: remote.store };
+  // Role: anonymous-via-token implies the server returned a viewer or
+  // editor based on the link mode; we infer locally from `shareToken`
+  // presence and assume editor for cookie path. The server is the source
+  // of truth — this client-side guess is just for early UI state. The
+  // chrome can still bind to `useSyncConnectionStore` for live updates.
+  // Phase 1 simplification: cookie path → editor; token path → viewer
+  // (the most-common public-link mode); explicit role pulled from a
+  // future custom-message channel comes in M5.5.
+  const role: UseSyncStoreResult["role"] =
+    remote.status === "synced-remote" ? (shareToken ? "viewer" : "editor") : null;
+
+  if (remote.status === "loading") return { status: "loading", store: null, role: null };
+  if (remote.status === "error") return { status: "error", store: null, role: null };
+  return { status: "ready", store: remote.store, role };
 }

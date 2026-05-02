@@ -13,6 +13,7 @@
  * Spec: canvas-editor — "Editor mounts with a multiplayer-aware sync store"
  */
 
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Tldraw } from "tldraw";
 import "tldraw/tldraw.css";
@@ -22,6 +23,7 @@ import type { VellumChromeContextValue } from "../chrome/index";
 import type { AuthUser } from "../auth/useAuth";
 import type { TopBarFolder } from "../chrome/TopBar";
 import { useSyncStore } from "./use-sync-store";
+import { ShareDialog } from "./ShareDialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,12 +33,15 @@ export interface EditorProps {
   canvasId: string;
   title: string;
   folder: TopBarFolder | null;
+  /** Owner user id of the canvas — used to gate the Share button. */
+  ownerId: string;
   onRenameSubmit: (newTitle: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
-  onShareClick: () => void;
-  currentUser: AuthUser;
+  currentUser: AuthUser | null;
   onSignOut: () => void;
+  /** Optional public-link share token — passed to the sync hook. */
+  shareToken?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -47,32 +52,44 @@ export function Editor({
   canvasId,
   title,
   folder,
+  ownerId,
   onRenameSubmit,
   onDuplicate,
   onDelete,
-  onShareClick,
   currentUser,
   onSignOut,
+  shareToken,
 }: EditorProps) {
   const { t } = useTranslation();
-  const sync = useSyncStore(canvasId);
+  const sync = useSyncStore(canvasId, { shareToken });
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+
+  const isOwner = currentUser?.id === ownerId;
+  const isReadOnly = sync.role === "viewer";
 
   const chromeContext: VellumChromeContextValue = {
     topBar: {
       canvasId,
       title,
       folder,
-      onShareClick,
+      onShareClick: () => setShareDialogOpen(true),
       onRenameSubmit,
-      currentUser,
+      // Anonymous public-link visitors don't have a currentUser; surface a
+      // synthetic one for the chrome that hides identity-bearing controls.
+      currentUser: currentUser ?? {
+        id: "anon",
+        email: "",
+        name: t("canvas.chrome.topbar.anonymousLabel", { animal: "Visitor" }),
+        image: null,
+        locale: "en",
+        createdAt: new Date().toISOString(),
+      },
       onSignOut,
+      isOwner,
+      isReadOnly,
     },
     mainMenu: {
-      onRename: () => {
-        // TopBar rename dialog is triggered via title click; MainMenu Rename
-        // also opens it. Here we just call onRenameSubmit with the sentinel
-        // pattern — CanvasPage wires the real mutation.
-      },
+      onRename: () => {},
       onDuplicate,
       onDelete,
     },
@@ -89,6 +106,13 @@ export function Editor({
               tools={customShapeTools}
               components={vellumChromeComponents}
               options={{ maxPages: 1 }}
+              onMount={(editor) => {
+                // tldraw v4 sets readonly via instance state; the prop isn't
+                // exposed on TldrawProps. Server-side enforcement still wins
+                // (TLSocketRoom drops mutations from readonly sessions); this
+                // is purely a client-UI affordance so the toolbar reflects it.
+                editor.updateInstanceState({ isReadonly: isReadOnly });
+              }}
             />
           ) : sync.status === "error" ? (
             <div className="flex h-full w-full items-center justify-center">
@@ -103,6 +127,12 @@ export function Editor({
           )}
         </div>
       </div>
+      {isOwner && shareDialogOpen && (
+        // Mount lazily so useShareState's query does not fire until the
+        // dialog is actually opened. Tests that don't trigger Share also
+        // skip the QueryClient wiring.
+        <ShareDialog open canvasId={canvasId} onClose={() => setShareDialogOpen(false)} />
+      )}
     </VellumChromeContext.Provider>
   );
 }

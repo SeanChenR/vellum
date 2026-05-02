@@ -35,14 +35,12 @@ export function CanvasPage() {
   const { renameCanvas, deleteCanvas, createCanvas } = useCanvasList("owned");
   const { folders } = useFolderList();
 
-  function handleShareClick() {
-    // Phase 1 placeholder — fire vellum:toast so any listener can display it
-    window.dispatchEvent(
-      new CustomEvent("vellum:toast", {
-        detail: { message: t("canvas.chrome.topbar.sharePlaceholderToast") },
-      }),
-    );
-  }
+  // Public-link share token (anonymous visitors arrive at
+  // `/canvas/:id?share=<token>`); falls through to the cookie path when absent.
+  const shareToken =
+    typeof window !== "undefined"
+      ? (new URL(window.location.href).searchParams.get("share") ?? undefined)
+      : undefined;
 
   // ---------------------------------------------------------------------------
   // States
@@ -76,9 +74,6 @@ export function CanvasPage() {
 
   const canvas = query.data;
 
-  // Guard: currentUser must be available (route is auth-protected)
-  if (!user) return null;
-
   const folderRecord = canvas.folderId ? folders.find((f) => f.id === canvas.folderId) : null;
 
   return (
@@ -87,6 +82,7 @@ export function CanvasPage() {
         canvasId={canvas.id}
         title={canvas.title}
         folder={folderRecord ? { id: folderRecord.id, name: folderRecord.name } : null}
+        ownerId={canvas.ownerId}
         onRenameSubmit={(newTitle) => {
           renameCanvas.mutate({ id: canvas.id, title: newTitle });
         }}
@@ -103,9 +99,9 @@ export function CanvasPage() {
             },
           });
         }}
-        onShareClick={handleShareClick}
-        currentUser={user}
+        currentUser={user ?? null}
         onSignOut={logout}
+        shareToken={shareToken}
       />
     </div>
   );

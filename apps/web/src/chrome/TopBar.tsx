@@ -50,6 +50,17 @@ export interface TopBarProps {
    * available.
    */
   collaborators?: CollaboratorPresence[];
+  /**
+   * True when the local user is the canvas owner. Owner-only controls
+   * (Share button) are hidden when false. Defaults to true so existing
+   * call sites keep their previous behaviour.
+   */
+  isOwner?: boolean;
+  /**
+   * True when the multiplayer-sync handshake resolved a viewer role.
+   * Adds a "View only" badge to the TopBar. Defaults to false.
+   */
+  isReadOnly?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +186,8 @@ export function TopBar({
   currentUser,
   onSignOut,
   collaborators = [],
+  isOwner = true,
+  isReadOnly = false,
 }: TopBarProps) {
   const { t } = useTranslation();
   const [renameOpen, setRenameOpen] = useState(false);
@@ -223,14 +236,23 @@ export function TopBar({
           <CollaboratorAvatars localUserId={currentUser.id} collaborators={collaborators} />
           <ConnectionStatus />
 
-          {/* Share button */}
-          <button
-            type="button"
-            onClick={onShareClick}
-            className="rounded-lg border border-ink-navy/20 px-3 py-1.5 text-sm font-medium text-ink-navy hover:bg-parchment-cream"
-          >
-            {t("canvas.chrome.topbar.shareButton")}
-          </button>
+          {/* View-only badge — shown when handshake resolved viewer role */}
+          {isReadOnly && (
+            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+              {t("canvas.chrome.topbar.viewOnlyBadge")}
+            </span>
+          )}
+
+          {/* Share button — owner-only */}
+          {isOwner && (
+            <button
+              type="button"
+              onClick={onShareClick}
+              className="rounded-lg border border-ink-navy/20 px-3 py-1.5 text-sm font-medium text-ink-navy hover:bg-parchment-cream"
+            >
+              {t("canvas.chrome.topbar.shareButton")}
+            </button>
+          )}
 
           <UserAvatarMenu user={currentUser} onSignOut={onSignOut} />
         </div>
