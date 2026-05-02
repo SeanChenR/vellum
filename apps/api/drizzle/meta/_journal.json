@@ -15,6 +15,13 @@
       "when": 1777455579545,
       "tag": "0001_new_shinko_yamashiro",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777736605765,
+      "tag": "0002_0002_share",
+      "breakpoints": true
     }
   ]
 }

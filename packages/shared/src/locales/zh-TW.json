@@ -85,7 +85,8 @@
     "chrome": {
       "topbar": {
         "shareButton": "分享",
-        "sharePlaceholderToast": "分享功能尚未啟用，將於後續版本上線",
+        "viewOnlyBadge": "唯讀",
+        "anonymousLabel": "Anonymous {{animal}}",
         "breadcrumb": {
           "myCanvases": "我的畫布"
         }
@@ -131,6 +132,40 @@
         "confirm": "確認",
         "cancel": "取消"
       }
+    },
+    "share": {
+      "title": "分享畫布",
+      "inviteSection": "用 email 邀請",
+      "membersSection": "成員",
+      "publicLinkSection": "公開連結",
+      "emailLabel": "電子郵件",
+      "emailPlaceholder": "name@example.com",
+      "roleEditor": "可編輯",
+      "roleViewer": "唯讀",
+      "sendButton": "送出邀請",
+      "copyLink": "複製連結",
+      "copied": "已複製",
+      "rotateLink": "更換連結",
+      "modeClosed": "關閉",
+      "modeView": "僅檢視",
+      "modeEdit": "任何人可編輯",
+      "pendingBadge": "等待接受",
+      "removeButton": "移除",
+      "confirmRotateTitle": "更換分享連結？",
+      "confirmRotateBody": "任何持有舊連結的人都會立即失去存取權限。",
+      "confirmRotateYes": "更換",
+      "confirmRotateNo": "取消",
+      "ownerLabel": "擁有者",
+      "emptyMembers": "目前沒有其他成員。"
+    }
+  },
+  "email": {
+    "shareInvite": {
+      "subject": "{{inviter}} 邀請您共同編輯畫布「{{title}}」",
+      "greeting": "您好，",
+      "bodyPlain": "{{inviter}} 邀請您一起編輯畫布「{{title}}」。點下方連結即可開始協作。",
+      "acceptButton": "開啟畫布",
+      "expiresNote": "此邀請將於 7 天內失效。"
     }
   },
   "folder": {
@@ -149,6 +184,13 @@
       "notFound": "找不到此畫布",
       "forbidden": "您沒有存取此畫布的權限",
       "activeRoom": "此畫布正在編輯中，請稍後再試"
+    },
+    "share": {
+      "emailMismatch": "此邀請寄給其他電子郵件，請改用該帳號登入",
+      "inviteExpired": "此邀請已過期或已被使用",
+      "inviteNotFound": "找不到此邀請",
+      "linkClosed": "此畫布的公開連結目前為關閉狀態",
+      "roleInvalid": "Role 必須是「editor」或「viewer」"
     },
     "folder": {
       "notFound": "找不到此資料夾",

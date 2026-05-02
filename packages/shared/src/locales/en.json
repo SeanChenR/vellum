@@ -85,7 +85,8 @@
     "chrome": {
       "topbar": {
         "shareButton": "Share",
-        "sharePlaceholderToast": "Sharing is not yet available — coming in a future update",
+        "viewOnlyBadge": "View only",
+        "anonymousLabel": "Anonymous {{animal}}",
         "breadcrumb": {
           "myCanvases": "My canvases"
         }
@@ -131,6 +132,40 @@
         "confirm": "Confirm",
         "cancel": "Cancel"
       }
+    },
+    "share": {
+      "title": "Share canvas",
+      "inviteSection": "Invite by email",
+      "membersSection": "Members",
+      "publicLinkSection": "Public link",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "name@example.com",
+      "roleEditor": "Editor",
+      "roleViewer": "Viewer",
+      "sendButton": "Send invite",
+      "copyLink": "Copy link",
+      "copied": "Copied",
+      "rotateLink": "Rotate link",
+      "modeClosed": "Closed",
+      "modeView": "View only",
+      "modeEdit": "Anyone can edit",
+      "pendingBadge": "Pending",
+      "removeButton": "Remove",
+      "confirmRotateTitle": "Rotate share link?",
+      "confirmRotateBody": "Anyone with the previous link will lose access immediately.",
+      "confirmRotateYes": "Rotate",
+      "confirmRotateNo": "Cancel",
+      "ownerLabel": "Owner",
+      "emptyMembers": "No one else has access yet."
+    }
+  },
+  "email": {
+    "shareInvite": {
+      "subject": "{{inviter}} invited you to \"{{title}}\" on Vellum",
+      "greeting": "Hi,",
+      "bodyPlain": "{{inviter}} invited you to collaborate on the canvas \"{{title}}\". Click the link below to accept and start editing.",
+      "acceptButton": "Open canvas",
+      "expiresNote": "This invite expires in 7 days."
     }
   },
   "folder": {
@@ -149,6 +184,13 @@
       "notFound": "Canvas not found",
       "forbidden": "You do not have access to this canvas",
       "activeRoom": "This canvas is being edited live. Try again in a moment."
+    },
+    "share": {
+      "emailMismatch": "This invite was sent to a different email. Sign in with the matching account.",
+      "inviteExpired": "This invite has expired or has already been used.",
+      "inviteNotFound": "Invite not found.",
+      "linkClosed": "The public link for this canvas is currently closed.",
+      "roleInvalid": "Role must be either \"editor\" or \"viewer\"."
     },
     "folder": {
       "notFound": "Folder not found",
