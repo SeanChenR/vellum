@@ -441,329 +441,6 @@ tests:
 -->
 
 ---
-### Requirement: Persistence module loads and saves snapshots in localStorage with a 5MB cap
-
-The system SHALL provide a `persistence` deep module that exposes exactly two functions: `loadSnapshot(canvasId)` returning a tldraw snapshot or null, and `saveSnapshot(canvasId, snapshot)` returning a discriminated result. The module SHALL store snapshots under the localStorage key pattern `vellum:canvas:<canvasId>:snapshot` as a JSON string. The module SHALL reject writes whose serialized payload exceeds 5,242,880 bytes (5 MiB) before attempting `localStorage.setItem`.
-
-#### Scenario: Round-trip succeeds for a typical snapshot
-
-- **WHEN** `saveSnapshot(id, s)` is called and `JSON.stringify(s)` is below the 5 MiB cap
-- **THEN** the function MUST return `{ ok: true }`
-- **AND** a subsequent `loadSnapshot(id)` MUST return a structurally equal snapshot
-
-##### Example: round-trip with a small payload
-
-| Input | Expected Output | Notes |
-| ----- | --------------- | ----- |
-| saveSnapshot("c1", { v: 1, foo: "bar" }) | { ok: true } | payload ~25 bytes |
-| loadSnapshot("c1") | { v: 1, foo: "bar" } | structural equality |
-| loadSnapshot("c2") | null | unrelated id |
-
-#### Scenario: Missing key returns null
-
-- **WHEN** `loadSnapshot(id)` is called for an id that has no entry in localStorage
-- **THEN** the function MUST return null and MUST NOT throw
-
-#### Scenario: Malformed JSON returns null
-
-- **WHEN** the localStorage entry for a canvas id contains a string that is not valid JSON
-- **THEN** `loadSnapshot(id)` MUST return null and MUST NOT throw
-
-#### Scenario: Payload exceeding 5 MiB is rejected before write
-
-- **WHEN** `saveSnapshot(id, s)` is called and `JSON.stringify(s).length` exceeds 5,242,880
-- **THEN** the function MUST return `{ ok: false, reason: "too_large" }`
-- **AND** the function MUST NOT call `localStorage.setItem`
-
-#### Scenario: Quota exceeded during write is reported gracefully
-
-- **WHEN** `saveSnapshot(id, s)` is called with a payload under the 5 MiB cap and `localStorage.setItem` throws a `QuotaExceededError` (or a DOMException with name "QuotaExceededError")
-- **THEN** the function MUST return `{ ok: false, reason: "quota" }`
-- **AND** the function MUST NOT throw to the caller
-
-##### Example: failure reason mapping
-
-| Pre-condition | Call | Expected Output |
-| ------------- | ---- | --------------- |
-| payload size 6 MiB | saveSnapshot(id, s) | { ok: false, reason: "too_large" } |
-| payload size 1 MiB, localStorage full | saveSnapshot(id, s) | { ok: false, reason: "quota" } |
-| payload size 1 MiB, localStorage healthy | saveSnapshot(id, s) | { ok: true } |
-
-
-<!-- @trace
-source: add-canvas-editor-shell
-updated: 2026-04-29
-code:
-  - apps/web/src/components/CanvasRenameDialog.tsx
-  - packages/shared/src/index.ts
-  - packages/shared/package.json
-  - apps/web/src/components/FolderDeleteDialog.tsx
-  - apps/web/src/account/ProfilePage.tsx
-  - .spectra.yaml
-  - apps/api/src/auth/route-guard.ts
-  - apps/web/src/canvas/CanvasPage.tsx
-  - apps/web/src/main.tsx
-  - package.json
-  - apps/api/src/index.ts
-  - apps/api/drizzle/0001_new_shinko_yamashiro.sql
-  - apps/api/.env.example
-  - apps/web/src/components/FolderRenameDialog.tsx
-  - bun.lock
-  - apps/api/drizzle/0000_hesitant_night_nurse.sql
-  - scripts/dev.ts
-  - apps/web/src/components/CanvasCard.tsx
-  - packages/shared/src/api-contract.ts
-  - apps/api/drizzle/meta/0000_snapshot.json
-  - apps/api/drizzle/meta/_journal.json
-  - apps/web/src/auth/OAuthCallbackPage.tsx
-  - apps/web/src/components/FolderCreateDialog.tsx
-  - apps/api/package.json
-  - apps/web/src/auth/RouteGuard.tsx
-  - apps/web/src/chrome/index.tsx
-  - apps/api/src/folder/index.ts
-  - packages/shared/src/shape-types.ts
-  - apps/api/drizzle/meta/0001_snapshot.json
-  - scripts/dev-proxy.ts
-  - apps/api/src/lib/permission.ts
-  - apps/web/src/auth/MagicLinkVerifyPage.tsx
-  - apps/api/src/lib/rate-limit-rules.ts
-  - apps/web/src/account/SessionsPage.tsx
-  - apps/web/src/canvas/useCanvasQuery.ts
-  - apps/api/src/auth/rate-limit.ts
-  - apps/api/src/email/mailpit.ts
-  - packages/shared/src/locales/zh-TW.json
-  - apps/api/src/email/templates/magic-link.tsx
-  - apps/web/src/auth/useAuth.ts
-  - apps/web/src/dashboard/useCanvasList.ts
-  - packages/shared/src/email/types.ts
-  - apps/api/tsconfig.json
-  - apps/web/src/auth/LoginPage.tsx
-  - apps/web/package.json
-  - apps/web/src/chrome/MainMenu.tsx
-  - apps/web/src/components/FolderTree.tsx
-  - packages/shared/src/db/auth-schema.ts
-  - apps/web/src/dashboard/useFolderList.ts
-  - apps/web/src/components/CanvasDeleteDialog.tsx
-  - apps/web/src/router.tsx
-  - apps/api/src/lib/logger.ts
-  - apps/api/src/auth/index.ts
-  - apps/api/src/db/schema.ts
-  - apps/web/src/canvas/persistence.ts
-  - packages/shared/src/locales/en.json
-  - apps/api/src/account/profile-validator.ts
-  - apps/api/src/auth/session-cookie-parser.ts
-  - apps/api/src/canvas/index.ts
-  - apps/web/src/components/CanvasCreateDialog.tsx
-  - apps/api/src/account/routes.ts
-  - apps/api/src/auth/config.ts
-  - apps/api/src/account/delete-account-validator.ts
-  - apps/web/src/dashboard/DashboardPage.tsx
-  - apps/web/src/canvas/use-autosave.ts
-  - apps/web/src/account/DeleteAccountDialog.tsx
-  - apps/web/src/chrome/TopBar.tsx
-  - apps/web/src/canvas/Editor.tsx
-  - docker-compose.yml
-tests:
-  - apps/web/src/canvas/use-autosave.test.ts
-  - apps/api/src/folder/folder.test.ts
-  - apps/api/src/db/schema.test.ts
-  - apps/web/src/account/SessionsPage.test.tsx
-  - apps/api/src/email/mailpit.test.ts
-  - apps/web/src/chrome/MainMenu.test.tsx
-  - apps/web/src/account/DeleteAccountDialog.test.tsx
-  - apps/api/src/auth/logger-redaction.test.ts
-  - apps/web/src/account/ProfilePage.test.tsx
-  - apps/api/src/auth/route-guard.test.ts
-  - apps/web/src/router.test.tsx
-  - e2e/auth-magic-link.spec.ts
-  - apps/api/src/auth/rate-limit.test.ts
-  - apps/web/src/dashboard/DashboardPage.test.tsx
-  - e2e/auth-google-oauth.spec.ts
-  - apps/api/src/auth/session-cookie.test.ts
-  - apps/web/src/canvas/Editor.no-canvas-animation.test.tsx
-  - apps/api/src/account/delete-account.test.ts
-  - apps/web/src/auth/LoginPage.test.tsx
-  - e2e/account-delete.spec.ts
-  - apps/web/src/canvas/CanvasPage.test.tsx
-  - apps/web/src/components/CanvasCard.test.tsx
-  - apps/api/src/account/sessions.test.ts
-  - apps/api/src/lib/rate-limit-rules.test.ts
-  - apps/web/src/components/FolderTree.test.tsx
-  - apps/api/src/auth/error-key-contract.test.ts
-  - e2e/auth-logout-and-sessions.spec.ts
-  - packages/shared/src/locales/locales.test.ts
-  - apps/web/src/canvas/persistence.test.ts
-  - apps/web/src/canvas/Editor.test.tsx
-  - apps/api/src/auth/google-oauth.test.ts
-  - apps/web/src/auth/MagicLinkVerifyPage.test.tsx
-  - apps/api/src/auth/logout.test.ts
-  - apps/api/src/auth/magic-link.test.ts
-  - apps/api/src/lib/permission.test.ts
-  - apps/web/src/dashboard/useCanvasList.test.ts
-  - apps/web/src/chrome/TopBar.test.tsx
-  - apps/web/src/auth/RouteGuard.test.tsx
-  - apps/api/src/canvas/canvas.test.ts
-  - packages/shared/src/api-contract.test.ts
-  - apps/api/src/account/profile.test.ts
--->
-
----
-### Requirement: Editor autosaves snapshots on a debounced cadence and on page unload
-
-The Editor component SHALL subscribe to the tldraw store's change stream and SHALL invoke `saveSnapshot` with a trailing-edge debounce of 800 milliseconds. The Editor SHALL also flush any pending debounced write synchronously when the browser fires `beforeunload`. The Editor SHALL load any existing snapshot via `loadSnapshot` exactly once during mount and pass it to tldraw as the initial store contents.
-
-#### Scenario: Initial mount hydrates from localStorage when a snapshot exists
-
-- **WHEN** the Editor mounts for canvas id `c1` and `loadSnapshot("c1")` returns a non-null snapshot
-- **THEN** the tldraw store MUST be initialized from that snapshot
-
-#### Scenario: Initial mount with no prior snapshot starts blank
-
-- **WHEN** the Editor mounts for canvas id `c1` and `loadSnapshot("c1")` returns null
-- **THEN** the tldraw store MUST initialize empty (default tldraw initial state)
-
-#### Scenario: Burst of edits coalesces into a single save
-
-- **WHEN** the user performs multiple store mutations within an 800 ms window
-- **THEN** `saveSnapshot` MUST be invoked exactly once for that window, on the trailing edge, with the latest snapshot
-
-##### Example: debounce coalescing
-
-- **GIVEN** the Editor mounted for canvas id `c1`
-- **WHEN** the store fires 5 change events at t=0, 100, 200, 300, 400 ms and no further events follow
-- **THEN** `saveSnapshot("c1", latest)` MUST be invoked exactly once at approximately t=1200 ms
-
-#### Scenario: beforeunload flushes a pending write
-
-- **WHEN** a debounced save is pending and the browser fires `beforeunload`
-- **THEN** the Editor MUST invoke `saveSnapshot` synchronously with the latest snapshot before the page unloads
-
-#### Scenario: Quota exceeded surfaces a one-shot toast and stops further writes
-
-- **WHEN** `saveSnapshot` returns `{ ok: false, reason: "quota" }` or `{ ok: false, reason: "too_large" }`
-- **THEN** the Editor MUST display a toast whose body text comes from the localized key `canvas.chrome.persistence.quotaExceededToast`
-- **AND** subsequent debounced saves for the same Editor instance MUST be suppressed until the page is reloaded
-- **AND** the toast MUST NOT be displayed more than once per Editor instance lifecycle
-
-
-<!-- @trace
-source: add-canvas-editor-shell
-updated: 2026-04-29
-code:
-  - apps/web/src/components/CanvasRenameDialog.tsx
-  - packages/shared/src/index.ts
-  - packages/shared/package.json
-  - apps/web/src/components/FolderDeleteDialog.tsx
-  - apps/web/src/account/ProfilePage.tsx
-  - .spectra.yaml
-  - apps/api/src/auth/route-guard.ts
-  - apps/web/src/canvas/CanvasPage.tsx
-  - apps/web/src/main.tsx
-  - package.json
-  - apps/api/src/index.ts
-  - apps/api/drizzle/0001_new_shinko_yamashiro.sql
-  - apps/api/.env.example
-  - apps/web/src/components/FolderRenameDialog.tsx
-  - bun.lock
-  - apps/api/drizzle/0000_hesitant_night_nurse.sql
-  - scripts/dev.ts
-  - apps/web/src/components/CanvasCard.tsx
-  - packages/shared/src/api-contract.ts
-  - apps/api/drizzle/meta/0000_snapshot.json
-  - apps/api/drizzle/meta/_journal.json
-  - apps/web/src/auth/OAuthCallbackPage.tsx
-  - apps/web/src/components/FolderCreateDialog.tsx
-  - apps/api/package.json
-  - apps/web/src/auth/RouteGuard.tsx
-  - apps/web/src/chrome/index.tsx
-  - apps/api/src/folder/index.ts
-  - packages/shared/src/shape-types.ts
-  - apps/api/drizzle/meta/0001_snapshot.json
-  - scripts/dev-proxy.ts
-  - apps/api/src/lib/permission.ts
-  - apps/web/src/auth/MagicLinkVerifyPage.tsx
-  - apps/api/src/lib/rate-limit-rules.ts
-  - apps/web/src/account/SessionsPage.tsx
-  - apps/web/src/canvas/useCanvasQuery.ts
-  - apps/api/src/auth/rate-limit.ts
-  - apps/api/src/email/mailpit.ts
-  - packages/shared/src/locales/zh-TW.json
-  - apps/api/src/email/templates/magic-link.tsx
-  - apps/web/src/auth/useAuth.ts
-  - apps/web/src/dashboard/useCanvasList.ts
-  - packages/shared/src/email/types.ts
-  - apps/api/tsconfig.json
-  - apps/web/src/auth/LoginPage.tsx
-  - apps/web/package.json
-  - apps/web/src/chrome/MainMenu.tsx
-  - apps/web/src/components/FolderTree.tsx
-  - packages/shared/src/db/auth-schema.ts
-  - apps/web/src/dashboard/useFolderList.ts
-  - apps/web/src/components/CanvasDeleteDialog.tsx
-  - apps/web/src/router.tsx
-  - apps/api/src/lib/logger.ts
-  - apps/api/src/auth/index.ts
-  - apps/api/src/db/schema.ts
-  - apps/web/src/canvas/persistence.ts
-  - packages/shared/src/locales/en.json
-  - apps/api/src/account/profile-validator.ts
-  - apps/api/src/auth/session-cookie-parser.ts
-  - apps/api/src/canvas/index.ts
-  - apps/web/src/components/CanvasCreateDialog.tsx
-  - apps/api/src/account/routes.ts
-  - apps/api/src/auth/config.ts
-  - apps/api/src/account/delete-account-validator.ts
-  - apps/web/src/dashboard/DashboardPage.tsx
-  - apps/web/src/canvas/use-autosave.ts
-  - apps/web/src/account/DeleteAccountDialog.tsx
-  - apps/web/src/chrome/TopBar.tsx
-  - apps/web/src/canvas/Editor.tsx
-  - docker-compose.yml
-tests:
-  - apps/web/src/canvas/use-autosave.test.ts
-  - apps/api/src/folder/folder.test.ts
-  - apps/api/src/db/schema.test.ts
-  - apps/web/src/account/SessionsPage.test.tsx
-  - apps/api/src/email/mailpit.test.ts
-  - apps/web/src/chrome/MainMenu.test.tsx
-  - apps/web/src/account/DeleteAccountDialog.test.tsx
-  - apps/api/src/auth/logger-redaction.test.ts
-  - apps/web/src/account/ProfilePage.test.tsx
-  - apps/api/src/auth/route-guard.test.ts
-  - apps/web/src/router.test.tsx
-  - e2e/auth-magic-link.spec.ts
-  - apps/api/src/auth/rate-limit.test.ts
-  - apps/web/src/dashboard/DashboardPage.test.tsx
-  - e2e/auth-google-oauth.spec.ts
-  - apps/api/src/auth/session-cookie.test.ts
-  - apps/web/src/canvas/Editor.no-canvas-animation.test.tsx
-  - apps/api/src/account/delete-account.test.ts
-  - apps/web/src/auth/LoginPage.test.tsx
-  - e2e/account-delete.spec.ts
-  - apps/web/src/canvas/CanvasPage.test.tsx
-  - apps/web/src/components/CanvasCard.test.tsx
-  - apps/api/src/account/sessions.test.ts
-  - apps/api/src/lib/rate-limit-rules.test.ts
-  - apps/web/src/components/FolderTree.test.tsx
-  - apps/api/src/auth/error-key-contract.test.ts
-  - e2e/auth-logout-and-sessions.spec.ts
-  - packages/shared/src/locales/locales.test.ts
-  - apps/web/src/canvas/persistence.test.ts
-  - apps/web/src/canvas/Editor.test.tsx
-  - apps/api/src/auth/google-oauth.test.ts
-  - apps/web/src/auth/MagicLinkVerifyPage.test.tsx
-  - apps/api/src/auth/logout.test.ts
-  - apps/api/src/auth/magic-link.test.ts
-  - apps/api/src/lib/permission.test.ts
-  - apps/web/src/dashboard/useCanvasList.test.ts
-  - apps/web/src/chrome/TopBar.test.tsx
-  - apps/web/src/auth/RouteGuard.test.tsx
-  - apps/api/src/canvas/canvas.test.ts
-  - packages/shared/src/api-contract.test.ts
-  - apps/api/src/account/profile.test.ts
--->
-
----
 ### Requirement: Single-page document and custom shape registry are wired at the integration point
 
 The Editor SHALL pass `customShapeUtils` and `customShapeTools` from `packages/shared/src/shape-types.ts` to the tldraw component. The Editor SHALL configure tldraw to a single-page document. In this change, `customShapeUtils` and `customShapeTools` SHALL each be exported as empty arrays.
@@ -1159,4 +836,222 @@ tests:
   - apps/api/src/canvas/canvas.test.ts
   - packages/shared/src/api-contract.test.ts
   - apps/api/src/account/profile.test.ts
+-->
+
+---
+### Requirement: Editor mounts with a multiplayer-aware sync store
+
+The Editor component SHALL obtain a tldraw sync store via the `useSyncStore(canvasId)` hook (`apps/web/src/canvas/use-sync-store.ts`) and SHALL pass that store to the tldraw `<Tldraw>` component. The Editor SHALL NOT initialize tldraw with a local-only store, SHALL NOT call any client-side `loadSnapshot` or `saveSnapshot` function, and SHALL NOT register a `beforeunload` listener for the purpose of flushing edits.
+
+#### Scenario: Editor mounts with a sync store bound to the current canvas id
+
+- **WHEN** the Editor renders for `/canvas/<canvasId>`
+- **THEN** the Editor MUST call `useSyncStore(<canvasId>)` exactly once and pass the returned store to `<Tldraw store={store} />`
+- **AND** the Editor MUST NOT pass an `initialState` prop derived from localStorage
+
+#### Scenario: Editor does not mount tldraw before the sync store reports a status
+
+- **WHEN** the sync store hook reports status `connecting` and has not yet received the initial document from the server
+- **THEN** the Editor MUST render a loading state instead of `<Tldraw>` so that no premature blank document is displayed
+
+#### Scenario: Editor remounts cleanly when navigating between canvases
+
+- **WHEN** the Editor unmounts and a new Editor mounts for a different canvas id
+- **THEN** the previous sync store MUST be disposed and the new mount MUST establish a fresh sync store bound to the new id with no shared state across mounts
+
+
+<!-- @trace
+source: add-multiplayer-sync
+updated: 2026-05-02
+code:
+  - apps/api/src/lib/rate-limit-rules.ts
+  - packages/shared/src/locales/zh-TW.json
+  - apps/web/src/canvas/persistence.ts
+  - bun.lock
+  - apps/web/src/canvas/use-autosave.ts
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/canvas/use-sync-store.ts
+  - docs/adr/0006-multiplayer-sync-trade-offs.md
+  - apps/api/src/sync/rate-limit.ts
+  - apps/api/src/index.ts
+  - packages/shared/src/locales/en.json
+  - apps/web/src/chrome/TopBar.tsx
+  - packages/shared/src/api-contract.ts
+  - apps/api/src/sync/index.ts
+  - apps/web/src/canvas/ConnectionStatus.tsx
+  - apps/api/package.json
+  - apps/api/src/sync/persistence.ts
+  - apps/api/src/canvas/index.ts
+  - apps/api/src/sync/auth.ts
+  - apps/api/src/sync/room.ts
+  - apps/web/package.json
+  - apps/web/src/canvas/Editor.tsx
+tests:
+  - apps/api/src/sync/persistence.test.ts
+  - apps/api/src/sync/rate-limit.test.ts
+  - apps/web/src/canvas/use-autosave.test.ts
+  - apps/web/src/canvas/ConnectionStatus.test.tsx
+  - apps/web/src/canvas/Editor.test.tsx
+  - apps/web/src/canvas/CanvasPage.test.tsx
+  - apps/web/src/canvas/use-sync-store.test.ts
+  - apps/api/src/sync/index.test.ts
+  - apps/api/src/sync/room.test.ts
+  - apps/web/src/canvas/persistence.test.ts
+  - apps/web/src/chrome/TopBar.test.tsx
+  - e2e/multiplayer-sync.spec.ts
+  - apps/api/src/sync/auth.test.ts
+  - apps/web/src/canvas/CollaboratorAvatars.test.tsx
+-->
+
+---
+### Requirement: TopBar displays a real-time connection status indicator
+
+The TopBar SHALL render a connection status indicator that reflects the current state of the sync WebSocket connection. The indicator SHALL display exactly one of four states: `connecting`, `connected`, `reconnecting`, `disconnected`. Each state SHALL use a localized label and SHALL be readable via screen reader through an `aria-label` whose text comes from a localized key. The indicator SHALL NOT use motion-based animation (per CLAUDE.md hard rule #5: multiplayer presence MUST be instant).
+
+#### Scenario: Indicator reflects the active connection state
+
+- **WHEN** the sync store reports state `connected`
+- **THEN** the TopBar indicator MUST render with the localized label for `connected`
+- **AND** the indicator's `aria-label` MUST come from the localized key for the current state
+
+#### Scenario: Indicator transitions are reflected within one render cycle
+
+- **WHEN** the sync connection transitions from `connected` to `reconnecting`
+- **THEN** the indicator MUST update on the next render after the state change without polling
+
+##### Example: state to localized key mapping
+
+| Connection state | Localized label key | aria-label key |
+| ---------------- | ------------------- | -------------- |
+| connecting | `canvas.chrome.connection.connecting` | `canvas.chrome.connection.connecting` |
+| connected | `canvas.chrome.connection.connected` | `canvas.chrome.connection.connected` |
+| reconnecting | `canvas.chrome.connection.reconnecting` | `canvas.chrome.connection.reconnecting` |
+| disconnected | `canvas.chrome.connection.disconnected` | `canvas.chrome.connection.disconnected` |
+
+#### Scenario: Disconnected state shows a refresh banner
+
+- **WHEN** the sync store transitions to `disconnected` after exhausting reconnect attempts
+- **THEN** the TopBar MUST display a banner whose body comes from the localized key `canvas.chrome.connection.disconnectedBanner`
+- **AND** the banner MUST contain a refresh action whose label comes from the localized key `canvas.chrome.connection.refresh`
+
+
+<!-- @trace
+source: add-multiplayer-sync
+updated: 2026-05-02
+code:
+  - apps/api/src/lib/rate-limit-rules.ts
+  - packages/shared/src/locales/zh-TW.json
+  - apps/web/src/canvas/persistence.ts
+  - bun.lock
+  - apps/web/src/canvas/use-autosave.ts
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/canvas/use-sync-store.ts
+  - docs/adr/0006-multiplayer-sync-trade-offs.md
+  - apps/api/src/sync/rate-limit.ts
+  - apps/api/src/index.ts
+  - packages/shared/src/locales/en.json
+  - apps/web/src/chrome/TopBar.tsx
+  - packages/shared/src/api-contract.ts
+  - apps/api/src/sync/index.ts
+  - apps/web/src/canvas/ConnectionStatus.tsx
+  - apps/api/package.json
+  - apps/api/src/sync/persistence.ts
+  - apps/api/src/canvas/index.ts
+  - apps/api/src/sync/auth.ts
+  - apps/api/src/sync/room.ts
+  - apps/web/package.json
+  - apps/web/src/canvas/Editor.tsx
+tests:
+  - apps/api/src/sync/persistence.test.ts
+  - apps/api/src/sync/rate-limit.test.ts
+  - apps/web/src/canvas/use-autosave.test.ts
+  - apps/web/src/canvas/ConnectionStatus.test.tsx
+  - apps/web/src/canvas/Editor.test.tsx
+  - apps/web/src/canvas/CanvasPage.test.tsx
+  - apps/web/src/canvas/use-sync-store.test.ts
+  - apps/api/src/sync/index.test.ts
+  - apps/api/src/sync/room.test.ts
+  - apps/web/src/canvas/persistence.test.ts
+  - apps/web/src/chrome/TopBar.test.tsx
+  - e2e/multiplayer-sync.spec.ts
+  - apps/api/src/sync/auth.test.ts
+  - apps/web/src/canvas/CollaboratorAvatars.test.tsx
+-->
+
+---
+### Requirement: TopBar displays the current collaborator avatar list
+
+The TopBar SHALL render a list of avatars for every user currently connected to the same sync room as the local user. Each avatar SHALL be rendered using the existing `UserAvatar` component (`apps/web/src/components/UserAvatar.tsx`). The list SHALL display up to 4 avatars inline; any additional collaborators SHALL be represented by a single trailing badge with text `+N` where N is the count of collaborators not displayed inline. The list SHALL exclude the local user themselves.
+
+#### Scenario: Single remote collaborator renders one avatar
+
+- **WHEN** one remote user is connected to the same sync room as the local user
+- **THEN** the TopBar MUST render exactly one `UserAvatar` element representing the remote user
+
+#### Scenario: Five or more collaborators trigger overflow badge
+
+- **WHEN** five or more remote users are connected to the same sync room
+- **THEN** the TopBar MUST render exactly four `UserAvatar` elements followed by a single overflow badge whose text content matches `+N` where N is the count of collaborators not rendered inline
+
+##### Example: avatar list overflow
+
+| Remote collaborators connected | Avatars rendered | Overflow badge |
+| ------------------------------ | ---------------- | -------------- |
+| 0 | 0 | not rendered |
+| 1 | 1 | not rendered |
+| 4 | 4 | not rendered |
+| 5 | 4 | `+1` |
+| 12 | 4 | `+8` |
+
+#### Scenario: Local user is excluded from the avatar list
+
+- **WHEN** the local user is the only user in the sync room
+- **THEN** the TopBar MUST render zero `UserAvatar` elements in the collaborator list region
+
+#### Scenario: Collaborator presence updates without reload
+
+- **WHEN** a remote user joins or leaves the sync room
+- **THEN** the TopBar collaborator list MUST update on the next render without requiring a page reload or manual refresh
+
+<!-- @trace
+source: add-multiplayer-sync
+updated: 2026-05-02
+code:
+  - apps/api/src/lib/rate-limit-rules.ts
+  - packages/shared/src/locales/zh-TW.json
+  - apps/web/src/canvas/persistence.ts
+  - bun.lock
+  - apps/web/src/canvas/use-autosave.ts
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/canvas/use-sync-store.ts
+  - docs/adr/0006-multiplayer-sync-trade-offs.md
+  - apps/api/src/sync/rate-limit.ts
+  - apps/api/src/index.ts
+  - packages/shared/src/locales/en.json
+  - apps/web/src/chrome/TopBar.tsx
+  - packages/shared/src/api-contract.ts
+  - apps/api/src/sync/index.ts
+  - apps/web/src/canvas/ConnectionStatus.tsx
+  - apps/api/package.json
+  - apps/api/src/sync/persistence.ts
+  - apps/api/src/canvas/index.ts
+  - apps/api/src/sync/auth.ts
+  - apps/api/src/sync/room.ts
+  - apps/web/package.json
+  - apps/web/src/canvas/Editor.tsx
+tests:
+  - apps/api/src/sync/persistence.test.ts
+  - apps/api/src/sync/rate-limit.test.ts
+  - apps/web/src/canvas/use-autosave.test.ts
+  - apps/web/src/canvas/ConnectionStatus.test.tsx
+  - apps/web/src/canvas/Editor.test.tsx
+  - apps/web/src/canvas/CanvasPage.test.tsx
+  - apps/web/src/canvas/use-sync-store.test.ts
+  - apps/api/src/sync/index.test.ts
+  - apps/api/src/sync/room.test.ts
+  - apps/web/src/canvas/persistence.test.ts
+  - apps/web/src/chrome/TopBar.test.tsx
+  - e2e/multiplayer-sync.spec.ts
+  - apps/api/src/sync/auth.test.ts
+  - apps/web/src/canvas/CollaboratorAvatars.test.tsx
 -->
