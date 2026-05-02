@@ -11,17 +11,17 @@
 - [x] 2.3 [P] 寫 `apps/api/src/share/link-token.test.ts` 蓋「Owner toggles the public link mode」與「Owner rotates the public link token」的 token 工具部分（generate 32-byte base64url、rotate 產新 token 不重複、token 長度與字符集合）
 - [x] 2.4 [P] 寫 `apps/api/src/share/share.test.ts` 蓋「Owner invites a known user by email creates a share immediately」「Owner invites an unknown email creates a pending invite and sends mail」「Owner reads share state for a canvas」「Owner changes a member's role」「Owner removes a share」「Owner revokes a pending invite」「Owner toggles the public link mode」「Owner rotates the public link token」「Sharing endpoints enforce per-owner rate limits」九條 — DI deps（mock email service、mock sync revocation hook、real DB or mock canvases / users / shares state）
 - [x] 2.5 [P] 寫 `apps/api/src/share/share.test.ts` 內 `GET /api/share/invite/:token/accept` 子 describe 蓋「Invite acceptance route requires email match and writes a share」（logged-in matching email accept、anonymous redirect 至 login、email mismatch 403、expired token 404、deleted token 404）
-- [ ] 2.6 [P] 改寫 `apps/api/src/sync/auth.test.ts` 擴版本，蓋「WebSocket handshake authenticates the user via session cookie」MODIFIED（新增 token path：valid view token / valid edit token / closed mode / mismatched canvas / cookie-wins-over-token 五個 sub-scenario）與「WebSocket handshake authorizes the user against the canvas」MODIFIED 的完整 9 列 outcome 矩陣
-- [ ] 2.7 [P] 改寫 `apps/api/src/sync/index.test.ts` 擴版本，蓋「Sync server kicks affected sessions when access is revoked」（kind:user 只踢該 user、kind:all-anonymous 只踢 anon: 開頭、其他連線保留）與「Viewer role connects in read-only mode」（viewer 推送 push 不 broadcast、view-mode token 升 viewer 的 isReadonly=true）
+- [x] 2.6 [P] 改寫 `apps/api/src/sync/auth.test.ts` 擴版本，蓋「WebSocket handshake authenticates the user via session cookie」MODIFIED（新增 token path：valid view token / valid edit token / closed mode / mismatched canvas / cookie-wins-over-token 五個 sub-scenario）與「WebSocket handshake authorizes the user against the canvas」MODIFIED 的完整 9 列 outcome 矩陣
+- [x] 2.7 [P] 改寫 `apps/api/src/sync/index.test.ts` 擴版本，蓋「Sync server kicks affected sessions when access is revoked」（kind:user 只踢該 user、kind:all-anonymous 只踢 anon: 開頭、其他連線保留）與「Viewer role connects in read-only mode」（viewer 推送 push 不 broadcast、view-mode token 升 viewer 的 isReadonly=true）
 - [x] 2.8 [P] 寫 `apps/api/src/email/share-invite.test.ts` 蓋「Owner invites an unknown email creates a pending invite and sends mail」的 email render 部分（給 inviterName / canvasTitle / acceptUrl / expiresAt 渲染出含 accept link 的 HTML 與 text，xss 測試 — 標題含 `<script>` 不會逃逸）
 - [x] 2.9 [P] 改寫 `apps/api/src/canvas/canvas.test.ts` 擴 scope=shared 區塊，蓋「Canvas list query with scope filter」MODIFIED 新 scenario（scope=shared 回 JOIN canvas_shares 結果、自己擁有的 canvas 即使有 share row 也不在 shared scope）
 
 ## 3. Implementation — Backend (TDD green)
 
-- [ ] 3.1 改 `apps/api/src/lib/permission.ts` 擴 `canAccess(user, canvas, action, ctx?)` 簽章成 design「Permission 矩陣：`canAccess(user | null, canvas, action, ctx?)` 擴充」表格的 7 列規則；保留既有 owner-only fast path；ctx 沒給或全空時 fallback 到「無權限」，使 2.1 通過
-- [ ] 3.2 [P] 實作 `apps/api/src/share/invite-token.ts`（32-byte crypto random base64url generator + 7-day expiresAt 計算 helper），使 2.2 通過
-- [ ] 3.3 [P] 實作 `apps/api/src/share/link-token.ts`（32-byte crypto random base64url generator，依 design「Public link：每張 canvas 一筆 row，三檔切換改 mode 而非 row」），使 2.3 通過
-- [ ] 3.4 實作 `apps/api/src/share/index.ts` `handleShareRequest(req, session, deps)` 涵蓋 8 條 sharing 端點 + invite accept 端點：
+- [x] 3.1 改 `apps/api/src/lib/permission.ts` 擴 `canAccess(user, canvas, action, ctx?)` 簽章成 design「Permission 矩陣：`canAccess(user | null, canvas, action, ctx?)` 擴充」表格的 7 列規則；保留既有 owner-only fast path；ctx 沒給或全空時 fallback 到「無權限」，使 2.1 通過
+- [x] 3.2 [P] 實作 `apps/api/src/share/invite-token.ts`（32-byte crypto random base64url generator + 7-day expiresAt 計算 helper），使 2.2 通過
+- [x] 3.3 [P] 實作 `apps/api/src/share/link-token.ts`（32-byte crypto random base64url generator，依 design「Public link：每張 canvas 一筆 row，三檔切換改 mode 而非 row」），使 2.3 通過
+- [x] 3.4 實作 `apps/api/src/share/index.ts` `handleShareRequest(req, session, deps)` 涵蓋 8 條 sharing 端點 + invite accept 端點：
    - `GET /api/canvas/:id/share` 回 members + invites + link
    - `POST /api/canvas/:id/share/invite` 走 design「Email invite：pending invite 用獨立表 `canvas_invites`」分流（已存在 user → 直寫 canvas_shares；不存在 → 寫 invite + 寄信）
    - `PATCH /api/canvas/:id/share/members/:userId` 改 role + 呼叫 `notifyAccessRevoked({ kind: 'user', userId })`
@@ -31,11 +31,11 @@
    - `POST /api/canvas/:id/share/link/rotate` rotate token + revoke anonymous
    - `GET /api/share/invite/:token/accept` 走 design「Email invite」表的 4 步驟（找 invite、redirect login、email match 檢查、寫 canvas_shares + 刪 invite + redirect canvas）
    並在 `apps/api/src/lib/rate-limit-rules.ts` 加 `SHARE_INVITE_RULE` (10/60s) 與 `SHARE_LINK_ROTATE_RULE` (5/60s)，使 2.4 + 2.5 通過
-- [ ] 3.5 [P] 實作 `apps/api/src/email/templates/share-invite.tsx` React Email template（依 design「Email template：React Email + Mailpit」），共用既有 `apps/api/src/email/mailpit.ts` 寄送，使 2.8 通過
-- [ ] 3.6 改 `apps/api/src/sync/auth.ts`：依 design「Sync 握手：新增 public-link path」加 query token 解析，新 `SyncAuthDeps.resolveCanvasRole(userId, canvasId)` 內部查 `canvas_shares`、新增 `resolveCanvasShareLink(canvasId)` 查 `canvas_share_links`；anonymous user 用 `anon:<8char>` 形式，使 2.6 通過
-- [ ] 3.7 改 `apps/api/src/sync/index.ts`：實作 `notifyAccessRevoked(canvasId, scope)` 公開 method（依 design「Mid-session revocation：share 變更 → 主動 close 受影響 WS」），fetch handler 加 query token 路徑（cookie 沒給就走 token），handleSocketConnect 帶 `isReadonly = (role === 'viewer')`，使 2.7 通過；同步刪除 1.1 的 readonly-spike.test.ts
-- [ ] 3.8 [P] 改 `apps/api/src/canvas/index.ts` 的 list handler，scope=shared 走真實 JOIN canvas_shares + canvases 查詢（依 design「`scope=shared` 從 stub 改成真實查詢」），使 2.9 通過
-- [ ] 3.9 [P] 在 `apps/api/src/index.ts` 把 `handleShareRequest` 掛進 fetch dispatcher（路徑 `/api/canvas/:id/share/*` 與 `/api/share/invite/:token/accept`），把 sync server 的 `notifyAccessRevoked` 注入給 share handler 的 deps；修 `apps/api/src/sync/index.ts` 的 `SyncServerDeps.auth.resolveCanvasRole` 用真 DB query
+- [x] 3.5 [P] 實作 `apps/api/src/email/templates/share-invite.tsx` React Email template（依 design「Email template：React Email + Mailpit」），共用既有 `apps/api/src/email/mailpit.ts` 寄送，使 2.8 通過
+- [x] 3.6 改 `apps/api/src/sync/auth.ts`：依 design「Sync 握手：新增 public-link path」加 query token 解析，新 `SyncAuthDeps.resolveCanvasRole(userId, canvasId)` 內部查 `canvas_shares`、新增 `resolveCanvasShareLink(canvasId)` 查 `canvas_share_links`；anonymous user 用 `anon:<8char>` 形式，使 2.6 通過
+- [x] 3.7 改 `apps/api/src/sync/index.ts`：實作 `notifyAccessRevoked(canvasId, scope)` 公開 method（依 design「Mid-session revocation：share 變更 → 主動 close 受影響 WS」），fetch handler 加 query token 路徑（cookie 沒給就走 token），handleSocketConnect 帶 `isReadonly = (role === 'viewer')`，使 2.7 通過；同步刪除 1.1 的 readonly-spike.test.ts
+- [x] 3.8 [P] 改 `apps/api/src/canvas/index.ts` 的 list handler，scope=shared 走真實 JOIN canvas_shares + canvases 查詢（依 design「`scope=shared` 從 stub 改成真實查詢」），使 2.9 通過
+- [x] 3.9 [P] 在 `apps/api/src/index.ts` 把 `handleShareRequest` 掛進 fetch dispatcher（路徑 `/api/canvas/:id/share/*` 與 `/api/share/invite/:token/accept`），把 sync server 的 `notifyAccessRevoked` 注入給 share handler 的 deps；修 `apps/api/src/sync/index.ts` 的 `SyncServerDeps.auth.resolveCanvasRole` 用真 DB query
 
 ## 4. Tests First — Frontend (TDD red)
 

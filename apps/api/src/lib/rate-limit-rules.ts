@@ -65,3 +65,16 @@ export const SYNC_CONNECT_PER_USER_CANVAS_MAX = 5;
  * source IP. Defends against rapid reconnect loops.
  */
 export const SYNC_CONNECT_PER_IP_RULE: RateLimitRule = { windowMs: s(60), max: 30 };
+
+/**
+ * POST /api/canvas/:id/share/invite — 10 invites per 60 seconds per owner.
+ * Defends against scripted invite enumeration / mailbomb attempts.
+ */
+export const SHARE_INVITE_RULE: RateLimitRule = { windowMs: s(60), max: 10 };
+
+/**
+ * POST /api/canvas/:id/share/link/rotate — 5 rotations per 60 seconds per
+ * owner. Rotation is normally manual; the cap exists to prevent runaway
+ * scripts from invalidating links.
+ */
+export const SHARE_LINK_ROTATE_RULE: RateLimitRule = { windowMs: s(60), max: 5 };

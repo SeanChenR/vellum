@@ -48,6 +48,11 @@ export interface SyncServerDeps {
   resolveClientIp(req: Request): string;
 }
 
+export type RevocationScope =
+  | { kind: "user"; userId: string }
+  | { kind: "all-anonymous" }
+  | { kind: "all" };
+
 export interface SyncServer {
   fetch(req: Request, server: Server<SyncSocketData>): Promise<Response | undefined>;
   websocket: WebSocketHandler<SyncSocketData>;
@@ -56,6 +61,13 @@ export interface SyncServer {
   isCanvasInActiveRoom(canvasId: string): boolean;
   /** Close all sessions for `canvasId` with code 4404 and dispose the room. */
   notifyCanvasDeleted(canvasId: string): void;
+  /**
+   * Close affected WebSocket sessions when share / link state changes.
+   * `kind:user` closes that user's sessions with 4403; `kind:all-anonymous`
+   * closes anon: sessions with 4403; `kind:all` closes everything with
+   * 4404 and disposes the room (canvas-deletion semantics).
+   */
+  notifyAccessRevoked(canvasId: string, scope: RevocationScope): void;
 }
 
 const SYNC_PATH = /^\/sync\/([^/]+)$/;
@@ -206,6 +218,20 @@ export function createSyncServer(deps: SyncServerDeps): SyncServer {
     void deps.registry.disposeRoom(canvasId, { flush: false });
   }
 
+  function notifyAccessRevoked(canvasId: string, scope: RevocationScope): void {
+    if (scope.kind === "all") {
+      notifyCanvasDeleted(canvasId);
+      return;
+    }
+    const set = sockets.get(canvasId);
+    if (!set) return;
+    for (const ws of set) {
+      if (scope.kind === "user" && ws.data.userId !== scope.userId) continue;
+      if (scope.kind === "all-anonymous" && !ws.data.userId.startsWith("anon:")) continue;
+      ws.close(CLOSE_CODE.FORBIDDEN, "access revoked");
+    }
+  }
+
   async function shutdown(): Promise<void> {
     for (const [, set] of sockets) {
       for (const ws of set) {
@@ -224,5 +250,6 @@ export function createSyncServer(deps: SyncServerDeps): SyncServer {
     shutdown,
     isCanvasInActiveRoom,
     notifyCanvasDeleted,
+    notifyAccessRevoked,
   };
 }

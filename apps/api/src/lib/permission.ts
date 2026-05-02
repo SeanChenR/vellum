@@ -1,19 +1,16 @@
 /**
  * Permission deep module — canvas access control.
  *
- * Exports `canAccess(user, canvas, action)` which is the single source of
- * truth for all canvas permission checks in the API.
+ * `canAccess(user, canvas, action, ctx?)` is the single source of truth
+ * for canvas permissions. It combines ownership, share-row presence
+ * (`canvas_shares`), and public-link mode (`canvas_share_links`) into a
+ * boolean grant.
  *
- * Phase 1 rule (this change):
- *   - Owner (user.id === canvas.ownerId) → true for all actions
- *   - Non-owner or anonymous → false for all actions
+ * The function is pure — callers prepare `ctx` from DB state and pass it
+ * in. This keeps the predicate easy to unit test and lets a single DB
+ * lookup answer multiple action questions.
  *
- * The function signature is intentionally stable: `add-sharing` will extend
- * the rule set (shared access, public link mode) without changing call sites.
- * All callers in canvas/folder route handlers call `canAccess()` directly —
- * they do not inline the owner check.
- *
- * Spec: "Permission contract for canvas actions"
+ * Spec: canvas-management — "Permission contract for canvas actions"
  */
 
 export type CanvasAction = "read" | "write" | "delete" | "share";
@@ -26,26 +23,52 @@ interface CanvasLike {
   ownerId: string;
 }
 
+export interface PermissionContext {
+  /** `canvas_shares.role` for (user, canvas), if any. */
+  sharedRole?: "editor" | "viewer" | null;
+  /** `canvas_share_links.mode` for the canvas, if a token-bearing request. */
+  publicLinkMode?: "closed" | "view" | "edit" | null;
+}
+
 /**
  * Check whether `user` may perform `action` on `canvas`.
  *
- * @param user  - Authenticated user (or null / undefined for anonymous).
- * @param canvas - Canvas row (must include `ownerId`).
- * @param action - One of: 'read' | 'write' | 'delete' | 'share'
- * @returns `true` if access is granted, `false` otherwise.
+ * Owner (`user.id === canvas.ownerId`) wins over any ctx — even an
+ * accidental `sharedRole: 'viewer'` cannot downgrade them.
  *
- * Phase 1: true iff user is non-null and user.id === canvas.ownerId.
- * add-sharing will extend this to cover shared rows and public-link modes.
+ * For non-owners the strongest available signal applies; sharedRole is
+ * preferred over publicLinkMode (a logged-in editor visiting via a closed
+ * link still has editor access).
  */
 export function canAccess(
   user: UserLike | null | undefined,
   canvas: CanvasLike,
   action: CanvasAction,
+  ctx?: PermissionContext,
 ): boolean {
-  // Suppress unused-parameter lint — action will be used when add-sharing
-  // differentiates read/write/share per sharing mode.
-  void action;
+  // Owner: full access regardless of ctx.
+  if (user?.id && user.id === canvas.ownerId) return true;
 
-  if (!user) return false;
-  return user.id === canvas.ownerId;
+  // Logged-in shared editor: read + write.
+  if (ctx?.sharedRole === "editor") {
+    return action === "read" || action === "write";
+  }
+
+  // Logged-in shared viewer: read only.
+  if (ctx?.sharedRole === "viewer") {
+    return action === "read";
+  }
+
+  // Public-link visitor (logged-in or anonymous): role is determined by mode.
+  switch (ctx?.publicLinkMode) {
+    case "edit":
+      return action === "read" || action === "write";
+    case "view":
+      return action === "read";
+    case "closed":
+      return false;
+    default:
+      // No relation, no link, no role.
+      return false;
+  }
 }

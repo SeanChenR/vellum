@@ -46,9 +46,24 @@ interface SessionLike {
  *   - `isCanvasInActiveRoom`: query the multiplayer-sync server's room
  *     registry to gate HTTP snapshot writes. Tests omit this so behavior
  *     remains opt-in.
+ *   - `listSharedCanvases`: query canvases visible to the user via
+ *     `canvas_shares`. Production wires it in `apps/api/src/index.ts`;
+ *     tests pass an in-memory implementation. When omitted, the
+ *     `scope=shared` path returns an empty array (M5 feature gate).
  */
 export interface CanvasHandlerDeps {
   isCanvasInActiveRoom?(canvasId: string): boolean;
+  listSharedCanvases?(userId: string): Promise<
+    Array<{
+      id: string;
+      ownerId: string;
+      folderId: string | null;
+      title: string;
+      snapshot: object;
+      createdAt: Date;
+      updatedAt: Date;
+    }>
+  >;
 }
 
 function errorResp(status: number, error: string, extra?: object): Response {
@@ -133,6 +148,7 @@ async function handleList(
   req: Request,
   session: SessionLike,
   rateLimiter: RateLimiter,
+  deps: CanvasHandlerDeps,
 ): Promise<Response> {
   const rl = rateLimiter.limit(rlKey("list", session.userId), CANVAS_LIST_RULE);
   if (!rl.allowed) return rateLimitResp(rl.retryAfterSeconds);
@@ -141,11 +157,17 @@ async function handleList(
   const scope = url.searchParams.get("scope") ?? "owned";
   const folderIdParam = url.searchParams.get("folderId");
 
-  // TODO(add-sharing): remove short-circuit — shared scope resolution belongs
-  // to the add-sharing capability (canvas_shares table). Until then, return
-  // an empty collection so the dashboard "Shared with me" section renders.
   if (scope === "shared") {
-    return Response.json({ data: [], meta: { total: 0 } });
+    // Shared scope is owned by the `add-sharing` capability. When the dep
+    // is wired, return the user's accepted shares; otherwise the legacy
+    // empty-array stub is preserved for callers that haven't migrated.
+    const shared = deps.listSharedCanvases
+      ? await deps.listSharedCanvases(session.userId)
+      : [];
+    return Response.json({
+      data: shared.map(canvasToDto),
+      meta: { total: shared.length },
+    });
   }
 
   const db = getDb();
@@ -378,7 +400,7 @@ export async function handleCanvasRequest(
 
   // GET /api/canvas (list)
   if (method === "GET" && (afterPrefix === "" || afterPrefix === "/")) {
-    return handleList(req, session, rateLimiter);
+    return handleList(req, session, rateLimiter, deps);
   }
 
   // Routes that include a canvas ID

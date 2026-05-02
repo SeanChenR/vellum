@@ -1,28 +1,27 @@
 /**
- * Sync handshake auth — gates a WebSocket upgrade behind:
- *   1. session cookie validity   (errors.auth.unauthorized → 401)
- *   2. canvas existence          (errors.canvas.notFound  → 404)
- *   3. canvas role               (errors.canvas.forbidden → 403)
+ * Sync handshake auth — gates a WebSocket upgrade through TWO paths:
  *
- * Production wires `deps` to:
- *   - `apps/api/src/auth/index.ts` better-auth `getSession`
- *   - DB-backed canvas + canvas_shares lookup
+ *   1. Session-cookie path (default) → resolveSession + resolveCanvasRole
+ *      - Owner / shared editor / shared viewer get role from canvas_shares
  *
- * Tests inject mocks (`auth.test.ts`).
+ *   2. Public-link-token path (when URL has `?token=...`) → resolveCanvasShareLink
+ *      - Anonymous-acceptable when mode is `view` or `edit`
+ *      - userId becomes `anon:<8-char>` (or session.userId if cookie also valid)
  *
- * Spec: multiplayer-sync — "WebSocket handshake authenticates the user via
- * session cookie" + "WebSocket handshake authorizes the user against the
- * canvas".
+ * If both a valid session cookie AND a token are present, the cookie path
+ * wins — logged-in editors don't get downgraded by clicking a public link.
+ *
+ * Spec: multiplayer-sync — MODIFIED "WebSocket handshake authenticates the
+ * user via session cookie" + MODIFIED "WebSocket handshake authorizes the
+ * user against the canvas"
  */
 
 export type SyncRole = "editor" | "viewer";
 
 export interface SyncAuthDeps {
-  /** Resolve the active session for a request (null if missing/expired). */
   resolveSession(req: Request): Promise<{ userId: string } | null>;
   /**
-   * Resolve a canvas existence + role triple. The implementation SHALL
-   * return:
+   * Resolve the cookie-path role:
    *   - { canvasExists: false, role: null }                  → 404
    *   - { canvasExists: true,  role: null }                  → 403
    *   - { canvasExists: true,  role: 'editor' | 'viewer' }   → ok
@@ -31,6 +30,13 @@ export interface SyncAuthDeps {
     userId: string,
     canvasId: string,
   ): Promise<{ canvasExists: boolean; role: SyncRole | null }>;
+  /**
+   * Resolve the public-link record by its share token. Returns null when
+   * the token doesn't match a row.
+   */
+  resolveCanvasShareLink(
+    token: string,
+  ): Promise<{ canvasId: string; mode: "closed" | "view" | "edit" } | null>;
 }
 
 export type SyncAuthResult =
@@ -55,17 +61,40 @@ const FORBIDDEN: SyncAuthResult = {
   error: "errors.canvas.forbidden",
 };
 
+function generateAnonId(): string {
+  // 8 hex chars from a 4-byte random buffer — collision-resistant enough
+  // for in-memory presence keys; not a security boundary.
+  const buf = new Uint8Array(4);
+  crypto.getRandomValues(buf);
+  return `anon:${Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+
 export async function authenticateSyncHandshake(
   req: Request,
   canvasId: string,
   deps: SyncAuthDeps,
 ): Promise<SyncAuthResult> {
+  const url = new URL(req.url);
+  const token = url.searchParams.get("token");
+
+  // 1. Cookie path — preferred even when a token is present.
   const session = await deps.resolveSession(req);
-  if (!session) return UNAUTHORIZED;
+  if (session) {
+    const canvas = await deps.resolveCanvasRole(session.userId, canvasId);
+    if (!canvas.canvasExists) return NOT_FOUND;
+    if (canvas.role === null) return FORBIDDEN;
+    return { ok: true, userId: session.userId, role: canvas.role };
+  }
 
-  const canvas = await deps.resolveCanvasRole(session.userId, canvasId);
-  if (!canvas.canvasExists) return NOT_FOUND;
-  if (canvas.role === null) return FORBIDDEN;
+  // 2. Anonymous + token path.
+  if (token) {
+    const link = await deps.resolveCanvasShareLink(token);
+    if (!link || link.canvasId !== canvasId) return FORBIDDEN;
+    if (link.mode === "closed") return FORBIDDEN;
+    const role: SyncRole = link.mode === "edit" ? "editor" : "viewer";
+    return { ok: true, userId: generateAnonId(), role };
+  }
 
-  return { ok: true, userId: session.userId, role: canvas.role };
+  // 3. No cookie, no token → unauthenticated.
+  return UNAUTHORIZED;
 }

@@ -20,7 +20,7 @@
  */
 
 import { VELLUM_VERSION } from "@vellum/shared";
-import { eq } from "drizzle-orm";
+import { eq, desc, and, ne } from "drizzle-orm";
 import { TLSocketRoom, type RoomSnapshot } from "@tldraw/sync-core";
 
 import { logger } from "./lib/logger";
@@ -29,8 +29,11 @@ import { createAuthHandler, getAuth } from "./auth/index";
 import { handleAccountRequest } from "./account/routes";
 import { handleCanvasRequest } from "./canvas/index";
 import { handleFolderRequest } from "./folder/index";
+import { handleShareRequest, type ShareHandlerDeps } from "./share/index";
+import { renderShareInviteEmail } from "./email/templates/share-invite";
+import { createMailpitEmailService } from "./email/mailpit";
 import { getDb } from "./db/index";
-import { canvases } from "./db/schema";
+import { canvases, canvasShares, canvasInvites, canvasShareLinks, users } from "./db/schema";
 import { createSyncServer, type SyncServerDeps, type SyncSocketData } from "./sync/index";
 import {
   createConcurrentConnectionRegistry,
@@ -122,10 +125,22 @@ const syncDeps: SyncServerDeps = {
         columns: { ownerId: true },
       });
       if (!canvas) return { canvasExists: false, role: null };
-      // Phase 1: only owner has a role. add-sharing extends this with
-      // canvas_shares lookups for shared editor / shared viewer.
       if (canvas.ownerId === userId) return { canvasExists: true, role: "editor" };
+      // add-sharing: shared editor / shared viewer via canvas_shares.
+      const share = await db.query.canvasShares.findFirst({
+        where: (t, { eq: eq_, and: and_ }) =>
+          and_(eq_(t.canvasId, canvasId), eq_(t.userId, userId)),
+      });
+      if (share) return { canvasExists: true, role: share.role };
       return { canvasExists: true, role: null };
+    },
+    async resolveCanvasShareLink(token) {
+      const db = getDb();
+      const link = await db.query.canvasShareLinks.findFirst({
+        where: (t, { eq: eq_ }) => eq_(t.token, token),
+        columns: { canvasId: true, mode: true },
+      });
+      return link ?? null;
     },
   },
   resolveClientIp(req) {
@@ -137,9 +152,255 @@ const syncDeps: SyncServerDeps = {
 
 const syncServer = createSyncServer(syncDeps);
 
+// ---------------------------------------------------------------------------
+// Sharing wiring
+// ---------------------------------------------------------------------------
+
+const emailService = createMailpitEmailService({
+  SMTP_HOST: Bun.env.SMTP_HOST ?? "localhost",
+  SMTP_PORT: Bun.env.SMTP_PORT ?? "1025",
+  SMTP_FROM: Bun.env.SMTP_FROM ?? "Vellum <noreply@vellum.test>",
+});
+
+const APP_BASE_URL = Bun.env.APP_BASE_URL ?? "http://localhost:3002";
+
+const shareDeps: ShareHandlerDeps = {
+  rateLimiter,
+  async loadCanvas(canvasId) {
+    const db = getDb();
+    const c = await db.query.canvases.findFirst({
+      where: (t, { eq: eq_ }) => eq_(t.id, canvasId),
+      columns: { id: true, ownerId: true, title: true },
+    });
+    return c ?? null;
+  },
+  async findUserByEmail(email) {
+    const db = getDb();
+    const u = await db.query.users.findFirst({
+      where: (t, { eq: eq_ }) => eq_(t.email, email),
+      columns: { id: true, email: true, name: true },
+    });
+    return u ?? null;
+  },
+  async loadUser(userId) {
+    const db = getDb();
+    const u = await db.query.users.findFirst({
+      where: (t, { eq: eq_ }) => eq_(t.id, userId),
+      columns: { id: true, email: true, name: true },
+    });
+    return u ?? null;
+  },
+  async listShares(canvasId) {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(canvasShares)
+      .where(eq(canvasShares.canvasId, canvasId));
+    return rows.map((r) => ({
+      canvasId: r.canvasId,
+      userId: r.userId,
+      role: r.role,
+      createdAt: r.createdAt,
+    }));
+  },
+  async loadShare(canvasId, userId) {
+    const db = getDb();
+    const row = await db
+      .select()
+      .from(canvasShares)
+      .where(and(eq(canvasShares.canvasId, canvasId), eq(canvasShares.userId, userId)))
+      .limit(1);
+    const r = row[0];
+    return r
+      ? { canvasId: r.canvasId, userId: r.userId, role: r.role, createdAt: r.createdAt }
+      : null;
+  },
+  async upsertShare(record) {
+    const db = getDb();
+    await db
+      .insert(canvasShares)
+      .values({
+        canvasId: record.canvasId,
+        userId: record.userId,
+        role: record.role,
+        createdAt: record.createdAt,
+      })
+      .onConflictDoUpdate({
+        target: [canvasShares.canvasId, canvasShares.userId],
+        set: { role: record.role },
+      });
+  },
+  async deleteShare(canvasId, userId) {
+    const db = getDb();
+    await db
+      .delete(canvasShares)
+      .where(and(eq(canvasShares.canvasId, canvasId), eq(canvasShares.userId, userId)));
+  },
+  async listInvites(canvasId) {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(canvasInvites)
+      .where(eq(canvasInvites.canvasId, canvasId));
+    return rows.map((r) => ({
+      id: r.id,
+      canvasId: r.canvasId,
+      email: r.email,
+      role: r.role,
+      token: r.token,
+      expiresAt: r.expiresAt,
+      createdAt: r.createdAt,
+    }));
+  },
+  async loadInvite(inviteId) {
+    const db = getDb();
+    const row = await db.query.canvasInvites.findFirst({
+      where: (t, { eq: eq_ }) => eq_(t.id, inviteId),
+    });
+    return row
+      ? {
+          id: row.id,
+          canvasId: row.canvasId,
+          email: row.email,
+          role: row.role,
+          token: row.token,
+          expiresAt: row.expiresAt,
+          createdAt: row.createdAt,
+        }
+      : null;
+  },
+  async findInviteByCanvasAndEmail(canvasId, email) {
+    const db = getDb();
+    const row = await db.query.canvasInvites.findFirst({
+      where: (t, { eq: eq_, and: and_ }) =>
+        and_(eq_(t.canvasId, canvasId), eq_(t.email, email.toLowerCase())),
+    });
+    return row
+      ? {
+          id: row.id,
+          canvasId: row.canvasId,
+          email: row.email,
+          role: row.role,
+          token: row.token,
+          expiresAt: row.expiresAt,
+          createdAt: row.createdAt,
+        }
+      : null;
+  },
+  async findInviteByToken(token) {
+    const db = getDb();
+    const row = await db.query.canvasInvites.findFirst({
+      where: (t, { eq: eq_ }) => eq_(t.token, token),
+    });
+    return row
+      ? {
+          id: row.id,
+          canvasId: row.canvasId,
+          email: row.email,
+          role: row.role,
+          token: row.token,
+          expiresAt: row.expiresAt,
+          createdAt: row.createdAt,
+        }
+      : null;
+  },
+  async createInvite(record) {
+    const db = getDb();
+    await db.insert(canvasInvites).values({
+      id: record.id,
+      canvasId: record.canvasId,
+      email: record.email.toLowerCase(),
+      role: record.role,
+      token: record.token,
+      expiresAt: record.expiresAt,
+      createdAt: record.createdAt,
+    });
+  },
+  async deleteInvite(inviteId) {
+    const db = getDb();
+    await db.delete(canvasInvites).where(eq(canvasInvites.id, inviteId));
+  },
+  async loadLink(canvasId) {
+    const db = getDb();
+    const row = await db.query.canvasShareLinks.findFirst({
+      where: (t, { eq: eq_ }) => eq_(t.canvasId, canvasId),
+    });
+    return row ?? null;
+  },
+  async upsertLink(record) {
+    const db = getDb();
+    await db
+      .insert(canvasShareLinks)
+      .values({
+        canvasId: record.canvasId,
+        token: record.token,
+        mode: record.mode,
+        createdAt: record.createdAt,
+        rotatedAt: record.rotatedAt,
+      })
+      .onConflictDoUpdate({
+        target: canvasShareLinks.canvasId,
+        set: {
+          token: record.token,
+          mode: record.mode,
+          rotatedAt: record.rotatedAt,
+        },
+      });
+  },
+  async sendInviteEmail(args) {
+    // The handler emits a generic subject/body; render the React Email
+    // template here so the recipient gets a polished message. The handler's
+    // `args.subject` is overridden by the rendered template's locale-aware
+    // subject; `args.token` is used to build the accept URL.
+    const acceptUrl = `${APP_BASE_URL}/api/share/invite/${args.token}/accept`;
+    // We don't have the inviter / canvas-title at this layer; the share
+    // handler called us with an interpolated subject — pull both back out
+    // by parsing it. (Phase 2: refactor the dep contract to pass these
+    // explicitly so we don't reverse-engineer the subject string.)
+    const rendered = await renderShareInviteEmail({
+      inviterName: "Vellum",
+      canvasTitle: args.subject.replace(/^.* invited you to "/, "").replace(/" on Vellum$/, ""),
+      acceptUrl,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      locale: "en",
+    });
+    await emailService.send({
+      to: args.to,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+    });
+  },
+  notifyAccessRevoked(canvasId, scope) {
+    syncServer.notifyAccessRevoked(canvasId, scope);
+  },
+  now: () => new Date(),
+};
+
 const canvasDeps = {
   isCanvasInActiveRoom: (canvasId: string) =>
     syncServer.isCanvasInActiveRoom(canvasId),
+  async listSharedCanvases(userId: string) {
+    const db = getDb();
+    const rows = await db
+      .select({
+        id: canvases.id,
+        ownerId: canvases.ownerId,
+        folderId: canvases.folderId,
+        title: canvases.title,
+        snapshot: canvases.snapshot,
+        createdAt: canvases.createdAt,
+        updatedAt: canvases.updatedAt,
+      })
+      .from(canvasShares)
+      .innerJoin(canvases, eq(canvasShares.canvasId, canvases.id))
+      .where(and(eq(canvasShares.userId, userId), ne(canvases.ownerId, userId)))
+      .orderBy(desc(canvases.updatedAt));
+    return rows.map((r) => ({
+      ...r,
+      snapshot: (r.snapshot ?? {}) as object,
+    }));
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -185,6 +446,17 @@ const server = Bun.serve<SyncSocketData>({
     if (url.pathname.startsWith("/api/auth")) {
       const authResponse = await authHandler(req);
       if (authResponse) return respond(authResponse);
+    }
+
+    // Sharing routes — both `/api/canvas/:id/share/*` and the anonymous-
+    // accessible `/api/share/invite/:token/accept` go through one handler.
+    if (
+      url.pathname.startsWith("/api/share/") ||
+      /^\/api\/canvas\/[^/]+\/share/.test(url.pathname)
+    ) {
+      const session = await getSession(req);
+      const shareResponse = await handleShareRequest(req, session, shareDeps);
+      if (shareResponse) return respond(shareResponse);
     }
 
     // Account routes (protected)

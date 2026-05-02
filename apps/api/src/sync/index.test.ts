@@ -45,6 +45,7 @@ interface TestEnv {
   registry: RoomRegistry;
   saveCalls: Array<{ canvasId: string; snapshot: RoomSnapshot }>;
   loadCalls: string[];
+  sessionConnects: Array<{ sessionId: string; isReadonly: boolean }>;
   stop(): Promise<void>;
 }
 
@@ -52,10 +53,16 @@ function buildEnv(
   canvases: Record<string, CanvasFixture>,
   options?: {
     resolveUserId?: (req: Request) => Promise<string | null>;
+    /** Per-user shared roles, keyed by `${userId}:${canvasId}`. */
+    sharedRoles?: Record<string, "editor" | "viewer">;
+    /** Public-link records keyed by token. */
+    links?: Record<string, { canvasId: string; mode: "closed" | "view" | "edit" }>;
   },
 ): TestEnv {
   const saveCalls: Array<{ canvasId: string; snapshot: RoomSnapshot }> = [];
   const loadCalls: string[] = [];
+  /** Records every handleSocketConnect call so tests can inspect isReadonly. */
+  const sessionConnects: Array<{ sessionId: string; isReadonly: boolean }> = [];
 
   const registry = new RoomRegistry({
     createRoom(_canvasId, initialSnapshot) {
@@ -70,6 +77,14 @@ function buildEnv(
         },
         isClosed: () => false,
         close() {},
+        handleSocketConnect(opts) {
+          sessionConnects.push({
+            sessionId: opts.sessionId,
+            isReadonly: opts.isReadonly === true,
+          });
+        },
+        handleSocketMessage() {},
+        handleSocketClose() {},
       };
     },
     async loadSnapshot(canvasId) {
@@ -103,7 +118,12 @@ function buildEnv(
         const c = canvases[canvasId];
         if (!c?.exists) return { canvasExists: false, role: null };
         if (c.ownerId === userId) return { canvasExists: true, role: "editor" };
+        const shared = options?.sharedRoles?.[`${userId}:${canvasId}`];
+        if (shared) return { canvasExists: true, role: shared };
         return { canvasExists: true, role: null };
+      },
+      async resolveCanvasShareLink(token) {
+        return options?.links?.[token] ?? null;
       },
     },
     resolveClientIp(_req) {
@@ -133,6 +153,7 @@ function buildEnv(
     registry,
     saveCalls,
     loadCalls,
+    sessionConnects,
     async stop() {
       await syncServer.shutdown();
       bunServer.stop(true);
@@ -358,5 +379,166 @@ describe("close codes", () => {
     expect(close.code).toBe(4001);
     // saveCalls SHALL include the canvas — final flush executed.
     expect(env.saveCalls.some((c) => c.canvasId === CANVAS_OWNER)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Mid-session revocation — task 2.7
+// Spec: multiplayer-sync ADDED "Sync server kicks affected sessions when
+// access is revoked"
+// ---------------------------------------------------------------------------
+
+describe("notifyAccessRevoked — mid-session revocation", () => {
+  let env: TestEnv;
+
+  afterEach(async () => {
+    await env.stop();
+  });
+
+  test("kind:user closes only that user's open sessions and leaves peers open", async () => {
+    const SHARED = "user-shared";
+    env = buildEnv(
+      {
+        [CANVAS_OWNER]: { exists: true, ownerId: CANVAS_OWNER },
+      },
+      {
+        resolveUserId: async (req) => {
+          // Distinguish two simulated users by URL hint (test harness only).
+          if (new URL(req.url).searchParams.get("as") === "shared") return SHARED;
+          return CANVAS_OWNER;
+        },
+        sharedRoles: { [`${SHARED}:${CANVAS_OWNER}`]: "editor" },
+      },
+    );
+
+    const ownerWs = new WebSocket(wsUrl(env, CANVAS_OWNER));
+    const sharedWs = new WebSocket(`${wsUrl(env, CANVAS_OWNER)}?as=shared`);
+    await Promise.all([waitForOpen(ownerWs), waitForOpen(sharedWs)]);
+    await flush();
+
+    const sharedClose = waitForClose(sharedWs);
+    env.syncServer.notifyAccessRevoked(CANVAS_OWNER, { kind: "user", userId: SHARED });
+
+    const sharedResult = await sharedClose;
+    expect(sharedResult.code).toBe(4403);
+    // Owner connection MUST stay open.
+    expect(ownerWs.readyState).toBe(WebSocket.OPEN);
+
+    ownerWs.close();
+    await waitForClose(ownerWs);
+  });
+
+  test("kind:all-anonymous closes only anon: connections and leaves cookie sessions open", async () => {
+    const VIEW_TOKEN = "view-anon-view-anon-view-anon-view-anon-vie";
+    env = buildEnv(
+      {
+        [CANVAS_OWNER]: { exists: true, ownerId: CANVAS_OWNER },
+      },
+      {
+        links: { [VIEW_TOKEN]: { canvasId: CANVAS_OWNER, mode: "view" } },
+        // Simulate "browser without cookie" for token-bearing requests so
+        // the anon path is taken (cookie path wins when present, by design).
+        resolveUserId: async (req) =>
+          new URL(req.url).searchParams.has("token") ? null : CANVAS_OWNER,
+      },
+    );
+
+    const ownerWs = new WebSocket(wsUrl(env, CANVAS_OWNER));
+    const anonWs = new WebSocket(`${wsUrl(env, CANVAS_OWNER)}?token=${VIEW_TOKEN}`);
+    await Promise.all([waitForOpen(ownerWs), waitForOpen(anonWs)]);
+    await flush();
+
+    const anonClose = waitForClose(anonWs);
+    env.syncServer.notifyAccessRevoked(CANVAS_OWNER, { kind: "all-anonymous" });
+
+    const anonResult = await anonClose;
+    expect(anonResult.code).toBe(4403);
+    expect(ownerWs.readyState).toBe(WebSocket.OPEN);
+
+    ownerWs.close();
+    await waitForClose(ownerWs);
+  });
+
+  test("kind:all closes every connection with code 4404 (canvas-deletion semantics)", async () => {
+    env = buildEnv({
+      [CANVAS_OWNER]: { exists: true, ownerId: CANVAS_OWNER },
+    });
+    const a = new WebSocket(wsUrl(env, CANVAS_OWNER));
+    const b = new WebSocket(wsUrl(env, CANVAS_OWNER));
+    await Promise.all([waitForOpen(a), waitForOpen(b)]);
+    await flush();
+
+    const aClose = waitForClose(a);
+    const bClose = waitForClose(b);
+    env.syncServer.notifyAccessRevoked(CANVAS_OWNER, { kind: "all" });
+    const [ra, rb] = await Promise.all([aClose, bClose]);
+    expect(ra.code).toBe(4404);
+    expect(rb.code).toBe(4404);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Viewer-mode read-only — task 2.7
+// Spec: multiplayer-sync ADDED "Viewer role connects in read-only mode"
+// ---------------------------------------------------------------------------
+
+describe("viewer role connects in read-only mode", () => {
+  let env: TestEnv;
+
+  afterEach(async () => {
+    await env.stop();
+  });
+
+  test("shared viewer cookie path registers session with isReadonly=true", async () => {
+    const VIEWER = "user-viewer";
+    env = buildEnv(
+      { [CANVAS_OWNER]: { exists: true, ownerId: CANVAS_OWNER } },
+      {
+        resolveUserId: async () => VIEWER,
+        sharedRoles: { [`${VIEWER}:${CANVAS_OWNER}`]: "viewer" },
+      },
+    );
+    const ws = new WebSocket(wsUrl(env, CANVAS_OWNER));
+    await waitForOpen(ws);
+    await flush();
+
+    expect(env.sessionConnects).toHaveLength(1);
+    expect(env.sessionConnects[0]?.isReadonly).toBe(true);
+
+    ws.close();
+    await waitForClose(ws);
+  });
+
+  test("view-mode public-link path registers session with isReadonly=true", async () => {
+    const VIEW_TOKEN = "vw-token-vw-token-vw-token-vw-token-vw-toke";
+    env = buildEnv(
+      { [CANVAS_OWNER]: { exists: true, ownerId: CANVAS_OWNER } },
+      {
+        resolveUserId: async () => null, // anonymous — no cookie, only token
+        links: { [VIEW_TOKEN]: { canvasId: CANVAS_OWNER, mode: "view" } },
+      },
+    );
+    const ws = new WebSocket(`${wsUrl(env, CANVAS_OWNER)}?token=${VIEW_TOKEN}`);
+    await waitForOpen(ws);
+    await flush();
+
+    expect(env.sessionConnects).toHaveLength(1);
+    expect(env.sessionConnects[0]?.isReadonly).toBe(true);
+
+    ws.close();
+    await waitForClose(ws);
+  });
+
+  test("editor cookie path registers session with isReadonly=false", async () => {
+    env = buildEnv({ [CANVAS_OWNER]: { exists: true, ownerId: CANVAS_OWNER } });
+    const ws = new WebSocket(wsUrl(env, CANVAS_OWNER));
+    await waitForOpen(ws);
+    await flush();
+
+    expect(env.sessionConnects).toHaveLength(1);
+    expect(env.sessionConnects[0]?.isReadonly).toBe(false);
+
+    ws.close();
+    await waitForClose(ws);
   });
 });
