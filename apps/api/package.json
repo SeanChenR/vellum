@@ -13,6 +13,8 @@
   "dependencies": {
     "@react-email/components": "^1.0.12",
     "@tldraw/sync-core": "4.5.10",
+    "@tldraw/tlschema": "4.5.10",
+    "@tldraw/validate": "4.5.10",
     "@vellum/shared": "workspace:*",
     "better-auth": "^1.6.9",
     "drizzle-orm": "^0.45.2",

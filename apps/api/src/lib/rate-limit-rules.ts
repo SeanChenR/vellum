@@ -78,3 +78,12 @@ export const SHARE_INVITE_RULE: RateLimitRule = { windowMs: s(60), max: 10 };
  * scripts from invalidating links.
  */
 export const SHARE_LINK_ROTATE_RULE: RateLimitRule = { windowMs: s(60), max: 5 };
+
+/**
+ * POST /api/og — 30 OG fetches per 60 seconds per authenticated user.
+ * The two-tier cache (snapshot + LRU 30 min) absorbs most repeat hits;
+ * this rate limit covers cache misses and intentional refreshes.
+ *
+ * Design: docs/adr/0010-link-card-cache-two-tier.md
+ */
+export const OG_FETCH_RULE: RateLimitRule = { windowMs: s(60), max: 30 };

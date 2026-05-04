@@ -31,12 +31,15 @@ mock.module("tldraw", () => ({
     return null;
   },
   getSnapshot: mock(() => ({ store: {}, schema: {} })),
+  createShapeId: () => "shape:test-id",
 }));
 
 const fakeShapeUtil = { type: "fake-shape" };
 mock.module("@vellum/shared/shape-types", () => ({
-  customShapeUtils: [fakeShapeUtil],
   customShapeTools: [],
+}));
+mock.module("./shapes/shape-utils", () => ({
+  customShapeUtilClasses: [fakeShapeUtil],
 }));
 
 mock.module("../chrome/index", () => ({

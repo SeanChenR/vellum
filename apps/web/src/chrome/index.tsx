@@ -11,6 +11,7 @@
 import React, { createContext, useContext } from "react";
 import { TopBar } from "./TopBar";
 import { MainMenu } from "./MainMenu";
+import { VellumToolbar } from "../canvas/VellumToolbar";
 import type { TopBarProps } from "./TopBar";
 import type { MainMenuProps } from "./MainMenu";
 import type { TLComponents } from "tldraw";
@@ -53,6 +54,9 @@ function VellumMainMenu() {
 export const vellumChromeComponents: TLComponents = {
   TopPanel: VellumTopPanel,
   MainMenu: VellumMainMenu,
+  // 4 custom shape buttons appended inline with tldraw's built-in tools
+  // on the same horizontal toolbar.
+  Toolbar: VellumToolbar,
   // Explicitly null to hide tldraw's default slots
   SharePanel: null,
   HelpMenu: null,

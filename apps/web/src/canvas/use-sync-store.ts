@@ -18,9 +18,16 @@
 
 import { useEffect, useMemo } from "react";
 import { useSync, type RemoteTLStoreWithStatus } from "@tldraw/sync";
-import type { TLAssetStore } from "tldraw";
+import { defaultBindingUtils, defaultShapeUtils, type TLAssetStore } from "tldraw";
 import { create } from "zustand";
 import { useAuth } from "../auth/useAuth";
+import { customShapeUtilClasses } from "./shapes/shape-utils";
+
+// Module-level so the array reference is stable across re-renders.
+// Passing a fresh `[...defaultShapeUtils, ...customShapeUtilClasses]`
+// each render makes useSync rebuild the store on every tick → infinite
+// re-render loop ("Too many re-renders").
+const ALL_SHAPE_UTILS = [...defaultShapeUtils, ...customShapeUtilClasses];
 
 // ---------------------------------------------------------------------------
 // Public types + constants
@@ -267,6 +274,11 @@ export function useSyncStore(canvasId: string, options?: UseSyncStoreOptions): U
     uri,
     assets: inlineAssetStore,
     userInfo,
+    // Schema must match the server's: default shapes + bindings PLUS our
+    // four custom shapes. Reference must be stable (module-level) — see
+    // ALL_SHAPE_UTILS comment above.
+    shapeUtils: ALL_SHAPE_UTILS,
+    bindingUtils: defaultBindingUtils,
   });
 
   // tldraw keeps `status: synced-remote` even after the WebSocket drops

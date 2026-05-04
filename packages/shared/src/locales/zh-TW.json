@@ -159,6 +159,62 @@
       "emptyMembers": "目前沒有其他成員。"
     }
   },
+  "shapes": {
+    "common": {
+      "edit": "編輯",
+      "save": "儲存",
+      "cancel": "取消",
+      "lockedBy": "{{name}} 正在編輯",
+      "locked": "編輯中"
+    },
+    "markdown": {
+      "toolbarTooltip": "插入 Markdown",
+      "defaultContent": "# 新筆記\n\n開始打字…",
+      "editDialogTitle": "編輯 Markdown",
+      "editPlaceholder": "用 Markdown 寫下你的想法…"
+    },
+    "code": {
+      "toolbarTooltip": "插入程式碼",
+      "defaultContent": "// 寫一些程式碼",
+      "editDialogTitle": "編輯程式碼",
+      "editPlaceholder": "在這裡寫程式碼…",
+      "copyButton": "複製",
+      "copied": "已複製",
+      "languageSelectorLabel": "選擇語言",
+      "languages": {
+        "javascript": "JavaScript",
+        "typescript": "TypeScript",
+        "python": "Python",
+        "go": "Go",
+        "swift": "Swift",
+        "rust": "Rust",
+        "html": "HTML",
+        "css": "CSS",
+        "sql": "SQL",
+        "bash": "Bash",
+        "markdown": "Markdown",
+        "json": "JSON"
+      }
+    },
+    "callout": {
+      "toolbarTooltip": "插入提示框",
+      "defaultContent": "在這裡寫提示內容",
+      "editDialogTitle": "編輯提示框",
+      "editPlaceholder": "在這裡寫提示內容…",
+      "variants": {
+        "info": "資訊",
+        "warning": "注意",
+        "danger": "警告"
+      }
+    },
+    "linkCard": {
+      "toolbarTooltip": "插入連結卡片",
+      "urlLabel": "連結網址",
+      "previewUnavailable": "無法載入預覽",
+      "retry": "重新嘗試",
+      "loading": "載入連結預覽中…"
+    }
+  },
   "email": {
     "shareInvite": {
       "subject": "{{inviter}} 邀請您共同編輯畫布「{{title}}」",
@@ -200,6 +256,15 @@
       "inviteNotFound": "找不到此邀請",
       "linkClosed": "此畫布的公開連結目前為關閉狀態",
       "roleInvalid": "Role 必須是「editor」或「viewer」"
+    },
+    "shape": {
+      "code": {
+        "unknownLanguage": "找不到此語言，已以純文字顯示"
+      }
+    },
+    "og": {
+      "fetchFailed": "無法載入此連結的預覽",
+      "invalidUrl": "此連結無法存取"
     },
     "folder": {
       "notFound": "找不到此資料夾",

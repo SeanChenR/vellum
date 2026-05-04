@@ -159,6 +159,62 @@
       "emptyMembers": "No one else has access yet."
     }
   },
+  "shapes": {
+    "common": {
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "lockedBy": "{{name}} is editing",
+      "locked": "Editing"
+    },
+    "markdown": {
+      "toolbarTooltip": "Insert Markdown",
+      "defaultContent": "# New note\n\nStart typing…",
+      "editDialogTitle": "Edit Markdown",
+      "editPlaceholder": "Write your thoughts in Markdown…"
+    },
+    "code": {
+      "toolbarTooltip": "Insert code",
+      "defaultContent": "// write some code",
+      "editDialogTitle": "Edit Code",
+      "editPlaceholder": "Write code here…",
+      "copyButton": "Copy",
+      "copied": "Copied",
+      "languageSelectorLabel": "Select language",
+      "languages": {
+        "javascript": "JavaScript",
+        "typescript": "TypeScript",
+        "python": "Python",
+        "go": "Go",
+        "swift": "Swift",
+        "rust": "Rust",
+        "html": "HTML",
+        "css": "CSS",
+        "sql": "SQL",
+        "bash": "Bash",
+        "markdown": "Markdown",
+        "json": "JSON"
+      }
+    },
+    "callout": {
+      "toolbarTooltip": "Insert callout",
+      "defaultContent": "Write your callout content here",
+      "editDialogTitle": "Edit Callout",
+      "editPlaceholder": "Write your callout content here…",
+      "variants": {
+        "info": "Info",
+        "warning": "Warning",
+        "danger": "Danger"
+      }
+    },
+    "linkCard": {
+      "toolbarTooltip": "Insert link card",
+      "urlLabel": "Link URL",
+      "previewUnavailable": "Preview unavailable",
+      "retry": "Try again",
+      "loading": "Loading link preview…"
+    }
+  },
   "email": {
     "shareInvite": {
       "subject": "{{inviter}} invited you to \"{{title}}\" on Vellum",
@@ -200,6 +256,15 @@
       "inviteNotFound": "Invite not found.",
       "linkClosed": "The public link for this canvas is currently closed.",
       "roleInvalid": "Role must be either \"editor\" or \"viewer\"."
+    },
+    "shape": {
+      "code": {
+        "unknownLanguage": "Language not recognized — falling back to plain text"
+      }
+    },
+    "og": {
+      "fetchFailed": "Couldn't load preview for this link",
+      "invalidUrl": "This link can't be reached"
     },
     "folder": {
       "notFound": "Folder not found",

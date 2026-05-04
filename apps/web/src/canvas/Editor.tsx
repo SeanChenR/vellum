@@ -15,9 +15,11 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Tldraw } from "tldraw";
+import { Tldraw, createShapeId } from "tldraw";
 import "tldraw/tldraw.css";
-import { customShapeUtils, customShapeTools } from "@vellum/shared/shape-types";
+import { customShapeTools } from "@vellum/shared/shape-types";
+import { customShapeUtilClasses } from "./shapes/shape-utils";
+import { detectPastedUrl } from "./shapes/paste-detect";
 import { VellumChromeContext, vellumChromeComponents } from "../chrome/index";
 import type { VellumChromeContextValue } from "../chrome/index";
 import type { AuthUser } from "../auth/useAuth";
@@ -102,7 +104,7 @@ export function Editor({
           {sync.status === "ready" && sync.store ? (
             <Tldraw
               store={sync.store}
-              shapeUtils={customShapeUtils}
+              shapeUtils={customShapeUtilClasses}
               tools={customShapeTools}
               components={vellumChromeComponents}
               options={{ maxPages: 1 }}
@@ -112,6 +114,32 @@ export function Editor({
                 // (TLSocketRoom drops mutations from readonly sessions); this
                 // is purely a client-UI affordance so the toolbar reflects it.
                 editor.updateInstanceState({ isReadonly: isReadOnly });
+
+                // Paste-detect: a single http(s) URL pasted onto the canvas
+                // becomes a Link card shape (instead of tldraw's default
+                // bookmark / text behaviour). Multi-line / surrounded text
+                // falls through to the built-in text handler.
+                editor.registerExternalContentHandler("url", ({ url, point }) => {
+                  const detected = detectPastedUrl(url);
+                  if (!detected) return;
+                  const center = point ?? editor.getViewportPageBounds().center;
+                  const id = createShapeId();
+                  editor.createShape({
+                    id,
+                    type: "link-card",
+                    x: center.x - 180,
+                    y: center.y - 110,
+                    props: {
+                      url: detected.url,
+                      state: "pending",
+                      metadata: null,
+                      fetchedAt: null,
+                      w: 360,
+                      h: 220,
+                    },
+                  });
+                  editor.select(id);
+                });
               }}
             />
           ) : sync.status === "error" ? (

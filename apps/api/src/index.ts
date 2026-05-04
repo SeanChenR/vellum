@@ -22,6 +22,7 @@
 import { VELLUM_VERSION } from "@vellum/shared";
 import { eq, desc, and, ne } from "drizzle-orm";
 import { TLSocketRoom, type RoomSnapshot } from "@tldraw/sync-core";
+import { vellumStoreSchema } from "./sync/shape-schemas";
 
 import { logger } from "./lib/logger";
 import { RateLimiter } from "./lib/rate-limiter";
@@ -30,6 +31,8 @@ import { handleAccountRequest } from "./account/routes";
 import { handleCanvasRequest } from "./canvas/index";
 import { handleFolderRequest } from "./folder/index";
 import { handleShareRequest, type ShareHandlerDeps } from "./share/index";
+import { handleOgRequest, createInMemoryOgCache, type OgHandlerDeps } from "./og/index";
+import { validateExternalUrl } from "./lib/validate-external-url";
 import { renderShareInviteEmail } from "./email/templates/share-invite";
 import { createMailpitEmailService } from "./email/mailpit";
 import { getDb } from "./db/index";
@@ -95,6 +98,7 @@ const syncRegistry: RoomRegistry<SyncRoomLike> = new RoomRegistry<SyncRoomLike>(
   createRoom(_canvasId, initialSnapshot) {
     return new TLSocketRoom({
       initialSnapshot,
+      schema: vellumStoreSchema,
     }) as unknown as SyncRoomLike;
   },
   loadSnapshot: loadSnapshotFromDb,
@@ -423,6 +427,52 @@ const canvasDeps = {
 };
 
 // ---------------------------------------------------------------------------
+// Open Graph metadata endpoint (Link card shape)
+// ---------------------------------------------------------------------------
+
+const ogCache = createInMemoryOgCache({ capacity: 1_000 });
+
+const ogDeps: OgHandlerDeps = {
+  validateExternalUrl,
+  async fetch(targetUrl) {
+    const ac = new AbortController();
+    const timeout = setTimeout(() => ac.abort(), 5_000);
+    try {
+      const resp = await fetch(targetUrl, { signal: ac.signal, redirect: "follow" });
+      const contentType = resp.headers.get("content-type") ?? "";
+      // Read body up to a 5 MB cap; abort if exceeded.
+      let body = "";
+      if (resp.body) {
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let total = 0;
+        const MAX = 5 * 1024 * 1024;
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          total += value.byteLength;
+          if (total > MAX) {
+            ac.abort();
+            throw new Error("response too large");
+          }
+          body += decoder.decode(value, { stream: true });
+        }
+        body += decoder.decode();
+      }
+      return {
+        ok: resp.ok,
+        status: resp.status,
+        contentType,
+        text: async () => body,
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  },
+  now: () => Date.now(),
+};
+
+// ---------------------------------------------------------------------------
 // Server
 // ---------------------------------------------------------------------------
 
@@ -476,6 +526,13 @@ const server = Bun.serve<SyncSocketData>({
       const session = await getSession(req);
       const shareResponse = await handleShareRequest(req, session, shareDeps);
       if (shareResponse) return respond(shareResponse);
+    }
+
+    // OG metadata endpoint (Link card shape)
+    if (url.pathname === "/api/og" && req.method === "POST") {
+      const session = await getSession(req);
+      const ogResponse = await handleOgRequest(req, session, rateLimiter, ogDeps, ogCache);
+      return respond(ogResponse);
     }
 
     // Account routes (protected)
