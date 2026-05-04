@@ -147,7 +147,7 @@ tests:
 ---
 ### Requirement: TopBar exposes canvas title, folder breadcrumb, share placeholder, and user menu
 
-The TopBar component SHALL display, from left to right: the Vellum logo, a folder breadcrumb showing the canvas's parent folder name (or a localized "My canvases" label when the canvas has no folder), the canvas title (clickable to open a rename dialog), a Share button placeholder, and a user menu showing the signed-in user's avatar with a sign-out item.
+The TopBar component SHALL display, from left to right: the Vellum logo, a folder breadcrumb showing the canvas's parent folder name (or a localized "My canvases" label when the canvas has no folder), the canvas title (clickable to open a rename dialog), a Share button (visible only to the canvas owner) that opens the share dialog defined by the `sharing` capability, the multiplayer presence collaborator avatars, the sync connection indicator, and a user menu showing the signed-in user's avatar with a sign-out item. The previous Phase 1 placeholder behaviour where Share displayed `canvas.chrome.topbar.sharePlaceholderToast` is superseded — that toast key is no longer referenced. When the local user has read-only access (the multiplayer-sync handshake resolved a viewer role), the TopBar SHALL also display a "View only" badge using the localized key `canvas.chrome.topbar.viewOnlyBadge`.
 
 #### Scenario: Canvas with a parent folder
 
@@ -159,12 +159,23 @@ The TopBar component SHALL display, from left to right: the Vellum logo, a folde
 - **WHEN** the loaded canvas has a null `folder` value
 - **THEN** the breadcrumb element MUST display the localized string keyed `canvas.chrome.topbar.breadcrumb.myCanvases`
 
-#### Scenario: Share button placeholder triggers a not-yet-available toast
+#### Scenario: Share button opens the share dialog for the owner
 
-- **WHEN** the user clicks the Share button in the TopBar
-- **THEN** the system MUST invoke the `onShareClick` callback prop
-- **AND** the default callback wired by the editor MUST display a toast whose body text comes from the localized key `canvas.chrome.topbar.sharePlaceholderToast`
-- **AND** no share dialog or modal MUST open
+- **WHEN** the canvas owner clicks the Share button in the TopBar
+- **THEN** the system MUST open the `ShareDialog` modal as defined in the `sharing` capability
+- **AND** the system MUST NOT display the legacy `canvas.chrome.topbar.sharePlaceholderToast` toast
+
+#### Scenario: Share button is hidden for non-owners
+
+- **GIVEN** the local user is a shared editor, shared viewer, or anonymous public-link visitor (i.e., not the canvas owner)
+- **WHEN** the TopBar is rendered
+- **THEN** the Share button MUST NOT be present in the DOM
+
+#### Scenario: Read-only badge appears for viewer role
+
+- **GIVEN** the multiplayer-sync handshake resolved the local user's role as `viewer`
+- **WHEN** the TopBar is rendered
+- **THEN** a "View only" badge MUST be visible whose label comes from the localized key `canvas.chrome.topbar.viewOnlyBadge`
 
 #### Scenario: Title click opens a rename dialog
 
@@ -175,120 +186,66 @@ The TopBar component SHALL display, from left to right: the Vellum logo, a folde
 
 
 <!-- @trace
-source: add-canvas-editor-shell
-updated: 2026-04-29
+source: add-sharing
+updated: 2026-05-04
 code:
-  - apps/web/src/components/CanvasRenameDialog.tsx
-  - packages/shared/src/index.ts
-  - packages/shared/package.json
-  - apps/web/src/components/FolderDeleteDialog.tsx
-  - apps/web/src/account/ProfilePage.tsx
-  - .spectra.yaml
-  - apps/api/src/auth/route-guard.ts
-  - apps/web/src/canvas/CanvasPage.tsx
-  - apps/web/src/main.tsx
-  - package.json
-  - apps/api/src/index.ts
-  - apps/api/drizzle/0001_new_shinko_yamashiro.sql
-  - apps/api/.env.example
-  - apps/web/src/components/FolderRenameDialog.tsx
-  - bun.lock
-  - apps/api/drizzle/0000_hesitant_night_nurse.sql
-  - scripts/dev.ts
-  - apps/web/src/components/CanvasCard.tsx
-  - packages/shared/src/api-contract.ts
-  - apps/api/drizzle/meta/0000_snapshot.json
-  - apps/api/drizzle/meta/_journal.json
-  - apps/web/src/auth/OAuthCallbackPage.tsx
-  - apps/web/src/components/FolderCreateDialog.tsx
-  - apps/api/package.json
-  - apps/web/src/auth/RouteGuard.tsx
-  - apps/web/src/chrome/index.tsx
-  - apps/api/src/folder/index.ts
-  - packages/shared/src/shape-types.ts
-  - apps/api/drizzle/meta/0001_snapshot.json
-  - scripts/dev-proxy.ts
   - apps/api/src/lib/permission.ts
-  - apps/web/src/auth/MagicLinkVerifyPage.tsx
-  - apps/api/src/lib/rate-limit-rules.ts
-  - apps/web/src/account/SessionsPage.tsx
-  - apps/web/src/canvas/useCanvasQuery.ts
-  - apps/api/src/auth/rate-limit.ts
-  - apps/api/src/email/mailpit.ts
-  - packages/shared/src/locales/zh-TW.json
-  - apps/api/src/email/templates/magic-link.tsx
-  - apps/web/src/auth/useAuth.ts
-  - apps/web/src/dashboard/useCanvasList.ts
-  - packages/shared/src/email/types.ts
-  - apps/api/tsconfig.json
-  - apps/web/src/auth/LoginPage.tsx
-  - apps/web/package.json
-  - apps/web/src/chrome/MainMenu.tsx
-  - apps/web/src/components/FolderTree.tsx
-  - packages/shared/src/db/auth-schema.ts
-  - apps/web/src/dashboard/useFolderList.ts
-  - apps/web/src/components/CanvasDeleteDialog.tsx
-  - apps/web/src/router.tsx
-  - apps/api/src/lib/logger.ts
-  - apps/api/src/auth/index.ts
-  - apps/api/src/db/schema.ts
-  - apps/web/src/canvas/persistence.ts
-  - packages/shared/src/locales/en.json
-  - apps/api/src/account/profile-validator.ts
-  - apps/api/src/auth/session-cookie-parser.ts
-  - apps/api/src/canvas/index.ts
-  - apps/web/src/components/CanvasCreateDialog.tsx
-  - apps/api/src/account/routes.ts
-  - apps/api/src/auth/config.ts
-  - apps/api/src/account/delete-account-validator.ts
-  - apps/web/src/dashboard/DashboardPage.tsx
-  - apps/web/src/canvas/use-autosave.ts
-  - apps/web/src/account/DeleteAccountDialog.tsx
-  - apps/web/src/chrome/TopBar.tsx
+  - apps/api/src/share/index.ts
+  - apps/web/src/auth/AnonymousCanvasGuard.tsx
+  - apps/api/src/sync/index.ts
   - apps/web/src/canvas/Editor.tsx
-  - docker-compose.yml
+  - packages/shared/src/locales/zh-TW.json
+  - apps/api/drizzle/0002_0002_share.sql
+  - apps/api/src/index.ts
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/router.tsx
+  - apps/api/src/db/schema.ts
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/api/src/share/link-token.ts
+  - apps/web/src/canvas/useCanvasQuery.ts
+  - apps/web/src/canvas/useShareState.ts
+  - packages/shared/src/locales/en.json
+  - apps/api/src/email/templates/share-invite.tsx
+  - apps/api/src/share/invite-token.ts
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/api/drizzle/meta/0002_snapshot.json
+  - apps/api/src/sync/auth.ts
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/api/src/lib/rate-limit-rules.ts
+  - apps/api/drizzle/meta/_journal.json
+  - apps/web/src/auth/safe-redirect.ts
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/canvas/use-sync-store.ts
+  - docs/adr/0007-sharing-trade-offs.md
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/api/src/canvas/index.ts
+  - apps/web/src/dashboard/DashboardPage.tsx
 tests:
-  - apps/web/src/canvas/use-autosave.test.ts
-  - apps/api/src/folder/folder.test.ts
-  - apps/api/src/db/schema.test.ts
-  - apps/web/src/account/SessionsPage.test.tsx
-  - apps/api/src/email/mailpit.test.ts
-  - apps/web/src/chrome/MainMenu.test.tsx
-  - apps/web/src/account/DeleteAccountDialog.test.tsx
-  - apps/api/src/auth/logger-redaction.test.ts
-  - apps/web/src/account/ProfilePage.test.tsx
-  - apps/api/src/auth/route-guard.test.ts
-  - apps/web/src/router.test.tsx
-  - e2e/auth-magic-link.spec.ts
-  - apps/api/src/auth/rate-limit.test.ts
-  - apps/web/src/dashboard/DashboardPage.test.tsx
-  - e2e/auth-google-oauth.spec.ts
-  - apps/api/src/auth/session-cookie.test.ts
-  - apps/web/src/canvas/Editor.no-canvas-animation.test.tsx
-  - apps/api/src/account/delete-account.test.ts
+  - e2e/share-public-link.spec.ts
+  - apps/web/src/auth/AnonymousCanvasGuard.test.tsx
+  - apps/api/src/sync/index.test.ts
   - apps/web/src/auth/LoginPage.test.tsx
-  - e2e/account-delete.spec.ts
-  - apps/web/src/canvas/CanvasPage.test.tsx
-  - apps/web/src/components/CanvasCard.test.tsx
-  - apps/api/src/account/sessions.test.ts
-  - apps/api/src/lib/rate-limit-rules.test.ts
-  - apps/web/src/components/FolderTree.test.tsx
-  - apps/api/src/auth/error-key-contract.test.ts
-  - e2e/auth-logout-and-sessions.spec.ts
-  - packages/shared/src/locales/locales.test.ts
-  - apps/web/src/canvas/persistence.test.ts
-  - apps/web/src/canvas/Editor.test.tsx
-  - apps/api/src/auth/google-oauth.test.ts
-  - apps/web/src/auth/MagicLinkVerifyPage.test.tsx
-  - apps/api/src/auth/logout.test.ts
-  - apps/api/src/auth/magic-link.test.ts
   - apps/api/src/lib/permission.test.ts
-  - apps/web/src/dashboard/useCanvasList.test.ts
+  - apps/api/src/canvas/canvas-share.test.ts
+  - e2e/share-invite.spec.ts
+  - apps/api/src/share/invite-token.test.ts
+  - apps/api/src/share/link-token.test.ts
+  - apps/web/src/canvas/useCanvasQuery.test.ts
+  - apps/api/src/sync/auth.test.ts
+  - apps/web/src/canvas/ShareDialog.test.tsx
+  - apps/web/src/auth/InviteErrorPage.test.tsx
+  - apps/web/src/canvas/Editor.test.tsx
+  - e2e/sharing-acceptance.spec.ts
+  - apps/api/src/canvas/canvas-scope-shared.test.ts
+  - apps/web/src/auth/PostLoginPage.test.tsx
+  - apps/web/src/canvas/useShareState.test.ts
   - apps/web/src/chrome/TopBar.test.tsx
-  - apps/web/src/auth/RouteGuard.test.tsx
-  - apps/api/src/canvas/canvas.test.ts
-  - packages/shared/src/api-contract.test.ts
-  - apps/api/src/account/profile.test.ts
+  - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/api/src/share/share.test.ts
+  - apps/web/src/canvas/CanvasPage.test.tsx
+  - apps/web/src/canvas/use-sync-store.test.ts
+  - apps/api/src/email/share-invite.test.ts
 -->
 
 ---
@@ -1054,4 +1011,84 @@ tests:
   - e2e/multiplayer-sync.spec.ts
   - apps/api/src/sync/auth.test.ts
   - apps/web/src/canvas/CollaboratorAvatars.test.tsx
+-->
+
+---
+### Requirement: Editor reflects the resolved sync role on the tldraw component
+
+When `useSyncStore` resolves a viewer role for the current canvas (handshake gave back a read-only session), the Editor SHALL pass `isReadonly={true}` to the `<Tldraw>` component so the canvas surface enters tldraw's built-in read-only state (toolbar disabled, shapes not draggable, text not editable). When the resolved role is editor, the Editor SHALL pass `isReadonly={false}` (or omit the prop). The Editor SHALL update the prop reactively when the role changes mid-session (e.g., the owner downgraded the user and reconnect produced a new role).
+
+#### Scenario: Viewer role disables editing in tldraw
+
+- **GIVEN** `useSyncStore` returns `{ status: 'ready', store, role: 'viewer' }`
+- **WHEN** the Editor renders
+- **THEN** the `<Tldraw>` component MUST be invoked with `isReadonly={true}`
+
+#### Scenario: Editor role does not disable editing
+
+- **GIVEN** `useSyncStore` returns `{ status: 'ready', store, role: 'editor' }`
+- **WHEN** the Editor renders
+- **THEN** the `<Tldraw>` component MUST be invoked with `isReadonly={false}` or no `isReadonly` prop
+
+<!-- @trace
+source: add-sharing
+updated: 2026-05-04
+code:
+  - apps/api/src/lib/permission.ts
+  - apps/api/src/share/index.ts
+  - apps/web/src/auth/AnonymousCanvasGuard.tsx
+  - apps/api/src/sync/index.ts
+  - apps/web/src/canvas/Editor.tsx
+  - packages/shared/src/locales/zh-TW.json
+  - apps/api/drizzle/0002_0002_share.sql
+  - apps/api/src/index.ts
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/router.tsx
+  - apps/api/src/db/schema.ts
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/api/src/share/link-token.ts
+  - apps/web/src/canvas/useCanvasQuery.ts
+  - apps/web/src/canvas/useShareState.ts
+  - packages/shared/src/locales/en.json
+  - apps/api/src/email/templates/share-invite.tsx
+  - apps/api/src/share/invite-token.ts
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/api/drizzle/meta/0002_snapshot.json
+  - apps/api/src/sync/auth.ts
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/api/src/lib/rate-limit-rules.ts
+  - apps/api/drizzle/meta/_journal.json
+  - apps/web/src/auth/safe-redirect.ts
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/canvas/use-sync-store.ts
+  - docs/adr/0007-sharing-trade-offs.md
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/api/src/canvas/index.ts
+  - apps/web/src/dashboard/DashboardPage.tsx
+tests:
+  - e2e/share-public-link.spec.ts
+  - apps/web/src/auth/AnonymousCanvasGuard.test.tsx
+  - apps/api/src/sync/index.test.ts
+  - apps/web/src/auth/LoginPage.test.tsx
+  - apps/api/src/lib/permission.test.ts
+  - apps/api/src/canvas/canvas-share.test.ts
+  - e2e/share-invite.spec.ts
+  - apps/api/src/share/invite-token.test.ts
+  - apps/api/src/share/link-token.test.ts
+  - apps/web/src/canvas/useCanvasQuery.test.ts
+  - apps/api/src/sync/auth.test.ts
+  - apps/web/src/canvas/ShareDialog.test.tsx
+  - apps/web/src/auth/InviteErrorPage.test.tsx
+  - apps/web/src/canvas/Editor.test.tsx
+  - e2e/sharing-acceptance.spec.ts
+  - apps/api/src/canvas/canvas-scope-shared.test.ts
+  - apps/web/src/auth/PostLoginPage.test.tsx
+  - apps/web/src/canvas/useShareState.test.ts
+  - apps/web/src/chrome/TopBar.test.tsx
+  - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/api/src/share/share.test.ts
+  - apps/web/src/canvas/CanvasPage.test.tsx
+  - apps/web/src/canvas/use-sync-store.test.ts
+  - apps/api/src/email/share-invite.test.ts
 -->

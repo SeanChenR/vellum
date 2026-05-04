@@ -164,7 +164,7 @@ tests:
 ---
 ### Requirement: Canvas list query with scope filter
 
-The system SHALL provide an authenticated REST endpoint `GET /api/canvas` that returns canvases visible to the current user. The endpoint SHALL accept a `scope` query parameter taking one of `owned` (default) or `shared`. Owned scope SHALL return canvases where `owner_id` equals the user. Shared scope SHALL return canvases shared to the user; the resolution path is owned by the `add-sharing` capability and SHALL return an empty array until that capability is implemented.
+The system SHALL provide an authenticated REST endpoint `GET /api/canvas` that returns canvases visible to the current user. The endpoint SHALL accept a `scope` query parameter taking one of `owned` (default) or `shared`. Owned scope SHALL return canvases where `owner_id` equals the user. Shared scope SHALL return canvases for which the user has a row in `canvas_shares`, joined to `canvases` to materialize the same DTO shape as owned-scope results. Both scopes SHALL be sorted by `updated_at` descending.
 
 #### Scenario: Default scope returns owned canvases sorted by recency
 
@@ -190,10 +190,18 @@ The system SHALL provide an authenticated REST endpoint `GET /api/canvas` that r
 - **WHEN** an authenticated user GETs `/api/canvas?folderId=null`
 - **THEN** the system SHALL return only canvases whose `folder_id` is NULL and `owner_id` matches the user
 
-#### Scenario: Shared scope short-circuits to empty array in phase 1
+#### Scenario: Shared scope returns canvases joined through canvas_shares
 
-- **WHEN** an authenticated user GETs `/api/canvas?scope=shared`
-- **THEN** the system SHALL return HTTP 200 with body `{ data: [], meta: { total: 0 } }` until the `add-sharing` capability is implemented
+- **GIVEN** the user has 2 rows in `canvas_shares` referencing 2 different canvases owned by other users
+- **WHEN** the user GETs `/api/canvas?scope=shared`
+- **THEN** the system SHALL return HTTP 200 with body `{ data: <Canvas[]>, meta: { total: 2 } }`
+- **AND** entries SHALL contain those 2 canvases, sorted by `updated_at` descending
+
+#### Scenario: Shared scope excludes canvases the user owns
+
+- **GIVEN** the user owns canvas A and is also a shared editor on canvas A (an unusual but possible state)
+- **WHEN** the user GETs `/api/canvas?scope=shared`
+- **THEN** canvas A MUST NOT appear in the result; shared scope returns only canvases the user does NOT own
 
 #### Scenario: Unauthenticated list request
 
@@ -202,120 +210,66 @@ The system SHALL provide an authenticated REST endpoint `GET /api/canvas` that r
 
 
 <!-- @trace
-source: add-canvas-folder-crud
-updated: 2026-04-29
+source: add-sharing
+updated: 2026-05-04
 code:
-  - apps/web/src/components/CanvasCreateDialog.tsx
-  - scripts/dev.ts
-  - apps/api/src/auth/rate-limit.ts
-  - apps/web/src/account/ProfilePage.tsx
-  - .spectra.yaml
-  - packages/shared/src/email/types.ts
-  - apps/api/tsconfig.json
-  - apps/web/package.json
-  - apps/web/src/components/CanvasRenameDialog.tsx
-  - apps/web/src/auth/LoginPage.tsx
-  - apps/web/src/components/FolderCreateDialog.tsx
-  - apps/web/src/components/FolderTree.tsx
-  - apps/web/src/dashboard/DashboardPage.tsx
-  - apps/web/src/dashboard/useFolderList.ts
-  - apps/api/src/auth/index.ts
-  - apps/web/src/main.tsx
-  - packages/shared/src/shape-types.ts
-  - package.json
-  - apps/web/src/components/CanvasCard.tsx
-  - apps/api/.env.example
-  - packages/shared/src/db/auth-schema.ts
-  - apps/api/drizzle/meta/0000_snapshot.json
-  - apps/api/src/lib/logger.ts
-  - apps/api/drizzle/0001_new_shinko_yamashiro.sql
-  - apps/api/src/db/schema.ts
-  - apps/web/src/chrome/MainMenu.tsx
-  - packages/shared/src/index.ts
-  - apps/web/src/router.tsx
-  - apps/api/src/folder/index.ts
-  - apps/api/drizzle/meta/0001_snapshot.json
-  - apps/api/src/auth/config.ts
-  - apps/api/src/lib/rate-limit-rules.ts
-  - apps/web/src/account/DeleteAccountDialog.tsx
-  - apps/api/src/index.ts
-  - docker-compose.yml
-  - apps/web/src/account/SessionsPage.tsx
-  - apps/api/src/canvas/index.ts
-  - apps/web/src/dashboard/useCanvasList.ts
-  - apps/web/src/canvas/persistence.ts
-  - apps/api/src/email/mailpit.ts
-  - apps/web/src/chrome/index.tsx
-  - packages/shared/package.json
-  - apps/web/src/auth/MagicLinkVerifyPage.tsx
-  - apps/api/src/email/templates/magic-link.tsx
-  - apps/web/src/canvas/Editor.tsx
-  - apps/api/drizzle/meta/_journal.json
-  - apps/web/src/auth/RouteGuard.tsx
-  - apps/web/src/canvas/CanvasPage.tsx
-  - apps/web/src/auth/useAuth.ts
-  - scripts/dev-proxy.ts
-  - packages/shared/src/locales/zh-TW.json
-  - apps/api/src/account/profile-validator.ts
-  - apps/api/drizzle/0000_hesitant_night_nurse.sql
-  - apps/web/src/chrome/TopBar.tsx
-  - apps/web/src/components/FolderDeleteDialog.tsx
-  - packages/shared/src/api-contract.ts
-  - apps/api/src/auth/session-cookie-parser.ts
-  - apps/web/src/auth/OAuthCallbackPage.tsx
-  - apps/api/src/account/routes.ts
   - apps/api/src/lib/permission.ts
-  - apps/api/package.json
+  - apps/api/src/share/index.ts
+  - apps/web/src/auth/AnonymousCanvasGuard.tsx
+  - apps/api/src/sync/index.ts
+  - apps/web/src/canvas/Editor.tsx
+  - packages/shared/src/locales/zh-TW.json
+  - apps/api/drizzle/0002_0002_share.sql
+  - apps/api/src/index.ts
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/router.tsx
+  - apps/api/src/db/schema.ts
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/api/src/share/link-token.ts
   - apps/web/src/canvas/useCanvasQuery.ts
+  - apps/web/src/canvas/useShareState.ts
   - packages/shared/src/locales/en.json
-  - apps/web/src/canvas/use-autosave.ts
-  - apps/web/src/components/FolderRenameDialog.tsx
-  - bun.lock
-  - apps/api/src/auth/route-guard.ts
-  - apps/web/src/components/CanvasDeleteDialog.tsx
-  - apps/api/src/account/delete-account-validator.ts
+  - apps/api/src/email/templates/share-invite.tsx
+  - apps/api/src/share/invite-token.ts
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/api/drizzle/meta/0002_snapshot.json
+  - apps/api/src/sync/auth.ts
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/api/src/lib/rate-limit-rules.ts
+  - apps/api/drizzle/meta/_journal.json
+  - apps/web/src/auth/safe-redirect.ts
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/canvas/use-sync-store.ts
+  - docs/adr/0007-sharing-trade-offs.md
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/api/src/canvas/index.ts
+  - apps/web/src/dashboard/DashboardPage.tsx
 tests:
-  - apps/api/src/folder/folder.test.ts
-  - packages/shared/src/api-contract.test.ts
-  - apps/api/src/email/mailpit.test.ts
-  - apps/api/src/db/schema.test.ts
-  - apps/api/src/auth/route-guard.test.ts
+  - e2e/share-public-link.spec.ts
+  - apps/web/src/auth/AnonymousCanvasGuard.test.tsx
+  - apps/api/src/sync/index.test.ts
   - apps/web/src/auth/LoginPage.test.tsx
-  - apps/web/src/canvas/CanvasPage.test.tsx
-  - apps/api/src/account/delete-account.test.ts
-  - apps/api/src/auth/rate-limit.test.ts
-  - apps/api/src/auth/error-key-contract.test.ts
-  - packages/shared/src/locales/locales.test.ts
-  - apps/api/src/auth/logger-redaction.test.ts
-  - apps/api/src/account/profile.test.ts
-  - apps/api/src/lib/rate-limit-rules.test.ts
-  - apps/web/src/auth/RouteGuard.test.tsx
-  - apps/web/src/dashboard/useCanvasList.test.ts
-  - apps/web/src/auth/MagicLinkVerifyPage.test.tsx
-  - apps/api/src/auth/magic-link.test.ts
-  - apps/web/src/canvas/Editor.no-canvas-animation.test.tsx
-  - apps/api/src/auth/logout.test.ts
-  - apps/web/src/canvas/use-autosave.test.ts
-  - apps/web/src/account/DeleteAccountDialog.test.tsx
-  - apps/web/src/dashboard/DashboardPage.test.tsx
-  - apps/web/src/account/SessionsPage.test.tsx
-  - apps/web/src/components/CanvasCard.test.tsx
-  - apps/api/src/account/sessions.test.ts
-  - apps/api/src/auth/session-cookie.test.ts
-  - apps/web/src/components/FolderTree.test.tsx
-  - e2e/account-delete.spec.ts
-  - e2e/auth-google-oauth.spec.ts
-  - apps/web/src/canvas/Editor.test.tsx
-  - e2e/auth-logout-and-sessions.spec.ts
-  - e2e/auth-magic-link.spec.ts
-  - apps/api/src/auth/google-oauth.test.ts
-  - apps/web/src/chrome/TopBar.test.tsx
-  - apps/web/src/account/ProfilePage.test.tsx
-  - apps/web/src/canvas/persistence.test.ts
-  - apps/api/src/canvas/canvas.test.ts
   - apps/api/src/lib/permission.test.ts
-  - apps/web/src/router.test.tsx
-  - apps/web/src/chrome/MainMenu.test.tsx
+  - apps/api/src/canvas/canvas-share.test.ts
+  - e2e/share-invite.spec.ts
+  - apps/api/src/share/invite-token.test.ts
+  - apps/api/src/share/link-token.test.ts
+  - apps/web/src/canvas/useCanvasQuery.test.ts
+  - apps/api/src/sync/auth.test.ts
+  - apps/web/src/canvas/ShareDialog.test.tsx
+  - apps/web/src/auth/InviteErrorPage.test.tsx
+  - apps/web/src/canvas/Editor.test.tsx
+  - e2e/sharing-acceptance.spec.ts
+  - apps/api/src/canvas/canvas-scope-shared.test.ts
+  - apps/web/src/auth/PostLoginPage.test.tsx
+  - apps/web/src/canvas/useShareState.test.ts
+  - apps/web/src/chrome/TopBar.test.tsx
+  - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/api/src/share/share.test.ts
+  - apps/web/src/canvas/CanvasPage.test.tsx
+  - apps/web/src/canvas/use-sync-store.test.ts
+  - apps/api/src/email/share-invite.test.ts
 -->
 
 ---
@@ -753,139 +707,128 @@ tests:
 ---
 ### Requirement: Permission contract for canvas actions
 
-The system SHALL expose a deep module function `canAccess(user, canvas, action)` from `apps/api/src/lib/permission.ts` that returns a boolean for each action in `'read' | 'write' | 'delete' | 'share'`. In phase 1 the function SHALL return true if and only if `user` is non-null and `user.id === canvas.ownerId`. The function signature SHALL remain stable across subsequent capabilities so that the `add-sharing` capability can extend the rule set without changing call sites.
+The system SHALL expose a deep module function `canAccess(user, canvas, action, ctx?)` from `apps/api/src/lib/permission.ts` that returns a boolean for each action in `'read' | 'write' | 'delete' | 'share'`. The optional `ctx` argument carries the user's relationship to the canvas as resolved from the database by the caller: `sharedRole` (`'editor' | 'viewer' | null`) and `publicLinkMode` (`'closed' | 'view' | 'edit' | null`). The function SHALL combine ownership, share-row presence, and public-link mode into the access decision matrix below.
+
+| Identity | read | write | delete | share |
+| -------- | ---- | ----- | ------ | ----- |
+| owner (user.id === canvas.ownerId) | ✓ | ✓ | ✓ | ✓ |
+| shared editor (`ctx.sharedRole === 'editor'`) | ✓ | ✓ | | |
+| shared viewer (`ctx.sharedRole === 'viewer'`) | ✓ | | | |
+| public-link-edit (`ctx.publicLinkMode === 'edit'`) | ✓ | ✓ | | |
+| public-link-view (`ctx.publicLinkMode === 'view'`) | ✓ | | | |
+| anyone else (including `user === null` without public link) | | | | |
+
+The function SHALL accept `user === null` so it can be called for anonymous requests bearing only a public-link token.
 
 #### Scenario: Owner check returns true for all actions
 
 - **WHEN** `canAccess(user, canvas, action)` is called with `user.id === canvas.ownerId`
 - **THEN** the function SHALL return true for `action` in `['read', 'write', 'delete', 'share']`
 
-#### Scenario: Non-owner check returns false
+#### Scenario: Shared editor can read and write but not delete or share
 
-- **WHEN** `canAccess(user, canvas, action)` is called with `user.id !== canvas.ownerId`
+- **WHEN** `canAccess({ id: 'u-x' }, canvas, action, { sharedRole: 'editor' })` is called with `canvas.ownerId !== 'u-x'`
+- **THEN** the function SHALL return true for `action` in `['read', 'write']` and false for `['delete', 'share']`
+
+#### Scenario: Shared viewer can read only
+
+- **WHEN** `canAccess({ id: 'u-y' }, canvas, action, { sharedRole: 'viewer' })` is called with `canvas.ownerId !== 'u-y'`
+- **THEN** the function SHALL return true for `action === 'read'` and false for every other supported action
+
+#### Scenario: Public link in edit mode grants read+write to anonymous users
+
+- **WHEN** `canAccess(null, canvas, action, { publicLinkMode: 'edit' })` is called
+- **THEN** the function SHALL return true for `action` in `['read', 'write']` and false for `['delete', 'share']`
+
+#### Scenario: Public link in view mode grants read only
+
+- **WHEN** `canAccess(null, canvas, action, { publicLinkMode: 'view' })` is called
+- **THEN** the function SHALL return true for `action === 'read'` and false for every other supported action
+
+#### Scenario: Public link in closed mode grants nothing
+
+- **WHEN** `canAccess(null, canvas, action, { publicLinkMode: 'closed' })` is called
 - **THEN** the function SHALL return false for every supported action
 
-#### Scenario: Anonymous user check returns false
+#### Scenario: Anonymous user without public link context returns false
 
-- **WHEN** `canAccess(null, canvas, action)` is called
+- **WHEN** `canAccess(null, canvas, action)` is called with no `ctx` (or `ctx` containing no `publicLinkMode`)
 - **THEN** the function SHALL return false for every supported action
+
+##### Example: full decision matrix
+
+| user | sharedRole | publicLinkMode | read | write | delete | share |
+| ---- | ---------- | -------------- | ---- | ----- | ------ | ----- |
+| owner | (n/a) | (n/a) | true | true | true | true |
+| non-owner | editor | (n/a) | true | true | false | false |
+| non-owner | viewer | (n/a) | true | false | false | false |
+| null | (n/a) | edit | true | true | false | false |
+| null | (n/a) | view | true | false | false | false |
+| null | (n/a) | closed | false | false | false | false |
+| non-owner | null | null | false | false | false | false |
 
 
 <!-- @trace
-source: add-canvas-folder-crud
-updated: 2026-04-29
+source: add-sharing
+updated: 2026-05-04
 code:
-  - apps/web/src/components/CanvasCreateDialog.tsx
-  - scripts/dev.ts
-  - apps/api/src/auth/rate-limit.ts
-  - apps/web/src/account/ProfilePage.tsx
-  - .spectra.yaml
-  - packages/shared/src/email/types.ts
-  - apps/api/tsconfig.json
-  - apps/web/package.json
-  - apps/web/src/components/CanvasRenameDialog.tsx
-  - apps/web/src/auth/LoginPage.tsx
-  - apps/web/src/components/FolderCreateDialog.tsx
-  - apps/web/src/components/FolderTree.tsx
-  - apps/web/src/dashboard/DashboardPage.tsx
-  - apps/web/src/dashboard/useFolderList.ts
-  - apps/api/src/auth/index.ts
-  - apps/web/src/main.tsx
-  - packages/shared/src/shape-types.ts
-  - package.json
-  - apps/web/src/components/CanvasCard.tsx
-  - apps/api/.env.example
-  - packages/shared/src/db/auth-schema.ts
-  - apps/api/drizzle/meta/0000_snapshot.json
-  - apps/api/src/lib/logger.ts
-  - apps/api/drizzle/0001_new_shinko_yamashiro.sql
-  - apps/api/src/db/schema.ts
-  - apps/web/src/chrome/MainMenu.tsx
-  - packages/shared/src/index.ts
-  - apps/web/src/router.tsx
-  - apps/api/src/folder/index.ts
-  - apps/api/drizzle/meta/0001_snapshot.json
-  - apps/api/src/auth/config.ts
-  - apps/api/src/lib/rate-limit-rules.ts
-  - apps/web/src/account/DeleteAccountDialog.tsx
-  - apps/api/src/index.ts
-  - docker-compose.yml
-  - apps/web/src/account/SessionsPage.tsx
-  - apps/api/src/canvas/index.ts
-  - apps/web/src/dashboard/useCanvasList.ts
-  - apps/web/src/canvas/persistence.ts
-  - apps/api/src/email/mailpit.ts
-  - apps/web/src/chrome/index.tsx
-  - packages/shared/package.json
-  - apps/web/src/auth/MagicLinkVerifyPage.tsx
-  - apps/api/src/email/templates/magic-link.tsx
-  - apps/web/src/canvas/Editor.tsx
-  - apps/api/drizzle/meta/_journal.json
-  - apps/web/src/auth/RouteGuard.tsx
-  - apps/web/src/canvas/CanvasPage.tsx
-  - apps/web/src/auth/useAuth.ts
-  - scripts/dev-proxy.ts
-  - packages/shared/src/locales/zh-TW.json
-  - apps/api/src/account/profile-validator.ts
-  - apps/api/drizzle/0000_hesitant_night_nurse.sql
-  - apps/web/src/chrome/TopBar.tsx
-  - apps/web/src/components/FolderDeleteDialog.tsx
-  - packages/shared/src/api-contract.ts
-  - apps/api/src/auth/session-cookie-parser.ts
-  - apps/web/src/auth/OAuthCallbackPage.tsx
-  - apps/api/src/account/routes.ts
   - apps/api/src/lib/permission.ts
-  - apps/api/package.json
+  - apps/api/src/share/index.ts
+  - apps/web/src/auth/AnonymousCanvasGuard.tsx
+  - apps/api/src/sync/index.ts
+  - apps/web/src/canvas/Editor.tsx
+  - packages/shared/src/locales/zh-TW.json
+  - apps/api/drizzle/0002_0002_share.sql
+  - apps/api/src/index.ts
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/router.tsx
+  - apps/api/src/db/schema.ts
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/api/src/share/link-token.ts
   - apps/web/src/canvas/useCanvasQuery.ts
+  - apps/web/src/canvas/useShareState.ts
   - packages/shared/src/locales/en.json
-  - apps/web/src/canvas/use-autosave.ts
-  - apps/web/src/components/FolderRenameDialog.tsx
-  - bun.lock
-  - apps/api/src/auth/route-guard.ts
-  - apps/web/src/components/CanvasDeleteDialog.tsx
-  - apps/api/src/account/delete-account-validator.ts
+  - apps/api/src/email/templates/share-invite.tsx
+  - apps/api/src/share/invite-token.ts
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/api/drizzle/meta/0002_snapshot.json
+  - apps/api/src/sync/auth.ts
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/api/src/lib/rate-limit-rules.ts
+  - apps/api/drizzle/meta/_journal.json
+  - apps/web/src/auth/safe-redirect.ts
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/canvas/use-sync-store.ts
+  - docs/adr/0007-sharing-trade-offs.md
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/api/src/canvas/index.ts
+  - apps/web/src/dashboard/DashboardPage.tsx
 tests:
-  - apps/api/src/folder/folder.test.ts
-  - packages/shared/src/api-contract.test.ts
-  - apps/api/src/email/mailpit.test.ts
-  - apps/api/src/db/schema.test.ts
-  - apps/api/src/auth/route-guard.test.ts
+  - e2e/share-public-link.spec.ts
+  - apps/web/src/auth/AnonymousCanvasGuard.test.tsx
+  - apps/api/src/sync/index.test.ts
   - apps/web/src/auth/LoginPage.test.tsx
-  - apps/web/src/canvas/CanvasPage.test.tsx
-  - apps/api/src/account/delete-account.test.ts
-  - apps/api/src/auth/rate-limit.test.ts
-  - apps/api/src/auth/error-key-contract.test.ts
-  - packages/shared/src/locales/locales.test.ts
-  - apps/api/src/auth/logger-redaction.test.ts
-  - apps/api/src/account/profile.test.ts
-  - apps/api/src/lib/rate-limit-rules.test.ts
-  - apps/web/src/auth/RouteGuard.test.tsx
-  - apps/web/src/dashboard/useCanvasList.test.ts
-  - apps/web/src/auth/MagicLinkVerifyPage.test.tsx
-  - apps/api/src/auth/magic-link.test.ts
-  - apps/web/src/canvas/Editor.no-canvas-animation.test.tsx
-  - apps/api/src/auth/logout.test.ts
-  - apps/web/src/canvas/use-autosave.test.ts
-  - apps/web/src/account/DeleteAccountDialog.test.tsx
-  - apps/web/src/dashboard/DashboardPage.test.tsx
-  - apps/web/src/account/SessionsPage.test.tsx
-  - apps/web/src/components/CanvasCard.test.tsx
-  - apps/api/src/account/sessions.test.ts
-  - apps/api/src/auth/session-cookie.test.ts
-  - apps/web/src/components/FolderTree.test.tsx
-  - e2e/account-delete.spec.ts
-  - e2e/auth-google-oauth.spec.ts
-  - apps/web/src/canvas/Editor.test.tsx
-  - e2e/auth-logout-and-sessions.spec.ts
-  - e2e/auth-magic-link.spec.ts
-  - apps/api/src/auth/google-oauth.test.ts
-  - apps/web/src/chrome/TopBar.test.tsx
-  - apps/web/src/account/ProfilePage.test.tsx
-  - apps/web/src/canvas/persistence.test.ts
-  - apps/api/src/canvas/canvas.test.ts
   - apps/api/src/lib/permission.test.ts
-  - apps/web/src/router.test.tsx
-  - apps/web/src/chrome/MainMenu.test.tsx
+  - apps/api/src/canvas/canvas-share.test.ts
+  - e2e/share-invite.spec.ts
+  - apps/api/src/share/invite-token.test.ts
+  - apps/api/src/share/link-token.test.ts
+  - apps/web/src/canvas/useCanvasQuery.test.ts
+  - apps/api/src/sync/auth.test.ts
+  - apps/web/src/canvas/ShareDialog.test.tsx
+  - apps/web/src/auth/InviteErrorPage.test.tsx
+  - apps/web/src/canvas/Editor.test.tsx
+  - e2e/sharing-acceptance.spec.ts
+  - apps/api/src/canvas/canvas-scope-shared.test.ts
+  - apps/web/src/auth/PostLoginPage.test.tsx
+  - apps/web/src/canvas/useShareState.test.ts
+  - apps/web/src/chrome/TopBar.test.tsx
+  - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/api/src/share/share.test.ts
+  - apps/web/src/canvas/CanvasPage.test.tsx
+  - apps/web/src/canvas/use-sync-store.test.ts
+  - apps/api/src/email/share-invite.test.ts
 -->
 
 ---
