@@ -103,6 +103,16 @@ export function FolderTree({
         onClick={() => onSelectFolder("unfiled")}
       />
 
+      {/* Synthetic: Shared with me — virtual folder, not a drop target for
+          owned canvases (the dnd handler short-circuits on droppableId
+          "shared"). Visually grouped with the other sentinels above. */}
+      <DroppableRow
+        droppableId="shared"
+        label={t("dashboard.sharedWithMe")}
+        isActive={activeFolderId === "shared"}
+        onClick={() => onSelectFolder("shared")}
+      />
+
       {/* Owned folders — flat list, no nesting */}
       {folders.map((folder) => (
         <DroppableRow

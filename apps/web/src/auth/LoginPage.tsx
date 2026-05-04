@@ -13,9 +13,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Navigate } from "@tanstack/react-router";
+import { Navigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 import { useAuth } from "./useAuth";
+import { safeRedirect } from "./safe-redirect";
 import vellumLogo from "../assets/vellum-logo.png";
 
 const schema = z.object({
@@ -34,6 +35,19 @@ export function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const [sent, setSent] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+
+  // After a successful sign-in, better-auth redirects the browser to
+  // `callbackURL`. We bounce through the frontend `/post-login` route rather
+  // than handing it an arbitrary same-origin path (e.g. an API endpoint),
+  // because better-auth restricts callbackURL handling to known frontend
+  // routes and an API endpoint as a landing page is poor UX. PostLoginPage
+  // reads `?next=` and forwards via window.location for any same-origin
+  // path, including server endpoints like /api/share/invite/<t>/accept.
+  const search = useSearch({ strict: false }) as { redirect?: string };
+  const safeRequested = safeRedirect(search.redirect, "");
+  const callbackURL = safeRequested
+    ? `/post-login?next=${encodeURIComponent(safeRequested)}`
+    : "/dashboard";
 
   const {
     register,
@@ -59,7 +73,7 @@ export function LoginPage() {
       const resp = await fetch("/api/auth/sign-in/magic-link", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: values.email, callbackURL: "/dashboard" }),
+        body: JSON.stringify({ email: values.email, callbackURL }),
       });
       const body = (await resp.json()) as MagicLinkResponse;
       if (!resp.ok) {
@@ -96,7 +110,7 @@ export function LoginPage() {
               const resp = await fetch("/api/auth/sign-in/social", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
-                body: JSON.stringify({ provider: "google", callbackURL: "/dashboard" }),
+                body: JSON.stringify({ provider: "google", callbackURL }),
               });
               const body = (await resp.json()) as { url?: string; error?: { errorKey?: string } };
               if (body.url) {

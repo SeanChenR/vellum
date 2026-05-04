@@ -1,15 +1,23 @@
 /**
- * Sync handshake auth — gates a WebSocket upgrade through TWO paths:
+ * Sync handshake auth — resolves up to TWO access offers per request:
  *
- *   1. Session-cookie path (default) → resolveSession + resolveCanvasRole
- *      - Owner / shared editor / shared viewer get role from canvas_shares
+ *   1. Session-cookie offer → resolveSession + resolveCanvasRole
+ *      - Owner / shared editor / shared viewer get role from canvas_shares.
  *
- *   2. Public-link-token path (when URL has `?token=...`) → resolveCanvasShareLink
- *      - Anonymous-acceptable when mode is `view` or `edit`
- *      - userId becomes `anon:<8-char>` (or session.userId if cookie also valid)
+ *   2. Public-link-token offer (when URL has `?token=...`) → resolveCanvasShareLink
+ *      - `view` or `edit` mode grants the corresponding role.
+ *      - `closed` mode grants nothing.
  *
- * If both a valid session cookie AND a token are present, the cookie path
- * wins — logged-in editors don't get downgraded by clicking a public link.
+ * The handshake takes max(cookie role, token role) so:
+ *   - logged-in non-members can enter via a public link (the owner has
+ *     intentionally exposed access to anyone with the URL),
+ *   - editors are never downgraded by a view-mode link they happen to click,
+ *   - viewer members can be upgraded by an edit-mode public link (anonymous
+ *     visitors get the same upgrade — denying it to a member would be
+ *     surprising and worse for collaboration).
+ *
+ * `userId` is `session.userId` whenever a session is present (even if access
+ * derives from the token); otherwise `anon:<8-char>`.
  *
  * Spec: multiplayer-sync — MODIFIED "WebSocket handshake authenticates the
  * user via session cookie" + MODIFIED "WebSocket handshake authorizes the
@@ -69,6 +77,23 @@ function generateAnonId(): string {
   return `anon:${Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("")}`;
 }
 
+/** editor outranks viewer; null means "no offer". */
+function maxRole(a: SyncRole | null, b: SyncRole | null): SyncRole | null {
+  if (a === "editor" || b === "editor") return "editor";
+  if (a === "viewer" || b === "viewer") return "viewer";
+  return null;
+}
+
+function tokenOfferedRole(
+  link: { canvasId: string; mode: "closed" | "view" | "edit" } | null,
+  canvasId: string,
+): SyncRole | null {
+  if (!link || link.canvasId !== canvasId) return null;
+  if (link.mode === "edit") return "editor";
+  if (link.mode === "view") return "viewer";
+  return null;
+}
+
 export async function authenticateSyncHandshake(
   req: Request,
   canvasId: string,
@@ -77,24 +102,26 @@ export async function authenticateSyncHandshake(
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
 
-  // 1. Cookie path — preferred even when a token is present.
   const session = await deps.resolveSession(req);
+  const tokenLink = token ? await deps.resolveCanvasShareLink(token) : null;
+  const tokenRole = tokenOfferedRole(tokenLink, canvasId);
+
+  // Authenticated path — cookie present.
   if (session) {
     const canvas = await deps.resolveCanvasRole(session.userId, canvasId);
     if (!canvas.canvasExists) return NOT_FOUND;
-    if (canvas.role === null) return FORBIDDEN;
-    return { ok: true, userId: session.userId, role: canvas.role };
+    const effective = maxRole(canvas.role, tokenRole);
+    if (effective === null) return FORBIDDEN;
+    return { ok: true, userId: session.userId, role: effective };
   }
 
-  // 2. Anonymous + token path.
-  if (token) {
-    const link = await deps.resolveCanvasShareLink(token);
-    if (!link || link.canvasId !== canvasId) return FORBIDDEN;
-    if (link.mode === "closed") return FORBIDDEN;
-    const role: SyncRole = link.mode === "edit" ? "editor" : "viewer";
-    return { ok: true, userId: generateAnonId(), role };
+  // Anonymous path — no cookie. Only the token can grant access.
+  if (tokenRole !== null) {
+    return { ok: true, userId: generateAnonId(), role: tokenRole };
   }
 
-  // 3. No cookie, no token → unauthenticated.
+  // No cookie + no usable token: distinguish unauth vs forbidden by whether
+  // the caller offered a token at all (offered-but-bad → 403, none → 401).
+  if (token !== null) return FORBIDDEN;
   return UNAUTHORIZED;
 }

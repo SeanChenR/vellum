@@ -50,6 +50,11 @@ interface SessionLike {
  *     `canvas_shares`. Production wires it in `apps/api/src/index.ts`;
  *     tests pass an in-memory implementation. When omitted, the
  *     `scope=shared` path returns an empty array (M5 feature gate).
+ *   - `loadCanvas` / `loadCanvasShareRow` / `resolveCanvasShareLink`:
+ *     read paths used by `GET /api/canvas/:id` to recognise shared
+ *     members and `?share=<token>` public-link visitors. Production
+ *     wires DB queries; tests inject in-memory fakes. When omitted the
+ *     handler falls back to direct DB access, matching pre-M5 behavior.
  */
 export interface CanvasHandlerDeps {
   isCanvasInActiveRoom?(canvasId: string): boolean;
@@ -64,6 +69,22 @@ export interface CanvasHandlerDeps {
       updatedAt: Date;
     }>
   >;
+  loadCanvas?(canvasId: string): Promise<{
+    id: string;
+    ownerId: string;
+    folderId: string | null;
+    title: string;
+    snapshot: object;
+    createdAt: Date;
+    updatedAt: Date;
+  } | null>;
+  loadCanvasShareRow?(
+    canvasId: string,
+    userId: string,
+  ): Promise<{ role: "editor" | "viewer" } | null>;
+  resolveCanvasShareLink?(
+    token: string,
+  ): Promise<{ canvasId: string; mode: "closed" | "view" | "edit" } | null>;
 }
 
 function errorResp(status: number, error: string, extra?: object): Response {
@@ -161,9 +182,7 @@ async function handleList(
     // Shared scope is owned by the `add-sharing` capability. When the dep
     // is wired, return the user's accepted shares; otherwise the legacy
     // empty-array stub is preserved for callers that haven't migrated.
-    const shared = deps.listSharedCanvases
-      ? await deps.listSharedCanvases(session.userId)
-      : [];
+    const shared = deps.listSharedCanvases ? await deps.listSharedCanvases(session.userId) : [];
     return Response.json({
       data: shared.map(canvasToDto),
       meta: { total: shared.length },
@@ -212,25 +231,55 @@ async function handleList(
 }
 
 async function handleRead(
-  _req: Request,
-  session: SessionLike,
+  req: Request,
+  session: SessionLike | null,
   rateLimiter: RateLimiter,
   canvasId: string,
+  deps: CanvasHandlerDeps,
 ): Promise<Response> {
-  const rl = rateLimiter.limit(rlKey("read", session.userId), CANVAS_READ_RULE);
+  const url = new URL(req.url);
+  const shareToken = url.searchParams.get("share");
+
+  // Rate-limit key: signed-in users key by userId; anonymous public-link
+  // visitors key by token (token is opaque, so use a coarse prefix to
+  // avoid leaking it into LRU keys via logs).
+  const rlIdent = session?.userId ?? `anon:${shareToken ? shareToken.slice(0, 8) : "none"}`;
+  const rl = rateLimiter.limit(rlKey("read", rlIdent), CANVAS_READ_RULE);
   if (!rl.allowed) return rateLimitResp(rl.retryAfterSeconds);
 
-  const db = getDb();
-  const canvas = await db.query.canvases.findFirst({
-    where: (c, { eq: eq_ }) => eq_(c.id, canvasId),
-  });
+  // Resolve public-link token first so we can permit anonymous reads.
+  // The link only counts when its canvasId matches the URL — token reuse
+  // across canvases is rejected.
+  let publicLinkMode: "closed" | "view" | "edit" | null = null;
+  if (shareToken && deps.resolveCanvasShareLink) {
+    const link = await deps.resolveCanvasShareLink(shareToken);
+    if (link && link.canvasId === canvasId) {
+      publicLinkMode = link.mode;
+    }
+  }
+
+  const canvas = deps.loadCanvas
+    ? await deps.loadCanvas(canvasId)
+    : await getDb().query.canvases.findFirst({
+        where: (c, { eq: eq_ }) => eq_(c.id, canvasId),
+      });
 
   if (!canvas) {
     return errorResp(404, "errors.canvas.notFound");
   }
 
-  if (!canAccess({ id: session.userId }, canvas, "read")) {
-    return errorResp(403, "errors.canvas.forbidden");
+  let sharedRole: "editor" | "viewer" | null = null;
+  if (session && deps.loadCanvasShareRow) {
+    const row = await deps.loadCanvasShareRow(canvasId, session.userId);
+    if (row) sharedRole = row.role;
+  }
+
+  const user = session ? { id: session.userId } : null;
+  if (!canAccess(user, canvas, "read", { sharedRole, publicLinkMode })) {
+    return errorResp(
+      session ? 403 : 401,
+      session ? "errors.canvas.forbidden" : "errors.auth.unauthorized",
+    );
   }
 
   return Response.json({ data: canvasToDto(canvas) });
@@ -386,36 +435,41 @@ export async function handleCanvasRequest(
 
   if (!path.startsWith(CANVAS_PREFIX)) return null;
 
-  // Auth guard — all canvas routes require a session
-  if (!session) {
-    return errorResp(401, "errors.auth.unauthorized");
-  }
-
   const afterPrefix = path.slice(CANVAS_PREFIX.length); // "" | "/" | "/<id>" | "/<id>/..."
+  const idMatch = afterPrefix.match(/^\/([^/]+)$/);
+
+  // Anonymous public-link visitors are allowed only on `GET /api/canvas/:id`
+  // with a `?share=<token>` query. handleRead validates the token and
+  // resolves access via canAccess; everywhere else still requires a session.
+  if (!session) {
+    const isPublicLinkRead = method === "GET" && idMatch !== null && url.searchParams.has("share");
+    if (!isPublicLinkRead) {
+      return errorResp(401, "errors.auth.unauthorized");
+    }
+  }
 
   // POST /api/canvas
   if (method === "POST" && (afterPrefix === "" || afterPrefix === "/")) {
-    return handleCreate(req, session, rateLimiter);
+    return handleCreate(req, session!, rateLimiter);
   }
 
   // GET /api/canvas (list)
   if (method === "GET" && (afterPrefix === "" || afterPrefix === "/")) {
-    return handleList(req, session, rateLimiter, deps);
+    return handleList(req, session!, rateLimiter, deps);
   }
 
   // Routes that include a canvas ID
-  const idMatch = afterPrefix.match(/^\/([^/]+)$/);
   if (idMatch) {
     const canvasId = idMatch[1]!;
 
     if (method === "GET") {
-      return handleRead(req, session, rateLimiter, canvasId);
+      return handleRead(req, session, rateLimiter, canvasId, deps);
     }
     if (method === "PATCH") {
-      return handleUpdate(req, session, rateLimiter, canvasId, deps);
+      return handleUpdate(req, session!, rateLimiter, canvasId, deps);
     }
     if (method === "DELETE") {
-      return handleDelete(req, session, rateLimiter, canvasId);
+      return handleDelete(req, session!, rateLimiter, canvasId);
     }
   }
 

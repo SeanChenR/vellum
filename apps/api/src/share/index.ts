@@ -394,6 +394,11 @@ async function handleRotateLink(
   return Response.json({ data: linkToDto(record) });
 }
 
+function inviteErrorRedirect(params: Record<string, string>): Response {
+  const qs = new URLSearchParams(params).toString();
+  return new Response(null, { status: 302, headers: { location: `/invite-error?${qs}` } });
+}
+
 async function handleAcceptInvite(
   token: string,
   session: SessionLike | null,
@@ -401,9 +406,9 @@ async function handleAcceptInvite(
   acceptUrl: string,
 ): Promise<Response> {
   const invite = await deps.findInviteByToken(token);
-  if (!invite) return err(404, "errors.share.inviteNotFound");
+  if (!invite) return inviteErrorRedirect({ reason: "not_found" });
   if (invite.expiresAt.getTime() <= deps.now().getTime())
-    return err(404, "errors.share.inviteExpired");
+    return inviteErrorRedirect({ reason: "expired" });
 
   if (!session) {
     const dest = `/login?redirect=${encodeURIComponent(acceptUrl)}`;
@@ -412,8 +417,13 @@ async function handleAcceptInvite(
 
   const user = await deps.loadUser(session.userId);
   if (!user) return err(401, "errors.auth.unauthorized");
-  if (user.email.toLowerCase() !== invite.email.toLowerCase())
-    return err(403, "errors.share.emailMismatch");
+  if (user.email.toLowerCase() !== invite.email.toLowerCase()) {
+    return inviteErrorRedirect({
+      reason: "email_mismatch",
+      expected: invite.email,
+      token: invite.token,
+    });
+  }
 
   await deps.upsertShare({
     canvasId: invite.canvasId,

@@ -12,8 +12,11 @@ import { useQuery } from "@tanstack/react-query";
 import type { Canvas } from "../dashboard/useCanvasList";
 import type { ApiSuccess } from "@vellum/shared";
 
-async function fetchCanvas(id: string): Promise<Canvas> {
-  const resp = await fetch(`/api/canvas/${id}`);
+async function fetchCanvas(id: string, shareToken?: string): Promise<Canvas> {
+  const url = shareToken
+    ? `/api/canvas/${id}?share=${encodeURIComponent(shareToken)}`
+    : `/api/canvas/${id}`;
+  const resp = await fetch(url);
   if (!resp.ok) {
     const err = Object.assign(new Error(`Canvas fetch failed: ${resp.status}`), {
       status: resp.status,
@@ -24,8 +27,8 @@ async function fetchCanvas(id: string): Promise<Canvas> {
   return body.data;
 }
 
-export function canvasQueryKey(id: string): unknown[] {
-  return ["canvas", "single", id];
+export function canvasQueryKey(id: string, shareToken?: string): unknown[] {
+  return shareToken ? ["canvas", "single", id, "share", shareToken] : ["canvas", "single", id];
 }
 
 export type CanvasQueryResult =
@@ -33,10 +36,10 @@ export type CanvasQueryResult =
   | { status: "success"; data: Canvas }
   | { status: "error"; httpStatus?: number };
 
-export function useCanvasQuery(id: string): CanvasQueryResult {
+export function useCanvasQuery(id: string, shareToken?: string): CanvasQueryResult {
   const { data, isLoading, isError } = useQuery<Canvas>({
-    queryKey: canvasQueryKey(id),
-    queryFn: () => fetchCanvas(id),
+    queryKey: canvasQueryKey(id, shareToken),
+    queryFn: () => fetchCanvas(id, shareToken),
     staleTime: 30_000,
     retry: false,
   });

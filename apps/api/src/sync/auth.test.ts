@@ -306,6 +306,117 @@ describe("authenticateSyncHandshake — public-link token path", () => {
     expect(result.role).toBe("editor");
     expect(result.userId.startsWith("anon:")).toBe(false);
   });
+
+  test("logged-in non-member with valid view token → role=viewer, real userId (not anon)", async () => {
+    // Bug 1 regression: previously this returned 403 because cookie path
+    // forbade non-members without falling back to the token's link mode.
+    const result = await authenticateSyncHandshake(
+      reqWithToken(VIEW_TOKEN),
+      CANVAS_ID,
+      mockDeps({
+        userId: "u-stranger",
+        canvas: { exists: true, role: null },
+        link: { [VIEW_TOKEN]: { canvasId: CANVAS_ID, mode: "view" } },
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("unreachable");
+    expect(result.userId).toBe("u-stranger");
+    expect(result.role).toBe("viewer");
+    expect(result.userId.startsWith("anon:")).toBe(false);
+  });
+
+  test("logged-in non-member with valid edit token → role=editor, real userId", async () => {
+    const result = await authenticateSyncHandshake(
+      reqWithToken(EDIT_TOKEN),
+      CANVAS_ID,
+      mockDeps({
+        userId: "u-stranger",
+        canvas: { exists: true, role: null },
+        link: { [EDIT_TOKEN]: { canvasId: CANVAS_ID, mode: "edit" } },
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("unreachable");
+    expect(result.userId).toBe("u-stranger");
+    expect(result.role).toBe("editor");
+  });
+
+  test("logged-in non-member with closed-mode token → 403 (token offers no access)", async () => {
+    const result = await authenticateSyncHandshake(
+      reqWithToken(CLOSED_TOKEN),
+      CANVAS_ID,
+      mockDeps({
+        userId: "u-stranger",
+        canvas: { exists: true, role: null },
+        link: { [CLOSED_TOKEN]: { canvasId: CANVAS_ID, mode: "closed" } },
+      }),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.status).toBe(403);
+  });
+
+  test("logged-in non-member with token whose canvasId mismatches → 403", async () => {
+    const result = await authenticateSyncHandshake(
+      reqWithToken(VIEW_TOKEN),
+      CANVAS_ID,
+      mockDeps({
+        userId: "u-stranger",
+        canvas: { exists: true, role: null },
+        link: { [VIEW_TOKEN]: { canvasId: OTHER_CANVAS, mode: "view" } },
+      }),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.status).toBe(403);
+  });
+
+  test("logged-in non-member with no token → still 403 (no fallback path available)", async () => {
+    const result = await authenticateSyncHandshake(
+      req(),
+      CANVAS_ID,
+      mockDeps({ userId: "u-stranger", canvas: { exists: true, role: null } }),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.status).toBe(403);
+  });
+
+  test("logged-in viewer member + edit token → token DOES upgrade to editor", async () => {
+    // Public link is a public capability the owner has chosen to grant
+    // to anyone with the URL — a viewer member opening the same URL
+    // should not be artificially constrained below what an anonymous
+    // visitor would receive. Take max(cookie, token).
+    const result = await authenticateSyncHandshake(
+      reqWithToken(EDIT_TOKEN),
+      CANVAS_ID,
+      mockDeps({
+        userId: "u-vw-member",
+        canvas: { exists: true, role: "viewer" },
+        link: { [EDIT_TOKEN]: { canvasId: CANVAS_ID, mode: "edit" } },
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("unreachable");
+    expect(result.userId).toBe("u-vw-member");
+    expect(result.role).toBe("editor");
+  });
+
+  test("logged-in editor member + view token → still editor (token cannot downgrade)", async () => {
+    const result = await authenticateSyncHandshake(
+      reqWithToken(VIEW_TOKEN),
+      CANVAS_ID,
+      mockDeps({
+        userId: "u-ed-member",
+        canvas: { exists: true, role: "editor" },
+        link: { [VIEW_TOKEN]: { canvasId: CANVAS_ID, mode: "view" } },
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("unreachable");
+    expect(result.role).toBe("editor");
+  });
 });
 
 // ---------------------------------------------------------------------------

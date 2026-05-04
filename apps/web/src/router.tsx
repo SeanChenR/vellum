@@ -13,6 +13,8 @@ import { useAuth } from "./auth/useAuth";
 import { LoginPage } from "./auth/LoginPage";
 import { OAuthCallbackPage } from "./auth/OAuthCallbackPage";
 import { MagicLinkVerifyPage } from "./auth/MagicLinkVerifyPage";
+import { InviteErrorPage } from "./auth/InviteErrorPage";
+import { PostLoginPage } from "./auth/PostLoginPage";
 import { ProfilePage } from "./account/ProfilePage";
 import { SessionsPage } from "./account/SessionsPage";
 import { DashboardPage } from "./dashboard/DashboardPage";
@@ -56,6 +58,21 @@ const magicLinkVerifyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/auth/verify",
   component: MagicLinkVerifyPage,
+});
+
+const inviteErrorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/invite-error",
+  component: InviteErrorPage,
+});
+
+const postLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/post-login",
+  validateSearch: (search: Record<string, unknown>): { next?: string } => ({
+    next: typeof search["next"] === "string" ? search["next"] : undefined,
+  }),
+  component: PostLoginPage,
 });
 
 // ---------------------------------------------------------------------------
@@ -156,6 +173,8 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   oauthCallbackRoute,
   magicLinkVerifyRoute,
+  inviteErrorRoute,
+  postLoginRoute,
   dashboardRoute,
   profileRoute,
   sessionsRoute,

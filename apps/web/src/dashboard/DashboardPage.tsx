@@ -2,10 +2,15 @@
  * DashboardPage — main canvas dashboard.
  *
  * Layout:
- *   Left sidebar: FolderTree (folder navigation + drag targets)
- *   Main area:
- *     - "My Canvases" section — owned canvases, filterable by folder
- *     - "Shared with me" section — canvases shared by others (phase 1: always empty)
+ *   Left sidebar: FolderTree with sentinels [All / Unfiled / Shared with me]
+ *     followed by the user's own folders.
+ *   Main area: renders one section depending on `activeFolderId`:
+ *     - "shared" → "Shared with me" canvases (not filterable by folder)
+ *     - any other (null / "unfiled" / <folder uuid>) → "My Canvases"
+ *
+ * Note: "Shared with me" is a virtual folder rather than a permanent
+ * second section, so users on a specific folder view aren't visually
+ * distracted by canvases they don't own (Bug 3 fix).
  *
  * Dialog orchestration: all 6 dialogs (create/rename/delete for canvas and folder)
  * are managed here at the page level.
@@ -55,11 +60,14 @@ export function DashboardPage() {
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>({ kind: "none" });
 
-  // Owned canvases (filtered by folder when activeFolderId is set)
+  const isSharedView = activeFolderId === "shared";
+
+  // Owned canvases (filtered by folder when activeFolderId is a folder selector).
+  // Skip when sharedView is active — caller binds to sharedList instead.
   const folderFilter =
     activeFolderId === "unfiled" ? null : activeFolderId === null ? undefined : activeFolderId;
 
-  const ownedList = useCanvasList("owned", folderFilter);
+  const ownedList = useCanvasList("owned", isSharedView ? undefined : folderFilter);
   const sharedList = useCanvasList("shared");
   const { folders, createFolder, renameFolder, deleteFolder } = useFolderList();
 
@@ -78,6 +86,7 @@ export function DashboardPage() {
     const canvasId = String(active.id);
     const targetId = String(over.id);
     if (targetId === "all") return; // dropping on "All canvases" is a no-op
+    if (targetId === "shared") return; // owned canvases can't be dropped into "Shared with me"
     const targetFolderId = targetId === "unfiled" ? null : targetId;
     ownedList.moveCanvas.mutate({ id: canvasId, folderId: targetFolderId });
   }
@@ -147,66 +156,66 @@ export function DashboardPage() {
             />
           </aside>
 
-          {/* Main content */}
+          {/* Main content — single section based on activeFolderId */}
           <main className="flex-1 overflow-y-auto p-8">
-            {/* ── My Canvases ── */}
-            <section aria-labelledby="section-owned" className="mb-10">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 id="section-owned" className="text-xl font-semibold text-ink-navy">
-                  {t("dashboard.myCanvases")}
+            {isSharedView ? (
+              <section aria-labelledby="section-shared">
+                <h2 id="section-shared" className="mb-4 text-xl font-semibold text-ink-navy">
+                  {t("dashboard.sharedWithMe")}
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => setDialog({ kind: "canvas-create" })}
-                  className="rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white hover:bg-ink-navy/90"
-                >
-                  {t("dashboard.createCanvas")}
-                </button>
-              </div>
 
-              {ownedList.isLoading ? (
-                <p className="text-sm text-gray-400">Loading…</p>
-              ) : ownedList.canvases.length === 0 ? (
-                <p className="text-sm text-gray-500">{t("dashboard.empty.owned")}</p>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {ownedList.canvases.map((canvas) => (
-                    <CanvasCard
-                      key={canvas.id}
-                      canvas={canvas}
-                      onRename={(c) => setDialog({ kind: "canvas-rename", canvas: c })}
-                      onDelete={(c) => setDialog({ kind: "canvas-delete", canvas: c })}
-                      onMove={(c) => setDialog({ kind: "canvas-move", canvas: c })}
-                    />
-                  ))}
+                {sharedList.isLoading ? (
+                  <p className="text-sm text-gray-400">Loading…</p>
+                ) : sharedList.canvases.length === 0 ? (
+                  <p className="text-sm text-gray-500">{t("dashboard.empty.shared")}</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {sharedList.canvases.map((canvas) => (
+                      <CanvasCard
+                        key={canvas.id}
+                        canvas={canvas}
+                        onRename={(c) => setDialog({ kind: "canvas-rename", canvas: c })}
+                        onDelete={(c) => setDialog({ kind: "canvas-delete", canvas: c })}
+                        onMove={() => {}}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            ) : (
+              <section aria-labelledby="section-owned">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 id="section-owned" className="text-xl font-semibold text-ink-navy">
+                    {t("dashboard.myCanvases")}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setDialog({ kind: "canvas-create" })}
+                    className="rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white hover:bg-ink-navy/90"
+                  >
+                    {t("dashboard.createCanvas")}
+                  </button>
                 </div>
-              )}
-            </section>
 
-            {/* ── Shared with me ── */}
-            <section aria-labelledby="section-shared">
-              <h2 id="section-shared" className="mb-4 text-xl font-semibold text-ink-navy">
-                {t("dashboard.sharedWithMe")}
-              </h2>
-
-              {sharedList.isLoading ? (
-                <p className="text-sm text-gray-400">Loading…</p>
-              ) : sharedList.canvases.length === 0 ? (
-                <p className="text-sm text-gray-500">{t("dashboard.empty.shared")}</p>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {sharedList.canvases.map((canvas) => (
-                    <CanvasCard
-                      key={canvas.id}
-                      canvas={canvas}
-                      onRename={(c) => setDialog({ kind: "canvas-rename", canvas: c })}
-                      onDelete={(c) => setDialog({ kind: "canvas-delete", canvas: c })}
-                      onMove={() => {}}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
+                {ownedList.isLoading ? (
+                  <p className="text-sm text-gray-400">Loading…</p>
+                ) : ownedList.canvases.length === 0 ? (
+                  <p className="text-sm text-gray-500">{t("dashboard.empty.owned")}</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {ownedList.canvases.map((canvas) => (
+                      <CanvasCard
+                        key={canvas.id}
+                        canvas={canvas}
+                        onRename={(c) => setDialog({ kind: "canvas-rename", canvas: c })}
+                        onDelete={(c) => setDialog({ kind: "canvas-delete", canvas: c })}
+                        onMove={(c) => setDialog({ kind: "canvas-move", canvas: c })}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
           </main>
         </div>
 

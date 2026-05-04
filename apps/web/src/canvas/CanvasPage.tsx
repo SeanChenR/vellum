@@ -29,11 +29,6 @@ export function CanvasPage() {
   const { t } = useTranslation();
   const { id } = useParams({ from: "/canvas/$id" });
   const { user, logout } = useAuth();
-  const query = useCanvasQuery(id);
-
-  // Mutations from the canvas list hook (scope=owned — canvas is assumed owned)
-  const { renameCanvas, deleteCanvas, createCanvas } = useCanvasList("owned");
-  const { folders } = useFolderList();
 
   // Public-link share token (anonymous visitors arrive at
   // `/canvas/:id?share=<token>`); falls through to the cookie path when absent.
@@ -41,6 +36,12 @@ export function CanvasPage() {
     typeof window !== "undefined"
       ? (new URL(window.location.href).searchParams.get("share") ?? undefined)
       : undefined;
+
+  const query = useCanvasQuery(id, shareToken);
+
+  // Mutations from the canvas list hook (scope=owned — canvas is assumed owned)
+  const { renameCanvas, deleteCanvas, createCanvas } = useCanvasList("owned");
+  const { folders } = useFolderList();
 
   // ---------------------------------------------------------------------------
   // States

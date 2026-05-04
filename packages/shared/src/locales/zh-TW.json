@@ -176,6 +176,15 @@
     "delete": "刪除資料夾",
     "deleteConfirm": "確定要刪除「{{name}}」嗎？請先將畫布移出此資料夾。"
   },
+  "inviteError": {
+    "title": "無法接受邀請",
+    "emailMismatchBody": "這個邀請是寄給 {{expected}}，請改用該帳號登入後再點一次連結。",
+    "expiredBody": "此邀請已過期或已被使用。請聯絡邀請者重新發送一封新的邀請。",
+    "notFoundBody": "找不到此邀請。連結可能已失效。",
+    "unknownBody": "邀請連結無法使用，請聯絡邀請者。",
+    "switchAccount": "切換帳號重試",
+    "backHome": "返回首頁"
+  },
   "errors": {
     "auth": {
       "unauthorized": "請先登入"

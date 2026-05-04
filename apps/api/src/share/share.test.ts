@@ -552,7 +552,7 @@ describe("GET /api/share/invite/:token/accept — Invite acceptance route requir
     expect(loc).toContain(encodeURIComponent(`/api/share/invite/${inv.token}/accept`));
   });
 
-  test("email mismatch returns 403", async () => {
+  test("email mismatch redirects to /invite-error with reason=email_mismatch and expected email", async () => {
     const inv = makeInvite();
     state.invites.set(inv.id, inv);
     // Logged in as someone whose email does not match the invite.
@@ -564,27 +564,36 @@ describe("GET /api/share/invite/:token/accept — Invite acceptance route requir
 
     const r = req("GET", `/api/share/invite/${inv.token}/accept`);
     const resp = await handleShareRequest(r, { userId: "user-mallory" }, deps);
-    expect(resp?.status).toBe(403);
-    const body = (await resp!.json()) as { error: string };
-    expect(body.error).toBe("errors.share.emailMismatch");
+    expect(resp?.status).toBe(302);
+    const loc = resp?.headers.get("location") ?? "";
+    expect(loc.startsWith("/invite-error?")).toBe(true);
+    const params = new URLSearchParams(loc.split("?")[1] ?? "");
+    expect(params.get("reason")).toBe("email_mismatch");
+    expect(params.get("expected")).toBe(NEW_EMAIL);
+    // Invite token retained so the user can retry after switching accounts.
+    expect(params.get("token")).toBe(inv.token);
     expect(state.shares.size).toBe(0);
     expect(state.invites.size).toBe(1);
   });
 
-  test("expired token returns 404", async () => {
+  test("expired token redirects to /invite-error with reason=expired", async () => {
     const inv = makeInvite(NEW_EMAIL, new Date("2025-01-01"));
     state.invites.set(inv.id, inv);
 
     const r = req("GET", `/api/share/invite/${inv.token}/accept`);
     const resp = await handleShareRequest(r, null, deps);
-    expect(resp?.status).toBe(404);
-    const body = (await resp!.json()) as { error: string };
-    expect(body.error).toBe("errors.share.inviteExpired");
+    expect(resp?.status).toBe(302);
+    const loc = resp?.headers.get("location") ?? "";
+    expect(loc.startsWith("/invite-error?")).toBe(true);
+    expect(new URLSearchParams(loc.split("?")[1] ?? "").get("reason")).toBe("expired");
   });
 
-  test("missing / unknown token returns 404", async () => {
+  test("missing / unknown token redirects to /invite-error with reason=not_found", async () => {
     const r = req("GET", `/api/share/invite/nonexistent/accept`);
     const resp = await handleShareRequest(r, null, deps);
-    expect(resp?.status).toBe(404);
+    expect(resp?.status).toBe(302);
+    const loc = resp?.headers.get("location") ?? "";
+    expect(loc.startsWith("/invite-error?")).toBe(true);
+    expect(new URLSearchParams(loc.split("?")[1] ?? "").get("reason")).toBe("not_found");
   });
 });

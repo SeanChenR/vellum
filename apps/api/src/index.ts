@@ -35,9 +35,7 @@ import { createMailpitEmailService } from "./email/mailpit";
 import { getDb } from "./db/index";
 import { canvases, canvasShares, canvasInvites, canvasShareLinks, users } from "./db/schema";
 import { createSyncServer, type SyncServerDeps, type SyncSocketData } from "./sync/index";
-import {
-  createConcurrentConnectionRegistry,
-} from "./sync/rate-limit";
+import { createConcurrentConnectionRegistry } from "./sync/rate-limit";
 import { RoomRegistry, type SyncRoomLike } from "./sync/room";
 
 const PORT = Number(Bun.env.PORT ?? 3000);
@@ -79,11 +77,7 @@ async function loadSnapshotFromDb(canvasId: string): Promise<RoomSnapshot | unde
   if (!row) return undefined;
   // canvases.snapshot defaults to {} for newly created canvases — hand the
   // empty object to TLSocketRoom unchanged so it boots an empty store.
-  if (
-    row.snapshot &&
-    typeof row.snapshot === "object" &&
-    "documents" in row.snapshot
-  ) {
+  if (row.snapshot && typeof row.snapshot === "object" && "documents" in row.snapshot) {
     return row.snapshot as RoomSnapshot;
   }
   return undefined;
@@ -192,10 +186,7 @@ const shareDeps: ShareHandlerDeps = {
   },
   async listShares(canvasId) {
     const db = getDb();
-    const rows = await db
-      .select()
-      .from(canvasShares)
-      .where(eq(canvasShares.canvasId, canvasId));
+    const rows = await db.select().from(canvasShares).where(eq(canvasShares.canvasId, canvasId));
     return rows.map((r) => ({
       canvasId: r.canvasId,
       userId: r.userId,
@@ -238,10 +229,7 @@ const shareDeps: ShareHandlerDeps = {
   },
   async listInvites(canvasId) {
     const db = getDb();
-    const rows = await db
-      .select()
-      .from(canvasInvites)
-      .where(eq(canvasInvites.canvasId, canvasId));
+    const rows = await db.select().from(canvasInvites).where(eq(canvasInvites.canvasId, canvasId));
     return rows.map((r) => ({
       id: r.id,
       canvasId: r.canvasId,
@@ -378,8 +366,7 @@ const shareDeps: ShareHandlerDeps = {
 };
 
 const canvasDeps = {
-  isCanvasInActiveRoom: (canvasId: string) =>
-    syncServer.isCanvasInActiveRoom(canvasId),
+  isCanvasInActiveRoom: (canvasId: string) => syncServer.isCanvasInActiveRoom(canvasId),
   async listSharedCanvases(userId: string) {
     const db = getDb();
     const rows = await db
@@ -400,6 +387,38 @@ const canvasDeps = {
       ...r,
       snapshot: (r.snapshot ?? {}) as object,
     }));
+  },
+  async loadCanvas(canvasId: string) {
+    const db = getDb();
+    const c = await db.query.canvases.findFirst({
+      where: (t, { eq: eq_ }) => eq_(t.id, canvasId),
+    });
+    if (!c) return null;
+    return {
+      id: c.id,
+      ownerId: c.ownerId,
+      folderId: c.folderId,
+      title: c.title,
+      snapshot: (c.snapshot ?? {}) as object,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    };
+  },
+  async loadCanvasShareRow(canvasId: string, userId: string) {
+    const db = getDb();
+    const row = await db.query.canvasShares.findFirst({
+      where: (t, { eq: eq_, and: and_ }) => and_(eq_(t.canvasId, canvasId), eq_(t.userId, userId)),
+      columns: { role: true },
+    });
+    return row ? { role: row.role } : null;
+  },
+  async resolveCanvasShareLink(token: string) {
+    const db = getDb();
+    const link = await db.query.canvasShareLinks.findFirst({
+      where: (t, { eq: eq_ }) => eq_(t.token, token),
+      columns: { canvasId: true, mode: true },
+    });
+    return link ?? null;
   },
 };
 
@@ -468,12 +487,7 @@ const server = Bun.serve<SyncSocketData>({
     // Canvas routes (protected — resolve session once, pass to handler)
     if (url.pathname.startsWith("/api/canvas")) {
       const session = await getSession(req);
-      const canvasResponse = await handleCanvasRequest(
-        req,
-        session,
-        rateLimiter,
-        canvasDeps,
-      );
+      const canvasResponse = await handleCanvasRequest(req, session, rateLimiter, canvasDeps);
       if (canvasResponse) return respond(canvasResponse);
     }
 

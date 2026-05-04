@@ -176,6 +176,15 @@
     "delete": "Delete folder",
     "deleteConfirm": "Delete \"{{name}}\"? Please move all canvases out of this folder first."
   },
+  "inviteError": {
+    "title": "Can't accept invite",
+    "emailMismatchBody": "This invite was sent to {{expected}}. Please sign in with that account and click the link again.",
+    "expiredBody": "This invite has expired or has already been used. Ask the inviter to send a new one.",
+    "notFoundBody": "We couldn't find this invite. The link may be invalid.",
+    "unknownBody": "This invite link can't be used. Please contact the inviter.",
+    "switchAccount": "Switch account and retry",
+    "backHome": "Back to home"
+  },
   "errors": {
     "auth": {
       "unauthorized": "Please sign in to continue"

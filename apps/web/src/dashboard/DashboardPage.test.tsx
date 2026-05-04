@@ -2,10 +2,11 @@
  * DashboardPage component tests.
  *
  * Scenarios (spec: "Dashboard canvas list view"):
- * - Authenticated user sees "My Canvases" and "Shared with me" headings
+ * - Default view (activeFolderId === null) → My Canvases only
+ * - Sidebar shows a "Shared with me" virtual item (Notion-style)
+ * - Clicking "Shared with me" → main renders shared list, hides My Canvases
  * - Empty owned section shows localized empty state
- * - Empty shared section shows localized empty state
- * - Unauthenticated visitor redirects to /login
+ * - Empty shared section shows localized empty state (when sharedview active)
  */
 
 import "../i18n";
@@ -87,14 +88,51 @@ mock.module("./useFolderList", () => ({
 }));
 
 describe("DashboardPage", () => {
-  test("renders My Canvases and Shared with me headings", async () => {
+  test("default view shows My Canvases heading and a sidebar 'Shared with me' item", async () => {
     const qc = makeQC();
     render(React.createElement(Wrapper, { qc }, React.createElement(DashboardPage)));
 
     await waitFor(() => {
+      // My Canvases visible in main content
       expect(screen.queryByText(/My Canvases|我的畫布/)).not.toBeNull();
+      // Shared with me visible somewhere (sidebar virtual item)
       expect(screen.queryByText(/Shared with me|與我共用/)).not.toBeNull();
     });
+  });
+
+  test("default view does NOT render the Shared with me section in main content", async () => {
+    const qc = makeQC();
+    render(React.createElement(Wrapper, { qc }, React.createElement(DashboardPage)));
+
+    await waitFor(() => {
+      // Empty state for owned section should be visible (default view = owned)
+      expect(screen.queryByText(/No canvases yet|還沒有畫布/)).not.toBeNull();
+    });
+    // The shared empty state should NOT appear in default view — it's only
+    // rendered when the user navigates to the shared virtual folder.
+    expect(screen.queryByText(/Nothing has been shared|尚無共用畫布/)).toBeNull();
+  });
+
+  test("clicking 'Shared with me' sidebar item swaps main to shared list and hides My Canvases", async () => {
+    const user = userEvent.setup();
+    const qc = makeQC();
+    render(React.createElement(Wrapper, { qc }, React.createElement(DashboardPage)));
+
+    // Wait for initial render
+    await waitFor(() => {
+      expect(screen.queryByText(/My Canvases|我的畫布/)).not.toBeNull();
+    });
+
+    // Click the sidebar Shared item
+    const sharedSidebarBtn = screen.getByRole("button", { name: /Shared with me|與我共用/ });
+    await user.click(sharedSidebarBtn);
+
+    await waitFor(() => {
+      // Shared empty state now in main
+      expect(screen.queryByText(/Nothing has been shared|尚無共用畫布/)).not.toBeNull();
+    });
+    // My Canvases heading is no longer rendered
+    expect(screen.queryByRole("heading", { name: /My Canvases|我的畫布/ })).toBeNull();
   });
 
   test("empty owned section shows empty state message", async () => {
@@ -102,17 +140,7 @@ describe("DashboardPage", () => {
     render(React.createElement(Wrapper, { qc }, React.createElement(DashboardPage)));
 
     await waitFor(() => {
-      // The empty state text should contain the create prompt
       expect(screen.queryByText(/No canvases yet|還沒有畫布/)).not.toBeNull();
-    });
-  });
-
-  test("empty shared section shows empty state message", async () => {
-    const qc = makeQC();
-    render(React.createElement(Wrapper, { qc }, React.createElement(DashboardPage)));
-
-    await waitFor(() => {
-      expect(screen.queryByText(/Nothing has been shared|尚無共用畫布/)).not.toBeNull();
     });
   });
 
