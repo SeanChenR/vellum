@@ -73,14 +73,14 @@ export function FolderRenameDialog({
                 reset();
                 onClose();
               }}
-              className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+              className="focus-visible-ring rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="focus-visible-ring rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               {isPending ? "…" : "Rename"}
             </button>

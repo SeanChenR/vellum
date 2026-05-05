@@ -108,8 +108,7 @@ export function LoginPage() {
               setErrorKey("auth.errors.googleOauthFailed");
             }
           }}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium transition hover:bg-gray-50"
-          aria-label="Google"
+          className="focus-visible-ring flex w-full items-center justify-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium transition hover:bg-gray-50"
         >
           <GoogleIcon />
           {t("auth.login.googleButton")}
@@ -131,7 +130,7 @@ export function LoginPage() {
           </div>
         ) : (
           <form
-            aria-label="magic-link-form"
+            data-testid="magic-link-form"
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-4"
           >
@@ -144,7 +143,7 @@ export function LoginPage() {
                 type="email"
                 autoComplete="email"
                 placeholder={t("auth.login.emailPlaceholder")}
-                className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-ink-navy focus:ring-1 focus:ring-ink-navy"
+                className="focus-visible-ring w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-ink-navy"
                 {...register("email")}
               />
             </div>
@@ -158,7 +157,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full rounded-lg bg-ink-navy px-4 py-3 text-sm font-semibold text-white transition hover:bg-opacity-90 disabled:opacity-50"
+              className="focus-visible-ring w-full rounded-lg bg-ink-navy px-4 py-3 text-sm font-semibold text-white transition hover:bg-opacity-90 disabled:opacity-50"
             >
               {t("auth.login.sendLinkButton")}
             </button>

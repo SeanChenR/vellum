@@ -60,7 +60,7 @@ export function CanvasCreateDialog({
             type="text"
             aria-label={t("canvas.dialog.create.title")}
             className="mb-1 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink-navy"
-            placeholder="Canvas title"
+            placeholder={t("canvas.dialog.create.titlePlaceholder")}
             {...register("title")}
             autoFocus
           />
@@ -72,14 +72,14 @@ export function CanvasCreateDialog({
                 reset();
                 onClose();
               }}
-              className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+              className="focus-visible-ring rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="focus-visible-ring rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               {isPending ? "…" : "Create"}
             </button>

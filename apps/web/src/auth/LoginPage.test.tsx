@@ -80,7 +80,7 @@ describe("LoginPage", () => {
     const emailInput = screen.getByRole("textbox", { name: /email/i });
     await user.type(emailInput, "test@example.com");
 
-    const form = screen.getByRole("form", { hidden: true }) ?? emailInput.closest("form");
+    const form = emailInput.closest("form");
     if (form) {
       fireEvent.submit(form);
     }

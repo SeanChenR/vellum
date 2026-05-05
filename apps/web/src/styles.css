@@ -23,3 +23,13 @@
     color: var(--color-ink-navy);
   }
 }
+
+/* Reusable focus-visible ring — single source of truth for keyboard
+ * focus styling across the chrome. Spec: a11y "All interactive elements
+ * share a consistent focus-visible ring". Applied via `className="...
+ * focus-visible-ring"` on every interactive element. */
+@layer utilities {
+  .focus-visible-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warm-sepia focus-visible:ring-offset-2 focus-visible:ring-offset-off-white;
+  }
+}

@@ -140,7 +140,7 @@ export function DashboardPage() {
               </h2>
 
               {sharedList.isLoading ? (
-                <p className="text-sm text-gray-400">Loading…</p>
+                <p className="text-sm text-gray-400">{t("common.loading")}</p>
               ) : sharedList.canvases.length === 0 ? (
                 <p className="text-sm text-gray-500">{t("dashboard.empty.shared")}</p>
               ) : (
@@ -177,7 +177,7 @@ export function DashboardPage() {
               </div>
 
               {ownedList.isLoading ? (
-                <p className="text-sm text-gray-400">Loading…</p>
+                <p className="text-sm text-gray-400">{t("common.loading")}</p>
               ) : ownedList.canvases.length === 0 ? (
                 <p className="text-sm text-gray-500">{t("dashboard.empty.owned")}</p>
               ) : (

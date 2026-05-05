@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { RouteGuard } from "./auth/RouteGuard";
 import { AnonymousCanvasGuard } from "./auth/AnonymousCanvasGuard";
 import { useAuth } from "./auth/useAuth";
@@ -166,11 +167,12 @@ function LoginRoute() {
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const { isLoading } = useAuth();
   if (isLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-off-white">
-        <span className="text-warm-sepia text-sm">Loading…</span>
+        <span className="text-warm-sepia text-sm">{t("common.loading")}</span>
       </main>
     );
   }

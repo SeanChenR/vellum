@@ -4,6 +4,14 @@
     "tagline": "Scaffolding in progress",
     "getStarted": "Get started"
   },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "loading": "Loading…"
+  },
+  "a11y": {
+    "skipToMain": "Skip to main content"
+  },
   "nav": {
     "backToDashboard": "Back to dashboard",
     "brand": "Vellum",
@@ -120,6 +128,7 @@
   "canvas": {
     "card": {
       "lastEdited": "Last edited {{time}}",
+      "menuLabel": "More options",
       "menu": {
         "rename": "Rename",
         "move": "Move to folder",
@@ -128,7 +137,8 @@
     },
     "dialog": {
       "create": {
-        "title": "Create canvas"
+        "title": "Create canvas",
+        "titlePlaceholder": "Canvas title"
       },
       "rename": {
         "title": "Rename canvas"
@@ -296,7 +306,8 @@
     "create": "Create folder",
     "rename": "Rename folder",
     "delete": "Delete folder",
-    "deleteConfirm": "Delete \"{{name}}\"? Please move all canvases out of this folder first."
+    "deleteConfirm": "Delete \"{{name}}\"? Please move all canvases out of this folder first.",
+    "namePlaceholder": "Folder name"
   },
   "inviteError": {
     "title": "Can't accept invite",

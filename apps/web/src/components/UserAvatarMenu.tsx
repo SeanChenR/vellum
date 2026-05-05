@@ -37,7 +37,7 @@ export function UserAvatarMenu({ user, onSignOut }: UserAvatarMenuProps) {
         type="button"
         aria-label={t("nav.userMenu.label")}
         onClick={() => setOpen((v) => !v)}
-        className="rounded-full transition-shadow hover:ring-2 hover:ring-ink-navy/20"
+        className="focus-visible-ring rounded-full transition-shadow hover:ring-2 hover:ring-ink-navy/20"
       >
         <UserAvatar user={user} />
       </button>
@@ -54,7 +54,7 @@ export function UserAvatarMenu({ user, onSignOut }: UserAvatarMenuProps) {
             role="menuitem"
             href="/dashboard"
             onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+            className="focus-visible-ring block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
           >
             {t("nav.userMenu.dashboard")}
           </a>
@@ -62,7 +62,7 @@ export function UserAvatarMenu({ user, onSignOut }: UserAvatarMenuProps) {
             role="menuitem"
             href="/account/profile"
             onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+            className="focus-visible-ring block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
           >
             {t("nav.userMenu.profile")}
           </a>
@@ -70,7 +70,7 @@ export function UserAvatarMenu({ user, onSignOut }: UserAvatarMenuProps) {
             role="menuitem"
             href="/account/sessions"
             onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+            className="focus-visible-ring block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
           >
             {t("nav.userMenu.sessions")}
           </a>
@@ -82,7 +82,7 @@ export function UserAvatarMenu({ user, onSignOut }: UserAvatarMenuProps) {
               setOpen(false);
               onSignOut();
             }}
-            className="w-full px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+            className="focus-visible-ring w-full px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
           >
             {t("nav.userMenu.signOut")}
           </button>

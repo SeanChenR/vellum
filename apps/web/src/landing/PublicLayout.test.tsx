@@ -7,12 +7,22 @@
  */
 
 import "../i18n";
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, render, screen } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import React from "react";
 import i18n from "../i18n";
-import { PublicLayout } from "./PublicLayout";
+
+mock.module("../auth/useAuth", () => ({
+  useAuth: () => ({
+    user: null,
+    isLoading: false,
+    isAuthenticated: false,
+    logout: mock(() => {}),
+  }),
+}));
+
+const { PublicLayout } = await import("./PublicLayout");
 
 function renderLayout(children: React.ReactNode = <p>page-content</p>) {
   return render(
@@ -90,5 +100,24 @@ describe("PublicLayout", () => {
       walker = walker.parentElement;
     }
     expect(foundDesktopWrapper).toBe(true);
+  });
+
+  test("renders skip-to-main-content link as the first interactive element", () => {
+    const { container } = renderLayout();
+    const skip = container.querySelector('a[href="#main"]');
+    expect(skip).not.toBeNull();
+    // sr-only by default
+    expect(skip!.className).toContain("sr-only");
+    // focus state class moves it to absolute / visible
+    expect(skip!.className).toContain("focus:not-sr-only");
+    // aria-accessible label from i18n
+    expect(skip!.textContent).toContain("Skip to main content");
+  });
+
+  test('main element has id="main" so the skip-link can target it', () => {
+    const { container } = renderLayout();
+    const main = container.querySelector("main");
+    expect(main).not.toBeNull();
+    expect(main!.id).toBe("main");
   });
 });

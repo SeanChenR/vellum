@@ -4,6 +4,14 @@
     "tagline": "Scaffolding 進行中",
     "getStarted": "開始使用"
   },
+  "common": {
+    "cancel": "取消",
+    "close": "關閉",
+    "loading": "載入中…"
+  },
+  "a11y": {
+    "skipToMain": "跳到主內容"
+  },
   "nav": {
     "backToDashboard": "返回首頁",
     "brand": "Vellum",
@@ -120,6 +128,7 @@
   "canvas": {
     "card": {
       "lastEdited": "最後編輯：{{time}}",
+      "menuLabel": "更多選項",
       "menu": {
         "rename": "重新命名",
         "move": "移動到資料夾",
@@ -128,7 +137,8 @@
     },
     "dialog": {
       "create": {
-        "title": "建立畫布"
+        "title": "建立畫布",
+        "titlePlaceholder": "畫布名稱"
       },
       "rename": {
         "title": "重新命名畫布"
@@ -296,7 +306,8 @@
     "create": "建立資料夾",
     "rename": "重新命名資料夾",
     "delete": "刪除資料夾",
-    "deleteConfirm": "確定要刪除「{{name}}」嗎？請先將畫布移出此資料夾。"
+    "deleteConfirm": "確定要刪除「{{name}}」嗎？請先將畫布移出此資料夾。",
+    "namePlaceholder": "資料夾名稱"
   },
   "inviteError": {
     "title": "無法接受邀請",

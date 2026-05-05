@@ -8,6 +8,7 @@
 
 import { Navigate, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "./useAuth";
 
 interface RouteGuardProps {
@@ -15,13 +16,14 @@ interface RouteGuardProps {
 }
 
 export function RouteGuard({ children }: RouteGuardProps) {
+  const { t } = useTranslation();
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <span className="text-warm-sepia">Loading…</span>
+        <span className="text-warm-sepia">{t("common.loading")}</span>
       </div>
     );
   }

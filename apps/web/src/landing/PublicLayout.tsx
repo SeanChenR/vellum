@@ -29,8 +29,16 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 
       {/* Desktop layout — hidden below 768px. */}
       <div className="hidden md:flex md:min-h-screen md:flex-col">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-ink-navy focus:px-4 focus:py-2 focus:text-sm focus:text-white"
+        >
+          {t("a11y.skipToMain")}
+        </a>
         <Navbar />
-        <main className="flex-1">{children}</main>
+        <main id="main" className="flex-1">
+          {children}
+        </main>
         <Footer />
       </div>
     </div>

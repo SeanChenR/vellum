@@ -111,10 +111,10 @@ export function CanvasCard({ canvas, onRename, onDelete, onMove }: CanvasCardPro
           <div className="relative">
             <button
               type="button"
-              aria-label="More options"
+              aria-label={t("canvas.card.menuLabel")}
               aria-haspopup="true"
               aria-expanded={menuOpen}
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="focus-visible-ring rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
               onClick={(e) => {
                 e.preventDefault();
                 setMenuOpen((v) => !v);
@@ -149,7 +149,7 @@ export function CanvasCard({ canvas, onRename, onDelete, onMove }: CanvasCardPro
                   <button
                     role="menuitem"
                     type="button"
-                    className="flex w-full items-center px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    className="focus-visible-ring flex w-full items-center px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
                     onClick={() => {
                       setMenuOpen(false);
                       onRename(canvas);
@@ -160,7 +160,7 @@ export function CanvasCard({ canvas, onRename, onDelete, onMove }: CanvasCardPro
                   <button
                     role="menuitem"
                     type="button"
-                    className="flex w-full items-center px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    className="focus-visible-ring flex w-full items-center px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
                     onClick={() => {
                       setMenuOpen(false);
                       onMove(canvas);
@@ -171,7 +171,7 @@ export function CanvasCard({ canvas, onRename, onDelete, onMove }: CanvasCardPro
                   <button
                     role="menuitem"
                     type="button"
-                    className="flex w-full items-center px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+                    className="focus-visible-ring flex w-full items-center px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
                     onClick={() => {
                       setMenuOpen(false);
                       onDelete(canvas);

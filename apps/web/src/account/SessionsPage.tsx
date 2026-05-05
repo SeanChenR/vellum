@@ -66,7 +66,7 @@ export function SessionsPage() {
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center py-16">
-        <span className="text-warm-sepia">Loading…</span>
+        <span className="text-warm-sepia">{t("common.loading")}</span>
       </div>
     );
   }

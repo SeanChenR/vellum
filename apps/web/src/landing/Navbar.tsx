@@ -36,7 +36,7 @@ export function Navbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <a
           href="/"
-          className="flex items-center gap-2 text-ink-navy hover:opacity-80 transition-opacity"
+          className="focus-visible-ring flex items-center gap-2 rounded-lg text-ink-navy hover:opacity-80 transition-opacity"
           aria-label={t("nav.brand")}
         >
           <img
@@ -51,7 +51,7 @@ export function Navbar() {
         <div className="flex items-center gap-8">
           <a
             href="/about"
-            className="text-sm text-warm-sepia hover:text-ink-navy transition-colors cursor-pointer"
+            className="focus-visible-ring rounded-lg px-1 text-sm text-warm-sepia hover:text-ink-navy transition-colors cursor-pointer"
           >
             {t("nav.about")}
           </a>
@@ -98,7 +98,7 @@ function AuthAction({ isLoading, isAuthenticated, user, onSignOut, ctaLabel }: A
   return (
     <a
       href="/login"
-      className={`${AUTH_ACTION_SIZE_CLASSES} cursor-pointer rounded-lg bg-ink-navy text-sm font-medium text-white hover:bg-ink-navy/90 transition-colors`}
+      className={`${AUTH_ACTION_SIZE_CLASSES} focus-visible-ring cursor-pointer rounded-lg bg-ink-navy text-sm font-medium text-white hover:bg-ink-navy/90 transition-colors`}
     >
       {ctaLabel}
     </a>

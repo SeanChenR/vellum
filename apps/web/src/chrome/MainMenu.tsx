@@ -83,7 +83,7 @@ function DeleteConfirmDialog({ open, onConfirm, onClose }: DeleteConfirmDialogPr
               onConfirm();
               onClose();
             }}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            className="focus-visible-ring rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
           >
             {t("canvas.chrome.mainMenu.deleteConfirmYes")}
           </button>

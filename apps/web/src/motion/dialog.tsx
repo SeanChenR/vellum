@@ -23,8 +23,9 @@
  * exit animation can run before unmount.
  */
 
-import React, { type ReactNode } from "react";
+import React, { useRef, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useFocusTrap } from "../a11y/use-focus-trap";
 
 const DURATION_MS = 180;
 
@@ -75,8 +76,14 @@ interface DialogPanelProps {
 export function DialogPanel({ children, className }: DialogPanelProps) {
   const reduce = useReducedMotion();
   const duration = reduce ? 0 : DURATION_MS / 1000;
+  const ref = useRef<HTMLDivElement>(null);
+  // Trap focus while the panel is mounted. AnimatePresence keeps the panel
+  // mounted only while the surrounding DialogMotion is `open`, so this is
+  // equivalent to "trap is active iff dialog is open".
+  useFocusTrap({ active: true, ref });
   return (
     <motion.div
+      ref={ref}
       initial={{ scale: reduce ? 1 : 0.95, opacity: reduce ? 1 : 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: reduce ? 1 : 0.95, opacity: 0 }}

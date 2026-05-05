@@ -39,7 +39,7 @@ export function ShareDialog({ open, canvasId, onClose }: ShareDialogProps) {
     >
       <button
         type="button"
-        aria-label="close"
+        aria-label={t("common.close")}
         onClick={onClose}
         className="absolute inset-0 cursor-default"
         tabIndex={-1}
@@ -102,7 +102,7 @@ function InviteSection({ state }: { state: ReturnType<typeof useShareState> }) {
         <button
           type="submit"
           disabled={state.invite.isPending}
-          className="rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white hover:bg-ink-navy/90 disabled:opacity-50"
+          className="focus-visible-ring rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white hover:bg-ink-navy/90 disabled:opacity-50"
         >
           {t("canvas.share.sendButton")}
         </button>
