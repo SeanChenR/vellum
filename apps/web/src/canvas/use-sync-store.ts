@@ -22,6 +22,7 @@ import { defaultBindingUtils, defaultShapeUtils, type TLAssetStore } from "tldra
 import { create } from "zustand";
 import { useAuth } from "../auth/useAuth";
 import { customShapeUtilClasses } from "./shapes/shape-utils";
+import { inlineImageAsset } from "./asset-inline";
 
 // Module-level so the array reference is stable across re-renders.
 // Passing a fresh `[...defaultShapeUtils, ...customShapeUtilClasses]`
@@ -149,12 +150,17 @@ export class SyncReconnectController {
 // ---------------------------------------------------------------------------
 
 /**
- * Phase 1 asset store: upload is unsupported (PRD out-of-scope), tldraw's
- * built-in `image` shape stores small assets inline as base64 / object URLs.
+ * Phase 1 asset store — image uploads are inlined as same-origin
+ * `data:` URLs and embedded into the canvas snapshot. Pure
+ * client-side: no API endpoint, no blob storage. Cloud upload is
+ * Phase 2 (ADR-0011, PRD out-of-scope guard).
+ *
+ * The encoder lives in a dedicated deep module so it is unit-testable
+ * without spinning up tldraw — see `apps/web/src/canvas/asset-inline.ts`.
  */
 const inlineAssetStore: TLAssetStore = {
-  async upload() {
-    throw new Error("Asset upload is not supported in phase 1 (see docs/PRD.md).");
+  async upload(_asset, file) {
+    return inlineImageAsset(file);
   },
   resolve(asset) {
     const src = (asset.props as { src?: string }).src;

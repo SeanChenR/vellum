@@ -266,6 +266,10 @@
       "fetchFailed": "Couldn't load preview for this link",
       "invalidUrl": "This link can't be reached"
     },
+    "image": {
+      "tooLarge": "Image is too large — please upload a file under 5 MB",
+      "unsupportedFormat": "Unsupported format — please upload SVG, PNG, JPEG, GIF, or WebP"
+    },
     "folder": {
       "notFound": "Folder not found",
       "forbidden": "You do not have access to this folder",

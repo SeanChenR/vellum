@@ -108,6 +108,23 @@ export function Editor({
               tools={customShapeTools}
               components={vellumChromeComponents}
               options={{ maxPages: 1 }}
+              // Phase 1 image asset constraints — tldraw uses these to
+              // pre-validate uploads and show the correct localized
+              // toast (e.g. "Maximum file size is 5 MB" instead of a
+              // generic "Upload failed"). Mirrors the size cap + MIME
+              // whitelist enforced inside `inlineImageAsset`.
+              maxAssetSize={5 * 1024 * 1024}
+              acceptedImageMimeTypes={[
+                "image/svg+xml",
+                "image/png",
+                "image/jpeg",
+                "image/gif",
+                "image/webp",
+              ]}
+              // Video is Phase 2 (no inline encoder, no cloud upload yet).
+              // Empty list rejects any video file with the same
+              // "File type is not allowed" toast as PDF / DOCX / etc.
+              acceptedVideoMimeTypes={[]}
               onMount={(editor) => {
                 // tldraw v4 sets readonly via instance state; the prop isn't
                 // exposed on TldrawProps. Server-side enforcement still wins
