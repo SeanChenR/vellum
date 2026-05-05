@@ -44,6 +44,14 @@ export interface EditorProps {
   onSignOut: () => void;
   /** Optional public-link share token — passed to the sync hook. */
   shareToken?: string;
+  /**
+   * Server-resolved role for the current caller. When provided, the
+   * editor uses it as the source of truth for readonly enforcement +
+   * "View only" badge — replacing the older client-side guess based
+   * on `shareToken` presence (which incorrectly marked edit-mode
+   * public link visitors as viewers).
+   */
+  effectiveRole?: "editor" | "viewer";
 }
 
 // ---------------------------------------------------------------------------
@@ -61,13 +69,18 @@ export function Editor({
   currentUser,
   onSignOut,
   shareToken,
+  effectiveRole,
 }: EditorProps) {
   const { t } = useTranslation();
   const sync = useSyncStore(canvasId, { shareToken });
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   const isOwner = currentUser?.id === ownerId;
-  const isReadOnly = sync.role === "viewer";
+  // Prefer server-provided effectiveRole (correct for all paths); fall
+  // back to the legacy sync.role guess when the canvas DTO hasn't
+  // surfaced it yet (e.g. older endpoint, transient before query).
+  const isReadOnly =
+    effectiveRole !== undefined ? effectiveRole === "viewer" : sync.role === "viewer";
 
   const chromeContext: VellumChromeContextValue = {
     topBar: {

@@ -282,7 +282,26 @@ async function handleRead(
     );
   }
 
-  return Response.json({ data: canvasToDto(canvas) });
+  // Effective role from the caller's perspective: owner / shared editor /
+  // anonymous-via-edit-link → "editor"; shared viewer / anonymous-via-
+  // view-link → "viewer". Returning this lets the client render the
+  // correct chrome (View only badge) without re-deriving from a token
+  // shape it doesn't have visibility into. Replaces the prior client
+  // "shareToken? viewer : editor" guess.
+  let effectiveRole: "editor" | "viewer" = "viewer";
+  if (user && canvas.ownerId === user.id) {
+    effectiveRole = "editor";
+  } else if (sharedRole === "editor") {
+    effectiveRole = "editor";
+  } else if (sharedRole === "viewer") {
+    effectiveRole = "viewer";
+  } else if (publicLinkMode === "edit") {
+    effectiveRole = "editor";
+  } else if (publicLinkMode === "view") {
+    effectiveRole = "viewer";
+  }
+
+  return Response.json({ data: { ...canvasToDto(canvas), effectiveRole } });
 }
 
 async function handleUpdate(

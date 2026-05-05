@@ -12,7 +12,13 @@ import { useQuery } from "@tanstack/react-query";
 import type { Canvas } from "../dashboard/useCanvasList";
 import type { ApiSuccess } from "@vellum/shared";
 
-async function fetchCanvas(id: string, shareToken?: string): Promise<Canvas> {
+/** Canvas DTO as returned by the API, including the caller's effective role. */
+export interface CanvasWithRole extends Canvas {
+  /** Server-resolved role for this caller against this canvas. */
+  effectiveRole?: "editor" | "viewer";
+}
+
+async function fetchCanvas(id: string, shareToken?: string): Promise<CanvasWithRole> {
   const url = shareToken
     ? `/api/canvas/${id}?share=${encodeURIComponent(shareToken)}`
     : `/api/canvas/${id}`;
@@ -23,7 +29,7 @@ async function fetchCanvas(id: string, shareToken?: string): Promise<Canvas> {
     });
     throw err;
   }
-  const body = (await resp.json()) as ApiSuccess<Canvas>;
+  const body = (await resp.json()) as ApiSuccess<CanvasWithRole>;
   return body.data;
 }
 
@@ -33,11 +39,11 @@ export function canvasQueryKey(id: string, shareToken?: string): unknown[] {
 
 export type CanvasQueryResult =
   | { status: "loading" }
-  | { status: "success"; data: Canvas }
+  | { status: "success"; data: CanvasWithRole }
   | { status: "error"; httpStatus?: number };
 
 export function useCanvasQuery(id: string, shareToken?: string): CanvasQueryResult {
-  const { data, isLoading, isError } = useQuery<Canvas>({
+  const { data, isLoading, isError } = useQuery<CanvasWithRole>({
     queryKey: canvasQueryKey(id, shareToken),
     queryFn: () => fetchCanvas(id, shareToken),
     staleTime: 30_000,

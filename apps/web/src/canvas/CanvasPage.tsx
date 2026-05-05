@@ -103,6 +103,7 @@ export function CanvasPage() {
         currentUser={user ?? null}
         onSignOut={logout}
         shareToken={shareToken}
+        effectiveRole={canvas.effectiveRole}
       />
     </div>
   );
