@@ -14,7 +14,7 @@
 
 import "../i18n";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import React from "react";
 import i18n from "../i18n";
@@ -24,6 +24,7 @@ import i18n from "../i18n";
 // ---------------------------------------------------------------------------
 
 let capturedTldrawProps: Record<string, unknown> = {};
+let capturedChromeValue: { mainMenu?: Record<string, unknown> } | null = null;
 
 mock.module("tldraw", () => ({
   Tldraw: (props: Record<string, unknown>) => {
@@ -42,10 +43,25 @@ mock.module("./shapes/shape-utils", () => ({
   customShapeUtilClasses: [fakeShapeUtil],
 }));
 
+const ChromeContextMock = React.createContext<unknown>(null);
 mock.module("../chrome/index", () => ({
-  VellumChromeContext: React.createContext(null),
+  VellumChromeContext: {
+    ...ChromeContextMock,
+    Provider: ({
+      value,
+      children,
+    }: {
+      value: { mainMenu?: Record<string, unknown> };
+      children: React.ReactNode;
+    }) => {
+      capturedChromeValue = value;
+      return React.createElement(ChromeContextMock.Provider, { value }, children);
+    },
+  },
   vellumChromeComponents: {},
 }));
+
+const exportCanvasMock = mock((_opts: unknown) => Promise.resolve());
 
 // useSyncStore mock — controllable per-test via the helper below.
 type SyncStatus = "loading" | "ready" | "error";
@@ -99,6 +115,7 @@ function makeEditorProps(overrides = {}) {
       createdAt: new Date().toISOString(),
     },
     onSignOut: mock(() => {}),
+    exportCanvasImpl: exportCanvasMock,
     ...overrides,
   };
 }
@@ -117,6 +134,8 @@ function renderEditor(overrides = {}) {
 
 beforeEach(() => {
   capturedTldrawProps = {};
+  capturedChromeValue = null;
+  exportCanvasMock.mockClear();
   useSyncStoreCalls.length = 0;
   disposedCanvasIds.length = 0;
   nextSyncResult = { status: "loading", store: null };
@@ -210,5 +229,100 @@ describe("Editor — tldraw props once mounted", () => {
     const options = capturedTldrawProps["options"] as { maxPages?: number };
     expect(options).toBeDefined();
     expect(options.maxPages).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6.1 mainMenu.onExport wiring — invokes exportCanvas with editor + slug filename
+// ---------------------------------------------------------------------------
+
+describe("Editor — mainMenu.onExport wiring (task 6.1)", () => {
+  test("onExport(format, scale) calls exportCanvas with the captured editor and slugified title", async () => {
+    nextSyncResult = { status: "ready", store: { id: "ok" } };
+    renderEditor({ title: "My  Doc!!!" });
+
+    const onMount = capturedTldrawProps["onMount"] as (e: unknown) => void;
+    expect(typeof onMount).toBe("function");
+    const fakeEditor = {
+      updateInstanceState: () => {},
+      registerExternalContentHandler: () => {},
+    };
+    await act(async () => {
+      onMount(fakeEditor);
+    });
+
+    const mainMenu = capturedChromeValue?.mainMenu as
+      | {
+          onExport?: (f: string, s?: number) => Promise<void>;
+          isReadOnly?: boolean;
+        }
+      | undefined;
+    expect(mainMenu?.onExport).toBeDefined();
+
+    await mainMenu!.onExport!("png", 2);
+
+    expect(exportCanvasMock).toHaveBeenCalledTimes(1);
+    const arg = exportCanvasMock.mock.calls[0]![0] as {
+      editor: unknown;
+      format: string;
+      scale?: number;
+      filename: string;
+    };
+    expect(arg.format).toBe("png");
+    expect(arg.scale).toBe(2);
+    // Real slugify: "My  Doc!!!" → lowercase → collapse non-allowed → trim → "my-doc"
+    expect(arg.filename).toBe("my-doc");
+    // editor reference is the same object onMount captured
+    expect(arg.editor).toBe(fakeEditor);
+  });
+
+  test("onExport before tldraw mounts throws (no editor instance yet)", async () => {
+    nextSyncResult = { status: "ready", store: { id: "ok" } };
+    renderEditor({ title: "doc" });
+    // intentionally do NOT invoke onMount
+
+    const mainMenu = capturedChromeValue?.mainMenu as {
+      onExport?: (f: string, s?: number) => Promise<void>;
+    };
+    await expect(mainMenu!.onExport!("svg")).rejects.toThrow();
+    expect(exportCanvasMock).not.toHaveBeenCalled();
+  });
+
+  test("isReadOnly is forwarded to mainMenu (true when effectiveRole=viewer)", () => {
+    nextSyncResult = { status: "ready", store: { id: "ok" } };
+    renderEditor({ effectiveRole: "viewer" });
+    const mainMenu = capturedChromeValue?.mainMenu as { isReadOnly?: boolean };
+    expect(mainMenu?.isReadOnly).toBe(true);
+  });
+
+  test("isReadOnly is false when effectiveRole=editor", () => {
+    nextSyncResult = { status: "ready", store: { id: "ok" } };
+    renderEditor({ effectiveRole: "editor" });
+    const mainMenu = capturedChromeValue?.mainMenu as { isReadOnly?: boolean };
+    expect(mainMenu?.isReadOnly).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 7.2 exportCanvas rejection does not crash Editor
+// ---------------------------------------------------------------------------
+
+describe("Editor — export rejection handling (task 7.2)", () => {
+  test("exportCanvas rejection bubbles up so the chrome adapter can surface a toast", async () => {
+    nextSyncResult = { status: "ready", store: { id: "ok" } };
+    exportCanvasMock.mockImplementationOnce(() => Promise.reject(new Error("export.empty")));
+    renderEditor({ title: "doc" });
+
+    const onMount = capturedTldrawProps["onMount"] as (e: unknown) => void;
+    await act(async () => {
+      onMount({ updateInstanceState: () => {}, registerExternalContentHandler: () => {} });
+    });
+
+    const mainMenu = capturedChromeValue?.mainMenu as {
+      onExport?: (f: string, s?: number) => Promise<void>;
+    };
+    await expect(mainMenu!.onExport!("pdf", 4)).rejects.toThrow("export.empty");
+    // Editor itself does NOT crash — it remains rendered after the rejection.
+    expect(capturedChromeValue).not.toBeNull();
   });
 });

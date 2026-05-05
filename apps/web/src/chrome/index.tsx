@@ -9,12 +9,15 @@
  */
 
 import React, { createContext, useContext } from "react";
+import { useTranslation } from "react-i18next";
+import { useToasts } from "tldraw";
 import { TopBar } from "./TopBar";
 import { MainMenu } from "./MainMenu";
 import { VellumToolbar } from "../canvas/VellumToolbar";
 import type { TopBarProps } from "./TopBar";
 import type { MainMenuProps } from "./MainMenu";
 import type { TLComponents } from "tldraw";
+import type { ExportFormat, ExportScale } from "../canvas/export/export-canvas";
 
 // ---------------------------------------------------------------------------
 // Chrome context
@@ -44,7 +47,23 @@ function VellumTopPanel() {
 
 function VellumMainMenu() {
   const { mainMenu } = useVellumChrome();
-  return <MainMenu {...mainMenu} />;
+  const toasts = useToasts();
+  const { t } = useTranslation();
+  const onExportWithToast = async (format: ExportFormat, scale?: ExportScale) => {
+    try {
+      await mainMenu.onExport(format, scale);
+      toasts.addToast({
+        severity: "success",
+        title: t("canvas.chrome.mainMenu.exportSuccess", { format: format.toUpperCase() }),
+      });
+    } catch {
+      toasts.addToast({
+        severity: "error",
+        title: t("canvas.chrome.mainMenu.exportFailed"),
+      });
+    }
+  };
+  return <MainMenu {...mainMenu} onExport={onExportWithToast} />;
 }
 
 // ---------------------------------------------------------------------------

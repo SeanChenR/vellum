@@ -101,12 +101,15 @@
         "deleteConfirmYes": "刪除",
         "deleteConfirmNo": "取消",
         "export": "匯出",
-        "exportComingSoon": "敬請期待",
         "exportPng": "匯出為 PNG",
         "exportSvg": "匯出為 SVG",
         "exportPdf": "匯出為 PDF",
         "exportJson": "匯出為 JSON",
-        "exportMarkdown": "匯出為 Markdown"
+        "exportScale1x": "1× 解析度",
+        "exportScale2x": "2× 解析度",
+        "exportScale4x": "4× 解析度",
+        "exportSuccess": "已匯出 {{format}}",
+        "exportFailed": "匯出失敗，請重試"
       },
       "persistence": {
         "loadFailedToast": "無法載入畫布內容，將以空白畫布開啟"

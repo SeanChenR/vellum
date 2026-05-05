@@ -15,7 +15,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Tldraw, createShapeId } from "tldraw";
+import { Tldraw, createShapeId, type Editor as TldrawEditor } from "tldraw";
 import "tldraw/tldraw.css";
 import { customShapeTools } from "@vellum/shared/shape-types";
 import { customShapeUtilClasses } from "./shapes/shape-utils";
@@ -26,6 +26,8 @@ import type { AuthUser } from "../auth/useAuth";
 import type { TopBarFolder } from "../chrome/TopBar";
 import { useSyncStore } from "./use-sync-store";
 import { ShareDialog } from "./ShareDialog";
+import { exportCanvas, type ExportFormat, type ExportScale } from "./export/export-canvas";
+import { slugify } from "./export/slugify";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,6 +54,12 @@ export interface EditorProps {
    * public link visitors as viewers).
    */
   effectiveRole?: "editor" | "viewer";
+  /**
+   * Test seam — defaults to the real exportCanvas implementation.
+   * Tests inject a mock so they don't need module-level module mocking
+   * (which would leak across test files in bun's shared-process runner).
+   */
+  exportCanvasImpl?: typeof exportCanvas;
 }
 
 // ---------------------------------------------------------------------------
@@ -70,10 +78,12 @@ export function Editor({
   onSignOut,
   shareToken,
   effectiveRole,
+  exportCanvasImpl = exportCanvas,
 }: EditorProps) {
   const { t } = useTranslation();
   const sync = useSyncStore(canvasId, { shareToken });
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [editorInstance, setEditorInstance] = useState<TldrawEditor | null>(null);
 
   const isOwner = currentUser?.id === ownerId;
   // Prefer server-provided effectiveRole (correct for all paths); fall
@@ -107,6 +117,21 @@ export function Editor({
       onRename: () => {},
       onDuplicate,
       onDelete,
+      isReadOnly,
+      onExport: async (format: ExportFormat, scale?: ExportScale) => {
+        if (!editorInstance) {
+          throw new Error("Editor not yet mounted");
+        }
+        await exportCanvasImpl({
+          // tldraw's Editor satisfies the structural ExportEditor surface
+          // (toImage / getSelectedShapeIds / getCurrentPageShapeIds /
+          // getSnapshot); the cast bridges TLShapeId branding.
+          editor: editorInstance as unknown as Parameters<typeof exportCanvas>[0]["editor"],
+          format,
+          scale,
+          filename: slugify(title),
+        });
+      },
     },
   };
 
@@ -139,6 +164,7 @@ export function Editor({
               // "File type is not allowed" toast as PDF / DOCX / etc.
               acceptedVideoMimeTypes={[]}
               onMount={(editor) => {
+                setEditorInstance(editor);
                 // tldraw v4 sets readonly via instance state; the prop isn't
                 // exposed on TldrawProps. Server-side enforcement still wins
                 // (TLSocketRoom drops mutations from readonly sessions); this

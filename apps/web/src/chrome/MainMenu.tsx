@@ -5,15 +5,18 @@
  *   Rename → calls onRename
  *   Duplicate → calls onDuplicate
  *   Delete → opens AlertDialog confirm; confirm calls onDelete
- *   Export → submenu with 5 disabled "coming soon" items
+ *   Export → submenu with PNG / SVG / PDF / JSON; PNG and PDF expand
+ *            to a nested 1× / 2× / 4× scale submenu. Hidden entirely
+ *            when the session is read-only.
  *
- * Spec: "MainMenu exposes Rename, Duplicate, Delete, and a placeholder Export submenu"
- * Design: "mainmenu の export submenu 顯示「敬請期待」而非隱藏"
+ * Spec: canvas-export — "Editor and owner can export the canvas in
+ * four formats", "Viewer cannot access export controls".
  */
 
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import type { ExportFormat, ExportScale } from "../canvas/export/export-canvas";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,10 +26,14 @@ export interface MainMenuProps {
   onRename: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onExport: (format: ExportFormat, scale?: ExportScale) => void;
+  isReadOnly: boolean;
 }
 
+const SCALES: readonly ExportScale[] = [1, 2, 4];
+
 // ---------------------------------------------------------------------------
-// DeleteConfirmDialog (AlertDialog)
+// DeleteConfirmDialog
 // ---------------------------------------------------------------------------
 
 interface DeleteConfirmDialogProps {
@@ -49,8 +56,6 @@ function DeleteConfirmDialog({ open, onConfirm, onClose }: DeleteConfirmDialogPr
 
   if (!open) return null;
 
-  // Portal to body so the dialog escapes tldraw's `pointer-events: none`
-  // chrome container.
   return createPortal(
     <div
       role="alertdialog"
@@ -91,35 +96,43 @@ function DeleteConfirmDialog({ open, onConfirm, onClose }: DeleteConfirmDialogPr
 }
 
 // ---------------------------------------------------------------------------
-// Export submenu items
+// Export submenu structure
 // ---------------------------------------------------------------------------
 
-const EXPORT_ITEMS = [
-  "exportPng",
-  "exportSvg",
-  "exportPdf",
-  "exportJson",
-  "exportMarkdown",
-] as const;
+interface FormatEntry {
+  format: ExportFormat;
+  labelKey: string;
+  hasScale: boolean;
+}
+
+const FORMAT_ENTRIES: readonly FormatEntry[] = [
+  { format: "png", labelKey: "canvas.chrome.mainMenu.exportPng", hasScale: true },
+  { format: "svg", labelKey: "canvas.chrome.mainMenu.exportSvg", hasScale: false },
+  { format: "pdf", labelKey: "canvas.chrome.mainMenu.exportPdf", hasScale: true },
+  { format: "json", labelKey: "canvas.chrome.mainMenu.exportJson", hasScale: false },
+];
+
+function scaleLabelKey(scale: ExportScale): string {
+  return `canvas.chrome.mainMenu.exportScale${scale}x`;
+}
 
 // ---------------------------------------------------------------------------
 // MainMenu
 // ---------------------------------------------------------------------------
 
-export function MainMenu({ onRename, onDuplicate, onDelete }: MainMenuProps) {
+export function MainMenu({ onRename, onDuplicate, onDelete, onExport, isReadOnly }: MainMenuProps) {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [exportSubmenuOpen, setExportSubmenuOpen] = useState(false);
+  const [openScaleFormat, setOpenScaleFormat] = useState<ExportFormat | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on outside click
   useEffect(() => {
     if (!menuOpen) return;
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-        setExportSubmenuOpen(false);
+        closeMenu();
       }
     };
     document.addEventListener("mousedown", handler);
@@ -129,12 +142,17 @@ export function MainMenu({ onRename, onDuplicate, onDelete }: MainMenuProps) {
   function closeMenu() {
     setMenuOpen(false);
     setExportSubmenuOpen(false);
+    setOpenScaleFormat(null);
+  }
+
+  function handleExport(format: ExportFormat, scale?: ExportScale) {
+    closeMenu();
+    onExport(format, scale);
   }
 
   return (
     <>
       <div ref={menuRef} className="pointer-events-auto relative">
-        {/* Menu trigger */}
         <button
           type="button"
           aria-label={t("canvas.chrome.mainMenu.label")}
@@ -149,13 +167,11 @@ export function MainMenu({ onRename, onDuplicate, onDelete }: MainMenuProps) {
           </svg>
         </button>
 
-        {/* Dropdown menu */}
         {menuOpen && (
           <div
             role="menu"
             className="absolute left-0 z-50 mt-1 min-w-[220px] rounded-lg border border-ink-navy/10 bg-white py-1 shadow-lg"
           >
-            {/* Rename */}
             <button
               type="button"
               role="menuitem"
@@ -168,7 +184,6 @@ export function MainMenu({ onRename, onDuplicate, onDelete }: MainMenuProps) {
               {t("canvas.chrome.mainMenu.rename")}
             </button>
 
-            {/* Duplicate */}
             <button
               type="button"
               role="menuitem"
@@ -181,7 +196,6 @@ export function MainMenu({ onRename, onDuplicate, onDelete }: MainMenuProps) {
               {t("canvas.chrome.mainMenu.duplicate")}
             </button>
 
-            {/* Delete */}
             <button
               type="button"
               role="menuitem"
@@ -194,49 +208,49 @@ export function MainMenu({ onRename, onDuplicate, onDelete }: MainMenuProps) {
               {t("canvas.chrome.mainMenu.delete")}
             </button>
 
-            {/* Divider */}
-            <div className="my-1 border-t border-ink-navy/10" />
-
-            {/* Export submenu */}
-            <div
-              className="relative"
-              onMouseEnter={() => setExportSubmenuOpen(true)}
-              onMouseLeave={() => setExportSubmenuOpen(false)}
-            >
-              <button
-                type="button"
-                role="menuitem"
-                aria-haspopup="true"
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
-              >
-                <span>{t("canvas.chrome.mainMenu.export")}</span>
-                <svg className="h-3 w-3" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-                  <path d="M4 2l6 4-6 4V2z" />
-                </svg>
-              </button>
-              {exportSubmenuOpen && (
-                <div
-                  role="menu"
-                  className="absolute left-full top-0 min-w-[220px] rounded-lg border border-ink-navy/10 bg-white py-1 shadow-lg"
-                >
-                  {EXPORT_ITEMS.map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      role="menuitem"
-                      aria-disabled="true"
-                      disabled
-                      className="w-full cursor-not-allowed px-3 py-2 text-left text-sm text-ink-navy/40"
+            {!isReadOnly && (
+              <>
+                <div className="my-1 border-t border-ink-navy/10" />
+                <div className="relative">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    aria-haspopup="true"
+                    aria-expanded={exportSubmenuOpen}
+                    onMouseEnter={() => setExportSubmenuOpen(true)}
+                    onFocus={() => setExportSubmenuOpen(true)}
+                    onClick={() => setExportSubmenuOpen((v) => !v)}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+                  >
+                    <span>{t("canvas.chrome.mainMenu.export")}</span>
+                    <svg
+                      className="h-3 w-3"
+                      viewBox="0 0 12 12"
+                      fill="currentColor"
+                      aria-hidden="true"
                     >
-                      {t(`canvas.chrome.mainMenu.${key}`)}{" "}
-                      <span className="text-xs">
-                        ({t("canvas.chrome.mainMenu.exportComingSoon")})
-                      </span>
-                    </button>
-                  ))}
+                      <path d="M4 2l6 4-6 4V2z" />
+                    </svg>
+                  </button>
+                  {exportSubmenuOpen && (
+                    <div
+                      role="menu"
+                      className="absolute left-full top-0 min-w-[220px] rounded-lg border border-ink-navy/10 bg-white py-1 shadow-lg"
+                    >
+                      {FORMAT_ENTRIES.map((entry) => (
+                        <FormatItem
+                          key={entry.format}
+                          entry={entry}
+                          openScaleFormat={openScaleFormat}
+                          onOpenScale={setOpenScaleFormat}
+                          onExport={handleExport}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -247,5 +261,73 @@ export function MainMenu({ onRename, onDuplicate, onDelete }: MainMenuProps) {
         onClose={() => setDeleteConfirmOpen(false)}
       />
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FormatItem — single format row inside the export submenu, optionally
+// expanding into a nested scale picker (PNG / PDF only).
+// ---------------------------------------------------------------------------
+
+interface FormatItemProps {
+  entry: FormatEntry;
+  openScaleFormat: ExportFormat | null;
+  onOpenScale: (f: ExportFormat | null) => void;
+  onExport: (format: ExportFormat, scale?: ExportScale) => void;
+}
+
+function FormatItem({ entry, openScaleFormat, onOpenScale, onExport }: FormatItemProps) {
+  const { t } = useTranslation();
+  const isOpen = openScaleFormat === entry.format;
+
+  if (!entry.hasScale) {
+    return (
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => onExport(entry.format)}
+        className="w-full px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+      >
+        {t(entry.labelKey)}
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        role="menuitem"
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+        onMouseEnter={() => onOpenScale(entry.format)}
+        onFocus={() => onOpenScale(entry.format)}
+        onClick={() => onOpenScale(isOpen ? null : entry.format)}
+        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+      >
+        <span>{t(entry.labelKey)}</span>
+        <svg className="h-3 w-3" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+          <path d="M4 2l6 4-6 4V2z" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div
+          role="menu"
+          className="absolute left-full top-0 min-w-[160px] rounded-lg border border-ink-navy/10 bg-white py-1 shadow-lg"
+        >
+          {SCALES.map((scale) => (
+            <button
+              key={scale}
+              type="button"
+              role="menuitem"
+              onClick={() => onExport(entry.format, scale)}
+              className="w-full px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+            >
+              {t(scaleLabelKey(scale))}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

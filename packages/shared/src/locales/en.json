@@ -101,12 +101,15 @@
         "deleteConfirmYes": "Delete",
         "deleteConfirmNo": "Cancel",
         "export": "Export",
-        "exportComingSoon": "coming soon",
         "exportPng": "Export as PNG",
         "exportSvg": "Export as SVG",
         "exportPdf": "Export as PDF",
         "exportJson": "Export as JSON",
-        "exportMarkdown": "Export as Markdown"
+        "exportScale1x": "1× resolution",
+        "exportScale2x": "2× resolution",
+        "exportScale4x": "4× resolution",
+        "exportSuccess": "Exported {{format}}",
+        "exportFailed": "Export failed — please retry"
       },
       "persistence": {
         "loadFailedToast": "Could not load canvas contents — opening with a blank canvas"
