@@ -72,7 +72,8 @@
   },
   "footer": {
     "tagline": "Made with care",
-    "versionLabel": "v{{version}}"
+    "versionLabel": "v{{version}}",
+    "copyright": "© {{year}} Sean Chen"
   },
   "auth": {
     "login": {
