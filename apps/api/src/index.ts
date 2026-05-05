@@ -40,6 +40,8 @@ import { canvases, canvasShares, canvasInvites, canvasShareLinks, users } from "
 import { createSyncServer, type SyncServerDeps, type SyncSocketData } from "./sync/index";
 import { createConcurrentConnectionRegistry } from "./sync/rate-limit";
 import { RoomRegistry, type SyncRoomLike } from "./sync/room";
+import { SnapshotPersister } from "./sync/persistence";
+import { flushThenShutdown, makeTrackingRoomFactory } from "./sync/wiring";
 
 const PORT = Number(Bun.env.PORT ?? 3000);
 
@@ -94,13 +96,34 @@ async function saveSnapshotToDb(canvasId: string, snapshot: RoomSnapshot): Promi
     .where(eq(canvases.id, canvasId));
 }
 
+// Mutation-driven snapshot persister — primary flush path.
+// Without this wiring, only the idle-release (60 s after last
+// disconnect) and graceful-shutdown paths would flush — meaning any
+// non-graceful restart during active editing loses everything since
+// the last graceful flush. See ADR-0012.
+const snapshotPersister = new SnapshotPersister({
+  saveSnapshot: saveSnapshotToDb,
+  setTimer: (fn, ms) => globalThis.setTimeout(fn, ms),
+  clearTimer: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
+  now: () => Date.now(),
+  log: { error: (meta, msg) => logger.error(meta as object, msg) },
+  debounceMs: 2_000,
+  capMs: 10_000,
+});
+
+const trackingRoomFactory = makeTrackingRoomFactory<SyncRoomLike>(
+  snapshotPersister,
+  vellumStoreSchema,
+  (opts) =>
+    new TLSocketRoom({
+      initialSnapshot: opts.initialSnapshot,
+      schema: opts.schema as typeof vellumStoreSchema,
+      onDataChange: opts.onDataChange,
+    }) as unknown as SyncRoomLike,
+);
+
 const syncRegistry: RoomRegistry<SyncRoomLike> = new RoomRegistry<SyncRoomLike>({
-  createRoom(_canvasId, initialSnapshot) {
-    return new TLSocketRoom({
-      initialSnapshot,
-      schema: vellumStoreSchema,
-    }) as unknown as SyncRoomLike;
-  },
+  createRoom: trackingRoomFactory,
   loadSnapshot: loadSnapshotFromDb,
   saveSnapshot: saveSnapshotToDb,
   setTimer: (fn, ms) => globalThis.setTimeout(fn, ms),
@@ -567,11 +590,15 @@ const server = Bun.serve<SyncSocketData>({
   websocket: syncServer.websocket,
 });
 
-// Graceful shutdown — flush sync rooms, close all WS, then stop the server.
+// Graceful shutdown — flush pending mutation-driven snapshots first
+// (so any in-flight 2 s debounce window writes to DB), then dispose
+// rooms, then stop the HTTP/WS server.
 async function shutdownGracefully(signal: string): Promise<void> {
   logger.info({ signal }, "shutdown requested; flushing sync state");
   try {
-    await syncServer.shutdown();
+    await flushThenShutdown(snapshotPersister, () => syncServer.shutdown(), {
+      error: (meta, msg) => logger.error(meta as object, msg),
+    });
   } catch (err) {
     logger.error({ err: String(err) }, "error during sync server shutdown");
   }
