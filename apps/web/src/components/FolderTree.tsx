@@ -1,15 +1,18 @@
 /**
- * FolderTree — dashboard sidebar folder navigation.
+ * FolderTree — dashboard folder navigation.
  *
- * Displays a flat list (1-level only):
- *   1. "All canvases" — synthetic row, clears folder filter
- *   2. "Unfiled"      — synthetic row, shows canvases with folderId null
- *   3. Owned folders  — one row per folder, sorted by name asc (server-sorted)
+ * Displays a horizontal tab strip with three sentinels followed by the
+ * user's folders:
+ *   1. "All canvases" — clears folder filter
+ *   2. "Unfiled"      — shows canvases with folderId null
+ *   3. "Shared with me" — virtual folder for canvases shared by others
+ *   4. User folders   — flat list, no nesting
  *
- * Each folder row is a drop target for canvas cards (dnd-kit).
- * Clicking a row calls onSelectFolder with the folder id (or null).
+ * Each tab is a drop target for canvas cards (dnd-kit). User-folder
+ * tabs reveal hover-only edit / delete affordances. An optional
+ * `onCreateFolder` callback adds a `+` action at the end of the strip.
  *
- * Spec: "Folder tree component renders flat list with drag targets"
+ * Spec: "Folder navigation component renders flat list with drag targets"
  */
 
 import React from "react";
@@ -27,15 +30,14 @@ export interface FolderTreeProps {
   onSelectFolder: (folderId: string | null) => void;
   onRenameFolder?: (folder: Folder) => void;
   onDeleteFolder?: (folder: Folder) => void;
+  onCreateFolder?: () => void;
 }
 
 // ---------------------------------------------------------------------------
-// DroppableRow — a single folder row that accepts canvas card drops.
-// `actions` (optional) renders hover-revealed buttons next to the label
-// (e.g. rename / delete). Synthetic rows pass undefined.
+// FolderTab — pill-style horizontal tab. Each tab is a drop target.
 // ---------------------------------------------------------------------------
 
-interface DroppableRowProps {
+interface FolderTabProps {
   droppableId: string;
   label: string;
   isActive: boolean;
@@ -43,7 +45,7 @@ interface DroppableRowProps {
   actions?: React.ReactNode;
 }
 
-function DroppableRow({ droppableId, label, isActive, onClick, actions }: DroppableRowProps) {
+function FolderTab({ droppableId, label, isActive, onClick, actions }: FolderTabProps) {
   const { setNodeRef, isOver } = useDroppable({ id: droppableId });
 
   return (
@@ -52,11 +54,12 @@ function DroppableRow({ droppableId, label, isActive, onClick, actions }: Droppa
         type="button"
         onClick={onClick}
         className={[
-          "flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-colors",
+          "rounded-full px-4 py-1.5 text-sm transition-all duration-150",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warm-sepia focus-visible:ring-offset-2 focus-visible:ring-offset-off-white",
           isActive
-            ? "bg-ink-navy/10 font-semibold text-ink-navy"
-            : "text-gray-600 hover:bg-gray-100",
-          isOver ? "ring-2 ring-ink-navy ring-inset" : "",
+            ? "bg-ink-navy font-semibold text-white shadow-sm"
+            : "text-warm-sepia hover:bg-parchment-cream hover:text-ink-navy hover:shadow-sm",
+          isOver ? "ring-2 ring-warm-sepia ring-offset-2 ring-offset-off-white" : "",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -64,7 +67,14 @@ function DroppableRow({ droppableId, label, isActive, onClick, actions }: Droppa
         <span className="truncate">{label}</span>
       </button>
       {actions && (
-        <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        <div
+          className={[
+            "pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2",
+            "opacity-0 transition-opacity duration-150",
+            "group-hover:pointer-events-auto group-hover:opacity-100",
+            "focus-within:pointer-events-auto focus-within:opacity-100",
+          ].join(" ")}
+        >
           {actions}
         </div>
       )}
@@ -82,40 +92,41 @@ export function FolderTree({
   onSelectFolder,
   onRenameFolder,
   onDeleteFolder,
+  onCreateFolder,
 }: FolderTreeProps) {
   const { t } = useTranslation();
 
   return (
-    <nav aria-label="Folder navigation" className="space-y-0.5">
-      {/* Synthetic: All canvases */}
-      <DroppableRow
+    <nav
+      aria-label={t("folder.allCanvases")}
+      className="flex flex-wrap items-center gap-2 border-b border-ink-navy/5 pb-6 pt-2"
+    >
+      {/* Sentinels */}
+      <FolderTab
         droppableId="all"
         label={t("folder.allCanvases")}
         isActive={activeFolderId === null}
         onClick={() => onSelectFolder(null)}
       />
-
-      {/* Synthetic: Unfiled */}
-      <DroppableRow
+      <FolderTab
         droppableId="unfiled"
         label={t("folder.unfiled")}
         isActive={activeFolderId === "unfiled"}
         onClick={() => onSelectFolder("unfiled")}
       />
-
-      {/* Synthetic: Shared with me — virtual folder, not a drop target for
-          owned canvases (the dnd handler short-circuits on droppableId
-          "shared"). Visually grouped with the other sentinels above. */}
-      <DroppableRow
+      <FolderTab
         droppableId="shared"
         label={t("dashboard.sharedWithMe")}
         isActive={activeFolderId === "shared"}
         onClick={() => onSelectFolder("shared")}
       />
 
-      {/* Owned folders — flat list, no nesting */}
+      {/* Divider between sentinels and user folders */}
+      {folders.length > 0 && <span className="mx-1 h-4 w-px bg-ink-navy/10" aria-hidden="true" />}
+
+      {/* User folders */}
       {folders.map((folder) => (
-        <DroppableRow
+        <FolderTab
           key={folder.id}
           droppableId={folder.id}
           label={folder.name}
@@ -123,7 +134,7 @@ export function FolderTree({
           onClick={() => onSelectFolder(folder.id)}
           actions={
             (onRenameFolder || onDeleteFolder) && (
-              <div className="flex items-center gap-0.5 rounded-md bg-white/95 px-1 shadow-sm">
+              <div className="flex items-center gap-0.5 rounded-md border border-ink-navy/10 bg-white px-1 py-0.5 shadow-sm">
                 {onRenameFolder && (
                   <button
                     type="button"
@@ -132,7 +143,7 @@ export function FolderTree({
                       e.stopPropagation();
                       onRenameFolder(folder);
                     }}
-                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-ink-navy"
+                    className="rounded p-1 text-warm-sepia/70 transition-colors hover:bg-parchment-cream hover:text-ink-navy"
                   >
                     <PencilIcon />
                   </button>
@@ -145,7 +156,7 @@ export function FolderTree({
                       e.stopPropagation();
                       onDeleteFolder(folder);
                     }}
-                    className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                    className="rounded p-1 text-warm-sepia/70 transition-colors hover:bg-red-50 hover:text-red-600"
                   >
                     <TrashIcon />
                   </button>
@@ -155,6 +166,18 @@ export function FolderTree({
           }
         />
       ))}
+
+      {/* Create folder action — placed at the strip end */}
+      {onCreateFolder && (
+        <button
+          type="button"
+          aria-label={t("folder.create")}
+          onClick={onCreateFolder}
+          className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-warm-sepia transition-all duration-150 hover:bg-parchment-cream hover:text-ink-navy hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warm-sepia focus-visible:ring-offset-2 focus-visible:ring-offset-off-white"
+        >
+          <PlusIcon />
+        </button>
+      )}
     </nav>
   );
 }
@@ -181,6 +204,19 @@ function TrashIcon() {
       aria-hidden="true"
     >
       <path d="M5.5 1h5l.5 1H14v1H2V2h3l.5-1zM3 4h10l-1 11H4L3 4z" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 16 16"
+      className="h-4 w-4 fill-current"
+      aria-hidden="true"
+    >
+      <path d="M8 3.5a.5.5 0 0 1 .5.5v3.5H12a.5.5 0 0 1 0 1H8.5V12a.5.5 0 0 1-1 0V8.5H4a.5.5 0 0 1 0-1h3.5V4a.5.5 0 0 1 .5-.5Z" />
     </svg>
   );
 }

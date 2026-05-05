@@ -10,7 +10,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/useAuth";
-import { AppHeader } from "../components/AppHeader";
 
 interface SessionItem {
   id: string;
@@ -66,18 +65,14 @@ export function SessionsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col">
-        <AppHeader />
-        <div className="flex flex-1 items-center justify-center">
-          <span className="text-warm-sepia">Loading…</span>
-        </div>
+      <div className="flex flex-1 items-center justify-center py-16">
+        <span className="text-warm-sepia">Loading…</span>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <AppHeader />
+    <div>
       <main className="mx-auto w-full max-w-2xl px-6 py-10">
         <h1 className="font-serif text-2xl text-ink-navy mb-8">{t("account.sessions.title")}</h1>
 

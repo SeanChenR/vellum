@@ -8,10 +8,13 @@
 
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../auth/useAuth";
 import { FadeIn, SlideIn } from "../motion/primitives";
 
 export function AboutPage() {
   const { t } = useTranslation();
+  const { isAuthenticated } = useAuth();
+  const ctaHref = isAuthenticated ? "/dashboard" : "/login";
   return (
     <article className="mx-auto flex max-w-3xl flex-col gap-16 px-6 py-24">
       <header className="flex flex-col gap-6">
@@ -47,7 +50,7 @@ export function AboutPage() {
             {t("about.closing.heading")}
           </h2>
           <a
-            href="/login"
+            href={ctaHref}
             className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-ink-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-ink-navy/90"
           >
             {t("about.closing.cta")}

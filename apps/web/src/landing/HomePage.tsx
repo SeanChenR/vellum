@@ -16,6 +16,7 @@
 
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../auth/useAuth";
 import { FadeIn, SlideIn, StaggerContainer } from "../motion/primitives";
 import vellumLogo from "../assets/vellum-logo-removebg.png";
 
@@ -35,6 +36,8 @@ export function HomePage() {
 // ---------------------------------------------------------------------------
 
 function Hero({ t }: { t: ReturnType<typeof useTranslation>["t"] }) {
+  const { isAuthenticated } = useAuth();
+  const ctaHref = isAuthenticated ? "/dashboard" : "/login";
   return (
     <section className="relative flex min-h-[calc(100vh-72px)] items-center justify-center overflow-hidden px-6 py-24">
       <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
@@ -59,7 +62,7 @@ function Hero({ t }: { t: ReturnType<typeof useTranslation>["t"] }) {
 
         <FadeIn delay={400} duration={500}>
           <a
-            href="/login"
+            href={ctaHref}
             className="mt-12 inline-flex cursor-pointer items-center justify-center rounded-lg bg-ink-navy px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-ink-navy/90"
           >
             {t("landing.hero.cta")}

@@ -13,9 +13,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Navigate, useSearch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 import { z } from "zod";
-import { useAuth } from "./useAuth";
 import { safeRedirect } from "./safe-redirect";
 import vellumLogo from "../assets/vellum-logo.png";
 
@@ -32,7 +31,6 @@ interface MagicLinkResponse {
 
 export function LoginPage() {
   const { t } = useTranslation();
-  const { isAuthenticated, isLoading } = useAuth();
   const [sent, setSent] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
@@ -55,18 +53,6 @@ export function LoginPage() {
     formState: { isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
-  // Already-signed-in visitors skip the login form entirely.
-  if (isLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <span className="text-warm-sepia">Loading…</span>
-      </main>
-    );
-  }
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" />;
-  }
-
   const onSubmit = async (values: FormValues) => {
     setErrorKey(null);
     try {
@@ -87,7 +73,7 @@ export function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
+    <div className="flex items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm space-y-8">
         {/* Logo / Title */}
         <div className="flex flex-col items-center text-center">
@@ -179,7 +165,7 @@ export function LoginPage() {
           </form>
         )}
       </div>
-    </main>
+    </div>
   );
 }
 

@@ -1,10 +1,4 @@
-import {
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Navigate,
-  Outlet,
-} from "@tanstack/react-router";
+import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
 import React from "react";
 import { RouteGuard } from "./auth/RouteGuard";
 import { AnonymousCanvasGuard } from "./auth/AnonymousCanvasGuard";
@@ -19,6 +13,7 @@ import { SessionsPage } from "./account/SessionsPage";
 import { DashboardPage } from "./dashboard/DashboardPage";
 import { CanvasPage } from "./canvas/CanvasPage";
 import { PublicLayout } from "./landing/PublicLayout";
+import { AppLayout } from "./landing/AppLayout";
 import { HomePage as LandingHomePage } from "./landing/HomePage";
 import { AboutPage } from "./landing/AboutPage";
 
@@ -52,7 +47,7 @@ const loginRoute = createRoute({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
     redirect: typeof search["redirect"] === "string" ? search["redirect"] : undefined,
   }),
-  component: LoginPage,
+  component: LoginRoute,
 });
 
 const oauthCallbackRoute = createRoute({
@@ -91,7 +86,9 @@ const dashboardRoute = createRoute({
   path: "/dashboard",
   component: () => (
     <RouteGuard>
-      <DashboardPage />
+      <AppLayout>
+        <DashboardPage />
+      </AppLayout>
     </RouteGuard>
   ),
 });
@@ -101,7 +98,9 @@ const profileRoute = createRoute({
   path: "/account/profile",
   component: () => (
     <RouteGuard>
-      <ProfilePage />
+      <AppLayout>
+        <ProfilePage />
+      </AppLayout>
     </RouteGuard>
   ),
 });
@@ -111,7 +110,9 @@ const sessionsRoute = createRoute({
   path: "/account/sessions",
   component: () => (
     <RouteGuard>
-      <SessionsPage />
+      <AppLayout>
+        <SessionsPage />
+      </AppLayout>
     </RouteGuard>
   ),
 });
@@ -133,9 +134,11 @@ const canvasRoute = createRoute({
 // ---------------------------------------------------------------------------
 
 /**
- * Public route wrappers — Homepage and About page both render their
- * content inside the shared <PublicLayout> shell. Authenticated visitors
- * are redirected to /dashboard; anonymous visitors see the public surface.
+ * Public route wrappers — Homepage, About, and Login all render inside
+ * the shared <PublicLayout> shell. Authenticated visitors see the same
+ * public surface as anonymous visitors (the Navbar's auth-aware right
+ * side reflects their signed-in state); they are no longer redirected
+ * away from / or /about.
  */
 
 function HomeRoute() {
@@ -154,17 +157,22 @@ function AboutRoute() {
   );
 }
 
+function LoginRoute() {
+  return (
+    <PublicRoute>
+      <LoginPage />
+    </PublicRoute>
+  );
+}
+
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   if (isLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-off-white">
         <span className="text-warm-sepia text-sm">Loading…</span>
       </main>
     );
-  }
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" />;
   }
   return <PublicLayout>{children}</PublicLayout>;
 }

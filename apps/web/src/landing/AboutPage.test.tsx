@@ -21,6 +21,16 @@ mock.module("motion/react", () => ({
   AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 
+let mockAuthIsAuthenticated = false;
+mock.module("../auth/useAuth", () => ({
+  useAuth: () => ({
+    user: null,
+    isLoading: false,
+    isAuthenticated: mockAuthIsAuthenticated,
+    logout: mock(() => {}),
+  }),
+}));
+
 const { AboutPage } = await import("./AboutPage");
 
 function renderAbout() {
@@ -58,10 +68,21 @@ describe("AboutPage", () => {
     },
   );
 
-  test("renders a closing CTA linking to /login", () => {
+  test("anonymous visitor sees a closing CTA linking to /login", () => {
+    mockAuthIsAuthenticated = false;
     const { container } = renderAbout();
     const cta = container.querySelector('a[href="/login"]');
     expect(cta).not.toBeNull();
     expect(cta!.textContent).toContain("Get started");
+  });
+
+  test("authenticated visitor sees the closing CTA linking to /dashboard instead", () => {
+    mockAuthIsAuthenticated = true;
+    const { container } = renderAbout();
+    expect(container.querySelector('a[href="/login"]')).toBeNull();
+    const cta = container.querySelector('a[href="/dashboard"]');
+    expect(cta).not.toBeNull();
+    expect(cta!.textContent).toContain("Get started");
+    mockAuthIsAuthenticated = false;
   });
 });

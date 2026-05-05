@@ -12,6 +12,7 @@
     "login": "Sign in",
     "userMenu": {
       "label": "User menu",
+      "dashboard": "Go to Dashboard",
       "profile": "Profile",
       "sessions": "Active sessions",
       "signOut": "Sign out"

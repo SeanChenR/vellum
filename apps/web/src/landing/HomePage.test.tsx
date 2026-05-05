@@ -23,6 +23,20 @@ mock.module("motion/react", () => ({
   AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 
+let mockAuthIsAuthenticated = false;
+mock.module("../auth/useAuth", () => ({
+  useAuth: () => ({
+    user: null,
+    isLoading: false,
+    isAuthenticated: mockAuthIsAuthenticated,
+    logout: mock(() => {}),
+  }),
+}));
+
+function setAuth(isAuthenticated: boolean) {
+  mockAuthIsAuthenticated = isAuthenticated;
+}
+
 const { HomePage } = await import("./HomePage");
 
 function renderHome() {
@@ -52,11 +66,22 @@ describe("HomePage — hero", () => {
     ).not.toBeNull();
   });
 
-  test("renders the primary CTA linking to /login", () => {
+  test("anonymous visitor sees the primary CTA linking to /login", () => {
+    setAuth(false);
     const { container } = renderHome();
     const cta = container.querySelector('a[href="/login"]');
     expect(cta).not.toBeNull();
     expect(cta!.textContent).toContain("Get started");
+  });
+
+  test("authenticated visitor sees the primary CTA linking to /dashboard", () => {
+    setAuth(true);
+    const { container } = renderHome();
+    expect(container.querySelector('a[href="/login"]')).toBeNull();
+    const cta = container.querySelector('a[href="/dashboard"]');
+    expect(cta).not.toBeNull();
+    expect(cta!.textContent).toContain("Get started");
+    setAuth(false);
   });
 });
 

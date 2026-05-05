@@ -16,7 +16,6 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import i18n from "../i18n";
-import { AppHeader } from "../components/AppHeader";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
 
 const profileSchema = z.object({
@@ -125,18 +124,14 @@ export function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col">
-        <AppHeader />
-        <div className="flex flex-1 items-center justify-center">
-          <span className="text-warm-sepia">Loading…</span>
-        </div>
+      <div className="flex flex-1 items-center justify-center py-16">
+        <span className="text-warm-sepia">Loading…</span>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <AppHeader />
+    <div>
       <main className="mx-auto w-full max-w-lg px-6 py-10">
         <h1 className="font-serif text-2xl text-ink-navy mb-8">{t("account.profile.title")}</h1>
 

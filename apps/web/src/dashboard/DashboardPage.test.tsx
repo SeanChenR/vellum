@@ -144,27 +144,7 @@ describe("DashboardPage", () => {
     });
   });
 
-  test("header user menu exposes Profile, Sessions links and Sign out button", async () => {
-    await i18n.changeLanguage("en");
-    mockLogout.mockClear();
-    const user = userEvent.setup();
-    const qc = makeQC();
-    render(React.createElement(Wrapper, { qc }, React.createElement(DashboardPage)));
-
-    await user.click(screen.getByRole("button", { name: /user menu/i }));
-    await waitFor(() => {
-      expect(screen.queryByRole("menu")).not.toBeNull();
-    });
-
-    const profileLink = screen.getByRole("menuitem", { name: /^profile$/i });
-    expect((profileLink as HTMLAnchorElement).getAttribute("href")).toBe("/account/profile");
-    const sessionsLink = screen.getByRole("menuitem", {
-      name: /active sessions/i,
-    });
-    expect((sessionsLink as HTMLAnchorElement).getAttribute("href")).toBe("/account/sessions");
-
-    const signOutBtn = screen.getByRole("menuitem", { name: /sign out/i });
-    await user.click(signOutBtn);
-    expect(mockLogout).toHaveBeenCalledTimes(1);
-  });
+  // The "user menu shows Profile / Sessions / Sign out" assertion moved to
+  // UserAvatarMenu.test.tsx after unify-navbar — DashboardPage no longer
+  // renders its own header (AppLayout provides Navbar at the route level).
 });

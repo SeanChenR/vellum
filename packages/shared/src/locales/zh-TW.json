@@ -12,6 +12,7 @@
     "login": "登入",
     "userMenu": {
       "label": "使用者選單",
+      "dashboard": "返回 Dashboard",
       "profile": "個人資料",
       "sessions": "登入裝置",
       "signOut": "登出"

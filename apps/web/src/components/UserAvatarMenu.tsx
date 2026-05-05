@@ -52,6 +52,14 @@ export function UserAvatarMenu({ user, onSignOut }: UserAvatarMenuProps) {
           </div>
           <a
             role="menuitem"
+            href="/dashboard"
+            onClick={() => setOpen(false)}
+            className="block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+          >
+            {t("nav.userMenu.dashboard")}
+          </a>
+          <a
+            role="menuitem"
             href="/account/profile"
             onClick={() => setOpen(false)}
             className="block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
