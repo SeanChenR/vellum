@@ -17,6 +17,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { ExportFormat, ExportScale } from "../canvas/export/export-canvas";
+import { DialogMotion, DialogPanel } from "../motion/dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,16 +55,14 @@ function DeleteConfirmDialog({ open, onConfirm, onClose }: DeleteConfirmDialogPr
     return () => document.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  if (!open) return null;
-
   return createPortal(
-    <div
+    <DialogMotion
+      open={open}
       role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="delete-confirm-title"
+      ariaLabelledBy="delete-confirm-title"
       className="pointer-events-auto fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
     >
-      <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
+      <DialogPanel className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
         <h2 id="delete-confirm-title" className="mb-2 text-base font-semibold text-ink-navy">
           {t("canvas.chrome.mainMenu.deleteConfirmTitle")}
         </h2>
@@ -89,8 +88,8 @@ function DeleteConfirmDialog({ open, onConfirm, onClose }: DeleteConfirmDialogPr
             {t("canvas.chrome.mainMenu.deleteConfirmYes")}
           </button>
         </div>
-      </div>
-    </div>,
+      </DialogPanel>
+    </DialogMotion>,
     document.body,
   );
 }

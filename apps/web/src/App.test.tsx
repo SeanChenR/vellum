@@ -9,8 +9,10 @@ afterEach(() => {
 describe("App smoke", () => {
   test("mounts without crashing and renders Vellum branding", async () => {
     render(<App />);
-    // Router + i18n hydrate asynchronously — findByText waits.
-    const branding = await screen.findByText(/Vellum/i);
-    expect(branding).not.toBeNull();
+    // Router + i18n hydrate asynchronously — findAllByText waits.
+    // The public Homepage renders "Vellum" multiple times (navbar brand,
+    // footer, mobile notice) so we expect ≥ 1 match.
+    const matches = await screen.findAllByText(/Vellum/i);
+    expect(matches.length).toBeGreaterThan(0);
   });
 });

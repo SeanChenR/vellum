@@ -6,12 +6,73 @@
   },
   "nav": {
     "backToDashboard": "Back to dashboard",
+    "brand": "Vellum",
+    "home": "Home",
+    "about": "About",
+    "login": "Sign in",
     "userMenu": {
       "label": "User menu",
       "profile": "Profile",
       "sessions": "Active sessions",
       "signOut": "Sign out"
     }
+  },
+  "landing": {
+    "hero": {
+      "headline": "A whiteboard built with care.",
+      "tagline": "Light, fast, and made for thinking. Vellum is a craftsmanship-driven canvas — no AI gimmicks, no upsell.",
+      "cta": "Get started"
+    },
+    "features": {
+      "heading": "A tool for people who think slowly",
+      "canvas": {
+        "title": "Infinite canvas",
+        "body": "tldraw-powered freeform thinking with custom Markdown, Code, Callout, and Link-card shapes."
+      },
+      "multiplayer": {
+        "title": "Real-time multiplayer",
+        "body": "Edit together with your team. Cursor presence, optimistic sync, and a self-hosted backend that won't ghost you."
+      },
+      "sharing": {
+        "title": "Yours to share",
+        "body": "Per-canvas public links and email invites with editor / viewer roles. Export to PNG / SVG / PDF / JSON anytime."
+      }
+    },
+    "narrative": {
+      "heading": "Why we wrote a whiteboard",
+      "body": "Most tools today pile on features. Vellum borrows Whimsical's lightness and tldraw's openness, then pairs them with our own editing philosophy — for people willing to take their time.",
+      "readMore": "Read our story →"
+    },
+    "mobileNotice": {
+      "heading": "Best on a desktop browser",
+      "body": "Vellum only supports desktop browsers right now. Please come back on a larger screen."
+    }
+  },
+  "about": {
+    "heading": "About Vellum",
+    "lead": "Vellum is a whiteboard for the patient — a canvas that rewards craft, slow thinking, and small teams who care about how their tools feel.",
+    "why": {
+      "heading": "Why Vellum",
+      "paragraph1": "Whiteboard tools in 2026 mostly compete on who can shove more AI, more templates, and more vague promises into your sidebar. We believe there's still an audience that wants the opposite — a predictable editor that doesn't surprise you.",
+      "paragraph2": "Vellum stands on solid open foundations (tldraw, motion, Tailwind) and lets that craftsmanship show through. Every decision picks complete over minimal, and built-to-last over rushed."
+    },
+    "audience": {
+      "heading": "Who it's for",
+      "paragraph1": "We have a few people in mind: designers, writers, researchers, and engineers who think for themselves; people who care enough about their tools to choose them deliberately; people who'd rather not be assaulted by features.",
+      "paragraph2": "If you're still reading, that's probably you."
+    },
+    "builtWith": {
+      "heading": "Built with",
+      "body": "tldraw for the canvas core, motion for animations, Tailwind CSS v4 and React for the UI, and Bun for the server and bundler. It's all a single binary."
+    },
+    "closing": {
+      "heading": "Make something thoughtful.",
+      "cta": "Get started"
+    }
+  },
+  "footer": {
+    "tagline": "Made with care",
+    "versionLabel": "v{{version}}"
   },
   "auth": {
     "login": {

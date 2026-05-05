@@ -5,8 +5,7 @@ import {
   Navigate,
   Outlet,
 } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
-import { VELLUM_VERSION } from "@vellum/shared";
+import React from "react";
 import { RouteGuard } from "./auth/RouteGuard";
 import { AnonymousCanvasGuard } from "./auth/AnonymousCanvasGuard";
 import { useAuth } from "./auth/useAuth";
@@ -19,7 +18,9 @@ import { ProfilePage } from "./account/ProfilePage";
 import { SessionsPage } from "./account/SessionsPage";
 import { DashboardPage } from "./dashboard/DashboardPage";
 import { CanvasPage } from "./canvas/CanvasPage";
-import vellumLogo from "./assets/vellum-logo.png";
+import { PublicLayout } from "./landing/PublicLayout";
+import { HomePage as LandingHomePage } from "./landing/HomePage";
+import { AboutPage } from "./landing/AboutPage";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -36,7 +37,13 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: HomePage,
+  component: HomeRoute,
+});
+
+const aboutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/about",
+  component: AboutRoute,
 });
 
 const loginRoute = createRoute({
@@ -125,43 +132,41 @@ const canvasRoute = createRoute({
 // Components
 // ---------------------------------------------------------------------------
 
-function HomePage() {
-  const { t } = useTranslation();
-  const { isAuthenticated, isLoading } = useAuth();
+/**
+ * Public route wrappers — Homepage and About page both render their
+ * content inside the shared <PublicLayout> shell. Authenticated visitors
+ * are redirected to /dashboard; anonymous visitors see the public surface.
+ */
 
+function HomeRoute() {
+  return (
+    <PublicRoute>
+      <LandingHomePage />
+    </PublicRoute>
+  );
+}
+
+function AboutRoute() {
+  return (
+    <PublicRoute>
+      <AboutPage />
+    </PublicRoute>
+  );
+}
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <span className="text-warm-sepia">Loading…</span>
+      <main className="flex min-h-screen items-center justify-center bg-off-white">
+        <span className="text-warm-sepia text-sm">Loading…</span>
       </main>
     );
   }
   if (isAuthenticated) {
     return <Navigate to="/dashboard" />;
   }
-
-  return (
-    <main className="flex min-h-screen items-center justify-center p-8">
-      <div className="flex flex-col items-center text-center">
-        <img
-          src={vellumLogo}
-          alt={t("app.name")}
-          className="h-16 w-16 select-none"
-          draggable={false}
-        />
-        <h1 className="mt-4 font-serif text-4xl text-ink-navy">{t("app.name", "Vellum")}</h1>
-        <p className="mt-2 text-warm-sepia">
-          {t("app.tagline", "Scaffolding stub")} · v{VELLUM_VERSION}
-        </p>
-        <a
-          href="/login"
-          className="mt-6 inline-block rounded-lg bg-ink-navy px-6 py-3 text-sm font-semibold text-white hover:bg-ink-navy/90"
-        >
-          {t("app.getStarted", "Get started")}
-        </a>
-      </div>
-    </main>
-  );
+  return <PublicLayout>{children}</PublicLayout>;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,6 +175,7 @@ function HomePage() {
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  aboutRoute,
   loginRoute,
   oauthCallbackRoute,
   magicLinkVerifyRoute,

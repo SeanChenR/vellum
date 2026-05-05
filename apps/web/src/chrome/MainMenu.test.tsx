@@ -18,8 +18,19 @@ import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import React from "react";
 import i18n from "../i18n";
-import { MainMenu } from "./MainMenu";
 import type { ExportFormat, ExportScale } from "../canvas/export/export-canvas";
+
+// Mock motion/react so DialogMotion / DialogPanel render synchronously
+// without animation delays — tests don't need to wait for exit transitions.
+mock.module("motion/react", () => ({
+  motion: {
+    div: ({ children, ...rest }: { children?: React.ReactNode }) => <div {...rest}>{children}</div>,
+  },
+  useReducedMotion: () => false,
+  AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+}));
+
+const { MainMenu } = await import("./MainMenu");
 
 // ---------------------------------------------------------------------------
 // Helpers

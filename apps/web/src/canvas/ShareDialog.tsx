@@ -19,6 +19,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useShareState, type LinkMode, type ShareRole } from "./useShareState";
+import { DialogMotion, DialogPanel } from "../motion/dialog";
 
 export interface ShareDialogProps {
   open: boolean;
@@ -30,27 +31,29 @@ export function ShareDialog({ open, canvasId, onClose }: ShareDialogProps) {
   const { t } = useTranslation();
   const state = useShareState(canvasId);
 
-  if (!open) return null;
-
   return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={t("canvas.share.title")}
+    <DialogMotion
+      open={open}
+      ariaLabelledBy="share-dialog-title"
       className="pointer-events-auto fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
     >
-      <div
-        className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="mb-4 text-lg font-semibold text-ink-navy">{t("canvas.share.title")}</h2>
+      <button
+        type="button"
+        aria-label="close"
+        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+        tabIndex={-1}
+      />
+      <DialogPanel className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
+        <h2 id="share-dialog-title" className="mb-4 text-lg font-semibold text-ink-navy">
+          {t("canvas.share.title")}
+        </h2>
 
         <InviteSection state={state} />
         <MembersSection state={state} />
         <PublicLinkSection state={state} />
-      </div>
-    </div>,
+      </DialogPanel>
+    </DialogMotion>,
     document.body,
   );
 }

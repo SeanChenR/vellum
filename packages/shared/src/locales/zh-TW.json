@@ -6,12 +6,73 @@
   },
   "nav": {
     "backToDashboard": "返回首頁",
+    "brand": "Vellum",
+    "home": "首頁",
+    "about": "關於",
+    "login": "登入",
     "userMenu": {
       "label": "使用者選單",
       "profile": "個人資料",
       "sessions": "登入裝置",
       "signOut": "登出"
     }
+  },
+  "landing": {
+    "hero": {
+      "headline": "用心做的白板。",
+      "tagline": "輕、快，為了思考而生。Vellum 是一個重視工藝感的畫布——沒有 AI 噱頭、沒有升級推銷。",
+      "cta": "開始使用"
+    },
+    "features": {
+      "heading": "為慢慢想事情的人做的工具",
+      "canvas": {
+        "title": "無限畫布",
+        "body": "由 tldraw 驅動的自由創作空間，內建 Markdown、Code、Callout 與 Link Card 四種客製形狀。"
+      },
+      "multiplayer": {
+        "title": "即時多人協作",
+        "body": "與團隊一起編輯。游標 presence、樂觀同步、自架後端，連線斷了也能繼續。"
+      },
+      "sharing": {
+        "title": "想分享就分享",
+        "body": "以 canvas 為單位的公開連結與 Email 邀請，editor / viewer 角色清楚。隨時匯出 PNG / SVG / PDF / JSON。"
+      }
+    },
+    "narrative": {
+      "heading": "為何寫一個白板",
+      "body": "市面上的工具堆砌了太多功能。Vellum 把 Whimsical 那種輕巧、tldraw 的開放、再加上自己的編輯哲學，做給願意慢慢用的人。",
+      "readMore": "讀我們的故事 →"
+    },
+    "mobileNotice": {
+      "heading": "請以桌面瀏覽",
+      "body": "Vellum 目前只支援桌面瀏覽器。請改用較大的螢幕回到此頁。"
+    }
+  },
+  "about": {
+    "heading": "關於 Vellum",
+    "lead": "Vellum 是給有耐心的人寫的白板——一張獎賞工藝感、慢思考、與在意工具質地的小團隊的畫布。",
+    "why": {
+      "heading": "為何寫 Vellum",
+      "paragraph1": "白板工具走到 2026，多數產品在比誰塞得進更多 AI、更多模板、更多模糊承諾。我們相信還有一群人想要的剛好相反——一個可預期、不會嚇到你的編輯器。",
+      "paragraph2": "Vellum 用既有的開源底子（tldraw、motion、Tailwind）撐起這份工藝感。每個決定都選「完整勝過最小」、選「會用很久」勝過「能快速上線」。"
+    },
+    "audience": {
+      "heading": "誰會用",
+      "paragraph1": "我們想到的人是：自己對事情有想法的設計師、寫作者、研究者、工程師；願意花時間挑工具的人；不喜歡被功能轟炸的人。",
+      "paragraph2": "如果你看到這裡還沒關掉分頁，那大概就是你。"
+    },
+    "builtWith": {
+      "heading": "技術組成",
+      "body": "tldraw 提供畫布核心、motion 處理動畫、Tailwind CSS v4 與 React 構成介面、Bun 是後端跟打包器。一切是個 single binary。"
+    },
+    "closing": {
+      "heading": "做點有想法的東西。",
+      "cta": "開始使用"
+    }
+  },
+  "footer": {
+    "tagline": "Made with care",
+    "versionLabel": "v{{version}}"
   },
   "auth": {
     "login": {

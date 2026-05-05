@@ -12,6 +12,7 @@
 
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { DialogMotion, DialogPanel } from "../motion/dialog";
 
 export interface FolderDeleteDialogProps {
   open: boolean;
@@ -33,16 +34,13 @@ export function FolderDeleteDialog({
 }: FolderDeleteDialogProps) {
   const { t } = useTranslation();
 
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="folder-delete-title"
+    <DialogMotion
+      open={open}
+      ariaLabelledBy="folder-delete-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+      <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
         <h2 id="folder-delete-title" className="mb-2 text-lg font-semibold">
           {t("folder.delete")}
         </h2>
@@ -73,7 +71,7 @@ export function FolderDeleteDialog({
             {isPending ? "Deleting…" : "Delete"}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogPanel>
+    </DialogMotion>
   );
 }

@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslation } from "react-i18next";
+import { DialogMotion, DialogPanel } from "../motion/dialog";
 
 const schema = z.object({ title: z.string().min(1).max(120) });
 type Fields = z.infer<typeof schema>;
@@ -40,16 +41,13 @@ export function CanvasRenameDialog({
     values: { title: currentTitle },
   });
 
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="canvas-rename-title"
+    <DialogMotion
+      open={open}
+      ariaLabelledBy="canvas-rename-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+      <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
         <h2 id="canvas-rename-title" className="mb-4 text-lg font-semibold">
           {t("canvas.dialog.rename.title")}
         </h2>
@@ -86,7 +84,7 @@ export function CanvasRenameDialog({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogPanel>
+    </DialogMotion>
   );
 }
