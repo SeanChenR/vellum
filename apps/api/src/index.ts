@@ -42,6 +42,13 @@ import { createConcurrentConnectionRegistry } from "./sync/rate-limit";
 import { RoomRegistry, type SyncRoomLike } from "./sync/room";
 import { SnapshotPersister } from "./sync/persistence";
 import { flushThenShutdown, makeTrackingRoomFactory } from "./sync/wiring";
+import { applyMutation } from "./sync/mutator";
+import {
+  handleDevMutateRequest,
+  shouldRegisterDevMutate,
+  assertDevMutateRuleRegistered,
+} from "./dev/mutate-endpoint";
+import { DEV_MUTATE_RULE } from "./lib/rate-limit-rules";
 
 const PORT = Number(Bun.env.PORT ?? 3000);
 
@@ -132,6 +139,16 @@ const syncRegistry: RoomRegistry<SyncRoomLike> = new RoomRegistry<SyncRoomLike>(
 });
 
 const connectionRegistry = createConcurrentConnectionRegistry();
+
+// ---------------------------------------------------------------------------
+// Dev mutate endpoint — gated on NODE_ENV; physically not registered in prod.
+// Spec: openspec/specs/server-mutation-bridge/spec.md (M12.1).
+// ---------------------------------------------------------------------------
+const DEV_MUTATE_ENABLED = shouldRegisterDevMutate(Bun.env);
+if (DEV_MUTATE_ENABLED) {
+  // Fail-fast at startup: dev endpoint must have a corresponding rule.
+  assertDevMutateRuleRegistered(DEV_MUTATE_RULE);
+}
 
 const syncDeps: SyncServerDeps = {
   registry: syncRegistry,
@@ -556,6 +573,35 @@ const server = Bun.serve<SyncSocketData>({
       const session = await getSession(req);
       const ogResponse = await handleOgRequest(req, session, rateLimiter, ogDeps, ogCache);
       return respond(ogResponse);
+    }
+
+    // Dev-only mutate endpoint (NODE_ENV !== "production").
+    // The route is physically absent from the dispatch table when
+    // DEV_MUTATE_ENABLED is false, so production builds 404 unconditionally.
+    if (DEV_MUTATE_ENABLED && req.method === "POST") {
+      const match = url.pathname.match(/^\/dev\/canvas\/([^/]+)\/mutate$/);
+      if (match && match[1]) {
+        const session = await getSession(req);
+        if (!session) {
+          return respond(
+            new Response(JSON.stringify({ ok: false, errorKey: "errors.auth.unauthorized" }), {
+              status: 401,
+              headers: { "content-type": "application/json" },
+            }),
+          );
+        }
+        const resp = await handleDevMutateRequest(
+          req,
+          session,
+          {
+            rateLimiter,
+            applyMutation: (canvasId, mutations) =>
+              applyMutation({ registry: syncRegistry }, canvasId, mutations),
+          },
+          match[1],
+        );
+        return respond(resp);
+      }
     }
 
     // Account routes (protected)

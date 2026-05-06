@@ -87,3 +87,15 @@ export const SHARE_LINK_ROTATE_RULE: RateLimitRule = { windowMs: s(60), max: 5 }
  * Design: docs/adr/0010-link-card-cache-two-tier.md
  */
 export const OG_FETCH_RULE: RateLimitRule = { windowMs: s(60), max: 30 };
+
+/**
+ * POST /dev/canvas/:id/mutate — 30 mutations per 60 seconds per
+ * authenticated user. Dev-only endpoint for the Server tldraw Mutator
+ * spike (M12.1). Generous enough for human iteration; tight enough to
+ * stop runaway test scripts. The endpoint is physically not registered
+ * when `Bun.env.NODE_ENV === "production"` (see add-server-tldraw-mutator
+ * design "Dev endpoint 的物理隔離 — production 完全不註冊").
+ *
+ * Rule key for limiter calls: `api:dev.mutate:<userId>`
+ */
+export const DEV_MUTATE_RULE: RateLimitRule = { windowMs: s(60), max: 30 };

@@ -352,6 +352,11 @@
       "forbidden": "You do not have access to this folder",
       "notEmpty": "Please move all canvases out of this folder before deleting it"
     },
+    "devMutate": {
+      "invalidPayload": "Mutation payload is malformed",
+      "canvasNotInActiveRoom": "No clients are connected to this canvas — cannot apply mutation",
+      "mutationFailed": "An error occurred while applying the mutation"
+    },
     "validation": "Invalid input. Please check your data and try again.",
     "rateLimit": "Too many requests. Please try again later.",
     "internal": "An internal error occurred. Please try again later."

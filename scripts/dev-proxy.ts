@@ -59,8 +59,14 @@ const server = Bun.serve<ProxyWsData>({
       return new Response("Upgrade failed", { status: 426 });
     }
 
-    // API + health → upstream API
-    if (url.pathname.startsWith("/api/") || url.pathname === "/health") {
+    // API + health + /dev/* (M12.1 server-side mutator) → upstream API.
+    // The /dev/* prefix is only registered on :3000 when NODE_ENV !==
+    // "production"; the proxy forwards transparently in dev.
+    if (
+      url.pathname.startsWith("/api/") ||
+      url.pathname.startsWith("/dev/") ||
+      url.pathname === "/health"
+    ) {
       const fwd = "http://localhost:3000" + url.pathname + url.search;
       const init: RequestInit = {
         method: req.method,

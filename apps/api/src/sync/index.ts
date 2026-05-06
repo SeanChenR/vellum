@@ -68,6 +68,13 @@ export interface SyncServer {
    * 4404 and disposes the room (canvas-deletion semantics).
    */
   notifyAccessRevoked(canvasId: string, scope: RevocationScope): void;
+  /**
+   * Returns the same `RoomRegistry` instance that the sync server uses
+   * internally. Exposed so the Server tldraw Mutator (M12.1) and other
+   * server-side write paths can route through the exact same active-room
+   * map — eliminating "two registries diverged" bugs.
+   */
+  getRoomRegistry(): RoomRegistry<SyncRoomLike>;
 }
 
 const SYNC_PATH = /^\/sync\/([^/]+)$/;
@@ -244,6 +251,16 @@ export function createSyncServer(deps: SyncServerDeps): SyncServer {
     await deps.registry.closeAll();
   }
 
+  /**
+   * Returns the same `RoomRegistry` instance that the sync server uses
+   * internally. Exposed so the Server tldraw Mutator (M12.1) and other
+   * server-side write paths can route through the exact same active-room
+   * map — eliminating "two registries diverged" bugs.
+   */
+  function getRoomRegistry(): RoomRegistry<SyncRoomLike> {
+    return deps.registry;
+  }
+
   return {
     fetch,
     websocket,
@@ -251,5 +268,6 @@ export function createSyncServer(deps: SyncServerDeps): SyncServer {
     isCanvasInActiveRoom,
     notifyCanvasDeleted,
     notifyAccessRevoked,
+    getRoomRegistry,
   };
 }

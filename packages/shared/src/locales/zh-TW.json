@@ -352,6 +352,11 @@
       "forbidden": "您沒有存取此資料夾的權限",
       "notEmpty": "請先將畫布移出此資料夾，再刪除資料夾"
     },
+    "devMutate": {
+      "invalidPayload": "Mutation 內容格式錯誤",
+      "canvasNotInActiveRoom": "此畫布目前沒有任何使用者連線，無法套用變更",
+      "mutationFailed": "套用 mutation 時發生錯誤"
+    },
     "validation": "輸入資料有誤，請確認後再試",
     "rateLimit": "請求次數過多，請稍後再試",
     "internal": "伺服器發生錯誤，請稍後再試"
