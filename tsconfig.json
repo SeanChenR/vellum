@@ -3,16 +3,20 @@
     "target": "ESNext",
     "module": "Preserve",
     "moduleResolution": "Bundler",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "jsx": "preserve",
-    "types": ["bun"],
-
+    "types": [
+      "bun"
+    ],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "verbatimModuleSyntax": true,
-
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -21,12 +25,19 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-
-    "baseUrl": ".",
     "paths": {
-      "@vellum/shared": ["./packages/shared/src/index.ts"],
-      "@vellum/shared/*": ["./packages/shared/src/*"]
+      "@vellum/shared": [
+        "./packages/shared/src/index.ts"
+      ],
+      "@vellum/shared/*": [
+        "./packages/shared/src/*"
+      ]
     }
   },
-  "exclude": ["node_modules", "dist", "build", ".bun"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    ".bun"
+  ]
 }
