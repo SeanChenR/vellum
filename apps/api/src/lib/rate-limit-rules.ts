@@ -99,3 +99,22 @@ export const OG_FETCH_RULE: RateLimitRule = { windowMs: s(60), max: 30 };
  * Rule key for limiter calls: `api:dev.mutate:<userId>`
  */
 export const DEV_MUTATE_RULE: RateLimitRule = { windowMs: s(60), max: 30 };
+
+// ---------------------------------------------------------------------------
+// BYOK (Phase 2, M11.1) — /api/account/byok/* per-session limits.
+// Bucket key format: `byok:<list|save|delete>:<userId>`.
+// Design: "Rate limits — 60 / 10 / 30 per minute per session".
+// ---------------------------------------------------------------------------
+
+/** GET /api/account/byok — 60 list requests per 60s per user. */
+export const BYOK_LIST_RULE: RateLimitRule = { windowMs: s(60), max: 60 };
+
+/**
+ * POST /api/account/byok/:provider — 10 saves per 60s per user.
+ * Tighter cap because each save triggers a real ping to the provider;
+ * it would otherwise be a password oracle.
+ */
+export const BYOK_SAVE_RULE: RateLimitRule = { windowMs: s(60), max: 10 };
+
+/** DELETE /api/account/byok/:provider — 30 deletes per 60s per user. */
+export const BYOK_DELETE_RULE: RateLimitRule = { windowMs: s(60), max: 30 };

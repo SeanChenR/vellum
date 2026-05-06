@@ -49,6 +49,10 @@ import {
   assertDevMutateRuleRegistered,
 } from "./dev/mutate-endpoint";
 import { DEV_MUTATE_RULE } from "./lib/rate-limit-rules";
+import { initVault } from "./byok/vault";
+import { createProviderAdapters } from "./byok/providers/index";
+import { createDrizzleByokRepo } from "./byok/byok-repo";
+import { handleByokRequest, type ByokDeps } from "./byok/routes";
 
 const PORT = Number(Bun.env.PORT ?? 3000);
 
@@ -149,6 +153,21 @@ if (DEV_MUTATE_ENABLED) {
   // Fail-fast at startup: dev endpoint must have a corresponding rule.
   assertDevMutateRuleRegistered(DEV_MUTATE_RULE);
 }
+
+// ---------------------------------------------------------------------------
+// BYOK wiring — Phase 2, M11.1.
+// initVault throws on missing/invalid API_KEY_ENCRYPTION_KEY (fail-fast).
+// Spec: openspec/specs/byok-keys/spec.md.
+// ---------------------------------------------------------------------------
+const byokVault = initVault(Bun.env.API_KEY_ENCRYPTION_KEY);
+const byokAdapters = createProviderAdapters();
+const byokRepo = createDrizzleByokRepo();
+const byokDeps: ByokDeps = {
+  repo: byokRepo,
+  vault: byokVault,
+  adapters: byokAdapters,
+  rateLimiter,
+};
 
 const syncDeps: SyncServerDeps = {
   registry: syncRegistry,
@@ -602,6 +621,14 @@ const server = Bun.serve<SyncSocketData>({
         );
         return respond(resp);
       }
+    }
+
+    // BYOK routes — must be matched before generic /api/account/* handler
+    // because both share the prefix.
+    if (url.pathname.startsWith("/api/account/byok")) {
+      const session = await getSession(req);
+      const byokResponse = await handleByokRequest(req, session, byokDeps);
+      if (byokResponse) return respond(byokResponse);
     }
 
     // Account routes (protected)

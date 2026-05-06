@@ -161,3 +161,63 @@ describe("folderUpdateInputSchema", () => {
     expect(result.success).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// BYOK contract types — structural assertions on the new request /
+// response shapes added in M11.1 for `/api/account/byok/*`.
+// ---------------------------------------------------------------------------
+
+describe("BYOK contract types", () => {
+  test("BYOKProviderListItem shape compiles and accepts a representative payload", () => {
+    // Pure structural smoke — the type must accept this object. If the
+    // type went missing or its shape changed this would fail to compile.
+    const sample: import("./api-contract").BYOKProviderListItem = {
+      provider: "anthropic",
+      createdAt: "2026-05-06T10:00:00.000Z",
+      lastUsedAt: null,
+    };
+    expect(sample.provider).toBe("anthropic");
+    expect(sample.lastUsedAt).toBeNull();
+  });
+
+  test("BYOKSaveRequest accepts { apiKey: string }", () => {
+    const sample: import("./api-contract").BYOKSaveRequest = { apiKey: "sk-ant-test" };
+    expect(sample.apiKey).toBe("sk-ant-test");
+  });
+
+  test("BYOKSaveResponse is the success-envelope wrapping a list item", () => {
+    const sample: import("./api-contract").BYOKSaveResponse = {
+      data: {
+        provider: "anthropic",
+        createdAt: "2026-05-06T10:00:00.000Z",
+        lastUsedAt: null,
+      },
+    };
+    expect(sample.data.provider).toBe("anthropic");
+  });
+
+  test("BYOKProviderListResponse wraps a list-item array in the standard envelope", () => {
+    const sample: import("./api-contract").BYOKProviderListResponse = {
+      data: [
+        {
+          provider: "anthropic",
+          createdAt: "2026-05-06T10:00:00.000Z",
+          lastUsedAt: null,
+        },
+      ],
+    };
+    expect(Array.isArray(sample.data)).toBe(true);
+  });
+
+  test("ErrorKey union covers every BYOK error key from the design", () => {
+    const keys: import("./api-contract").ErrorKey[] = [
+      "errors.byok.invalidKey",
+      "errors.byok.outOfCredits",
+      "errors.byok.rateLimited",
+      "errors.byok.unreachable",
+      "errors.byok.providerUnknown",
+      "errors.byok.notAuthenticated",
+    ];
+    expect(keys).toHaveLength(6);
+  });
+});

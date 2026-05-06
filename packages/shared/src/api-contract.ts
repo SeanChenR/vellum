@@ -27,6 +27,12 @@ export type ErrorKey =
   | "errors.folder.notFound"
   | "errors.folder.forbidden"
   | "errors.folder.notEmpty"
+  | "errors.byok.invalidKey"
+  | "errors.byok.outOfCredits"
+  | "errors.byok.rateLimited"
+  | "errors.byok.unreachable"
+  | "errors.byok.providerUnknown"
+  | "errors.byok.notAuthenticated"
   | "errors.validation"
   | "errors.rateLimit"
   | "errors.internal";
@@ -104,3 +110,35 @@ export const folderUpdateInputSchema = z.object({
 });
 
 export type FolderUpdateInput = z.infer<typeof folderUpdateInputSchema>;
+
+// ---------------------------------------------------------------------------
+// BYOK (Phase 2, M11.1) — request / response shapes for /api/account/byok/*
+// ---------------------------------------------------------------------------
+
+/**
+ * `GET /api/account/byok` — one entry per provider the user has saved
+ * a key for. Plaintext / encrypted bytes never leave the server.
+ */
+export interface BYOKProviderListItem {
+  /** `'anthropic'` only in M11.1; M11.2 extends. */
+  provider: string;
+  createdAt: string;
+  /** Touched by the agent runtime (M13.1+); null until then. */
+  lastUsedAt: string | null;
+}
+
+export type BYOKProviderListResponse = ApiSuccess<BYOKProviderListItem[]>;
+
+/**
+ * `POST /api/account/byok/:provider` — body shape; validated by
+ * `byokSaveBodySchema` in apps/api/src/byok/byok-validator.ts.
+ */
+export interface BYOKSaveRequest {
+  apiKey: string;
+}
+
+/**
+ * `POST /api/account/byok/:provider` — success response. Mirrors the
+ * shape of a list-item entry for the saved provider.
+ */
+export type BYOKSaveResponse = ApiSuccess<BYOKProviderListItem>;

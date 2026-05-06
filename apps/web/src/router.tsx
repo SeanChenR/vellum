@@ -11,6 +11,7 @@ import { InviteErrorPage } from "./auth/InviteErrorPage";
 import { PostLoginPage } from "./auth/PostLoginPage";
 import { ProfilePage } from "./account/ProfilePage";
 import { SessionsPage } from "./account/SessionsPage";
+import { ApiKeysPage } from "./account/ApiKeysPage";
 import { DashboardPage } from "./dashboard/DashboardPage";
 import { CanvasPage } from "./canvas/CanvasPage";
 import { PublicLayout } from "./landing/PublicLayout";
@@ -118,6 +119,18 @@ const sessionsRoute = createRoute({
   ),
 });
 
+const apiKeysRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/account/api-keys",
+  component: () => (
+    <RouteGuard>
+      <AppLayout>
+        <ApiKeysPage />
+      </AppLayout>
+    </RouteGuard>
+  ),
+});
+
 // Canvas route uses the anonymous-aware guard so visitors with a
 // `?share=<token>` query can enter without bouncing through /login.
 const canvasRoute = createRoute({
@@ -194,6 +207,7 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   profileRoute,
   sessionsRoute,
+  apiKeysRoute,
   canvasRoute,
 ]);
 

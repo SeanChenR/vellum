@@ -357,6 +357,14 @@
       "canvasNotInActiveRoom": "No clients are connected to this canvas — cannot apply mutation",
       "mutationFailed": "An error occurred while applying the mutation"
     },
+    "byok": {
+      "invalidKey": "Your Anthropic key looks invalid. Check it's copied correctly.",
+      "outOfCredits": "Your Anthropic account is out of credits.",
+      "rateLimited": "Hit Anthropic's rate limit. Wait a moment and try again.",
+      "unreachable": "Unable to reach Anthropic. Check your network and try again.",
+      "providerUnknown": "Unsupported provider.",
+      "notAuthenticated": "Sign in to manage API keys."
+    },
     "validation": "Invalid input. Please check your data and try again.",
     "rateLimit": "Too many requests. Please try again later.",
     "internal": "An internal error occurred. Please try again later."
@@ -395,6 +403,30 @@
       "confirmEmailMismatch": "Email does not match. Please check again.",
       "sessionNotFound": "Session not found",
       "cannotDeleteOnlyOwner": "You are the sole owner of some canvases. Please transfer or delete them before deleting your account."
+    },
+    "apiKeys": {
+      "title": "API Keys",
+      "subtitle": "Bring your own keys for AI features",
+      "providers": {
+        "anthropic": {
+          "label": "Anthropic",
+          "placeholder": "sk-ant-...",
+          "helpUrl": "https://console.anthropic.com/settings/keys"
+        }
+      },
+      "actions": {
+        "save": "Save",
+        "delete": "Delete",
+        "replace": "Replace"
+      },
+      "status": {
+        "saving": "Validating...",
+        "saved": "Saved"
+      },
+      "confirm": {
+        "deleteTitle": "Delete Anthropic key?",
+        "deleteBody": "Your saved key will be removed. AI features will stop working until you save a new key."
+      }
     }
   }
 }

@@ -30,6 +30,10 @@ export { users, sessions, accounts, verifications } from "@vellum/shared/db/auth
 
 export type { User, Session, Account, Verification } from "@vellum/shared/db/auth-schema";
 
+// BYOK (Phase 2, M11.1) — per-user × per-provider encrypted API keys.
+export { apiKeys } from "@vellum/shared/db/byok-schema";
+export type { ApiKey, NewApiKey } from "@vellum/shared/db/byok-schema";
+
 // ---------------------------------------------------------------------------
 // folders — flat, 1-level only (no parent_id)
 // ---------------------------------------------------------------------------
@@ -199,7 +203,9 @@ export const canvasShareLinks = pgTable(
       .references(() => canvases.id, { onDelete: "cascade" }),
     token: text("token").notNull(),
     /** "closed" rejects all link traffic; "view" → read-only; "edit" → read+write. */
-    mode: text("mode", { enum: ["closed", "view", "edit"] }).notNull().default("closed"),
+    mode: text("mode", { enum: ["closed", "view", "edit"] })
+      .notNull()
+      .default("closed"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     rotatedAt: timestamp("rotated_at", { withTimezone: true }).notNull().defaultNow(),
   },

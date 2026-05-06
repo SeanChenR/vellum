@@ -23,6 +23,9 @@ import {
   FOLDER_LIST_RULE,
   FOLDER_UPDATE_RULE,
   FOLDER_DELETE_RULE,
+  BYOK_LIST_RULE,
+  BYOK_SAVE_RULE,
+  BYOK_DELETE_RULE,
 } from "./rate-limit-rules";
 
 function makeClock() {
@@ -105,5 +108,18 @@ describe("Rule constants match design spec", () => {
   });
   test("FOLDER_LIST_RULE is 60/60s", () => {
     expect(FOLDER_LIST_RULE.max).toBe(60);
+  });
+
+  test("BYOK_LIST_RULE is 60/60s (per-user)", () => {
+    expect(BYOK_LIST_RULE.max).toBe(60);
+    expect(BYOK_LIST_RULE.windowMs).toBe(60_000);
+  });
+  test("BYOK_SAVE_RULE is 10/60s (vendor ping cap, prevents oracle abuse)", () => {
+    expect(BYOK_SAVE_RULE.max).toBe(10);
+    expect(BYOK_SAVE_RULE.windowMs).toBe(60_000);
+  });
+  test("BYOK_DELETE_RULE is 30/60s", () => {
+    expect(BYOK_DELETE_RULE.max).toBe(30);
+    expect(BYOK_DELETE_RULE.windowMs).toBe(60_000);
   });
 });

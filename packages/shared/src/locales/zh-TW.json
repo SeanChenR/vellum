@@ -357,6 +357,14 @@
       "canvasNotInActiveRoom": "此畫布目前沒有任何使用者連線，無法套用變更",
       "mutationFailed": "套用 mutation 時發生錯誤"
     },
+    "byok": {
+      "invalidKey": "Anthropic 金鑰看起來不正確，請確認複製內容",
+      "outOfCredits": "Anthropic 帳號已沒有額度",
+      "rateLimited": "Anthropic 端速率限制中，請稍後再試",
+      "unreachable": "無法連到 Anthropic，請檢查網路後再試",
+      "providerUnknown": "不支援的 provider",
+      "notAuthenticated": "請先登入以管理 API 金鑰"
+    },
     "validation": "輸入資料有誤，請確認後再試",
     "rateLimit": "請求次數過多，請稍後再試",
     "internal": "伺服器發生錯誤，請稍後再試"
@@ -395,6 +403,30 @@
       "confirmEmailMismatch": "電子郵件不符，請再確認",
       "sessionNotFound": "登入階段不存在",
       "cannotDeleteOnlyOwner": "您是部分 canvas 的唯一擁有者，請先轉移或刪除後再刪除帳號"
+    },
+    "apiKeys": {
+      "title": "API 金鑰",
+      "subtitle": "自帶 API 金鑰啟用 AI 功能",
+      "providers": {
+        "anthropic": {
+          "label": "Anthropic",
+          "placeholder": "sk-ant-...",
+          "helpUrl": "https://console.anthropic.com/settings/keys"
+        }
+      },
+      "actions": {
+        "save": "儲存",
+        "delete": "刪除",
+        "replace": "更換"
+      },
+      "status": {
+        "saving": "驗證中...",
+        "saved": "已儲存"
+      },
+      "confirm": {
+        "deleteTitle": "刪除 Anthropic 金鑰？",
+        "deleteBody": "已儲存的金鑰將被移除。AI 功能將停止運作，直到您再次儲存新的金鑰。"
+      }
     }
   }
 }
