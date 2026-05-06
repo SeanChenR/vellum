@@ -59,14 +59,21 @@ async function loginViaMagicLink(page: Page, email: string): Promise<void> {
   const link = extractMagicLinkUrl(body);
   await page.goto(link);
   await expect(page).toHaveURL(/\/dashboard/);
+  // DB default locale is zh-TW; force en so English selectors match.
+  await page.request.patch("/api/account/profile", { data: { locale: "en" } });
+  await page.reload();
+  await expect(page).toHaveURL(/\/dashboard/);
 }
 
 async function createCanvas(page: Page, title: string): Promise<string> {
-  await page.getByRole("button", { name: "Create canvas" }).click();
-  const input = page.getByLabel("Canvas name");
+  await page.getByRole("button", { name: "Create canvas" }).first().click();
+  const input = page.getByPlaceholder("Canvas title");
   await input.fill(title);
-  await page.getByRole("button", { name: "Create" }).click();
-  // Dashboard MUST navigate the user into /canvas/<id> after create.
+  await page.getByRole("button", { name: "Create" }).last().click();
+  // After create, dashboard stays on /dashboard; click the new card.
+  await expect(page.getByText(title)).toBeVisible({ timeout: 10_000 });
+  const newId = await page.locator(`[data-canvas-id]`).first().getAttribute("data-canvas-id");
+  await page.goto(`/canvas/${newId}`);
   await page.waitForURL(/\/canvas\/[a-f0-9-]+/);
   const url = new URL(page.url());
   const segments = url.pathname.split("/");

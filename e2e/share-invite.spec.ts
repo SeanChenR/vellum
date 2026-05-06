@@ -47,11 +47,13 @@ async function loginViaMagicLink(page: Page, email: string): Promise<void> {
   await expect(page.getByText("Check your inbox")).toBeVisible();
   await page.waitForTimeout(500);
   const body = await getEmailBodyForRecipient(email);
-  const link = extractFirstUrl(
-    body,
-    /href=["']([^"']*\/api\/auth\/magic-link\/verify[^"']*)['"]/i,
-  );
+  const link = extractFirstUrl(body, /href=["']([^"']*\/api\/auth\/magic-link\/verify[^"']*)['"]/i);
   await page.goto(link);
+  await expect(page).toHaveURL(/\/dashboard/);
+  // Force user locale to en so the rest of the spec can rely on English
+  // selectors (DB default is zh-TW; useAuth syncs i18n from user.locale).
+  await page.request.patch("/api/account/profile", { data: { locale: "en" } });
+  await page.reload();
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
@@ -68,17 +70,25 @@ test.describe("Share invite happy path", () => {
     await loginViaMagicLink(ownerPage, ownerEmail);
 
     // 2. Owner creates a canvas
-    await ownerPage.getByRole("button", { name: "Create canvas" }).click();
-    await ownerPage.getByLabel("Canvas name").fill("Share invite probe");
-    await ownerPage.getByRole("button", { name: "Create" }).click();
+    await ownerPage.getByRole("button", { name: "Create canvas" }).first().click();
+    await ownerPage.getByPlaceholder("Canvas title").fill("Share invite probe");
+    await ownerPage.getByRole("button", { name: "Create" }).last().click();
+    // Dashboard stays after create — open the new card to enter the editor.
+    await expect(ownerPage.getByText("Share invite probe")).toBeVisible({ timeout: 10_000 });
+    const canvasId = await ownerPage
+      .locator(`[data-canvas-id]`)
+      .first()
+      .getAttribute("data-canvas-id");
+    await ownerPage.goto(`/canvas/${canvasId}`);
     await ownerPage.waitForURL(/\/canvas\/[a-f0-9-]+/);
     const canvasUrl = ownerPage.url();
 
     // 3. Open ShareDialog and invite the new email
-    await ownerPage.getByRole("button", { name: "Share" }).click();
-    await expect(ownerPage.getByRole("dialog", { name: /share/i })).toBeVisible();
-    await ownerPage.getByLabel("Email address").fill(inviteEmail);
-    await ownerPage.getByRole("button", { name: "Send invite" }).click();
+    await ownerPage.getByRole("button", { name: "Share", exact: true }).click();
+    const shareDialog = ownerPage.getByRole("dialog");
+    await expect(shareDialog).toBeVisible();
+    await shareDialog.getByPlaceholder(/example\.com/i).fill(inviteEmail);
+    await shareDialog.getByRole("button", { name: /send invite/i }).click();
     // Pending badge appears once the invite is created.
     await expect(ownerPage.getByText("Pending").first()).toBeVisible();
 

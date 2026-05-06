@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# pre-push — runs the E2E smoke subset (3 specs: smoke, auth-magic-link,
+# canvas-crud) so a broken happy path can't sneak into a remote branch.
+#
+# To bypass intentionally (e.g. WIP push, doc-only diff): git push --no-verify
+#
+# The full suite is `bun run test:e2e` and remains opt-in.
+
+bun run test:e2e:smoke

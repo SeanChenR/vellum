@@ -61,7 +61,9 @@ mock.module("../auth/useAuth", () => ({
   }),
 }));
 
-// Mock API fetches
+// Mock API hooks — the sibling useCanvasList.test.ts and the new
+// *.mutations.test.ts files use the `mock.module(path, () => require(path))`
+// reset trick to override these for their own assertions.
 mock.module("./useCanvasList", () => ({
   canvasListKey: (scope: string) => ["canvas", "list", scope, "all"],
   useCanvasList: (_scope: string) => ({
@@ -86,6 +88,13 @@ mock.module("./useFolderList", () => ({
     deleteFolder: { mutate: () => {} },
   }),
 }));
+
+const _origFetch = global.fetch;
+global.fetch = (async () =>
+  new Response(JSON.stringify({ data: [], meta: { total: 0 } }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  })) as unknown as typeof fetch;
 
 describe("DashboardPage", () => {
   test("default view shows My Canvases heading and a sidebar 'Shared with me' item", async () => {

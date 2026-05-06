@@ -18,6 +18,7 @@
     "test:watch": "bun test apps packages --watch",
     "test:coverage": "bun test apps packages --coverage",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test smoke.spec.ts auth-magic-link.spec.ts canvas-crud.spec.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxlint --fix",

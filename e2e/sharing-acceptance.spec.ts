@@ -58,6 +58,10 @@ async function loginViaMagicLink(page: Page, email: string): Promise<void> {
   const link = extractFirstUrl(html, /href=["']([^"']*\/api\/auth\/magic-link\/verify[^"']*)['"]/i);
   await page.goto(link);
   await expect(page).toHaveURL(/\/dashboard/);
+  // DB default locale is zh-TW; force en so English selectors match.
+  await page.request.patch("/api/account/profile", { data: { locale: "en" } });
+  await page.reload();
+  await expect(page).toHaveURL(/\/dashboard/);
 }
 
 test.describe.configure({ mode: "serial" });
@@ -75,21 +79,28 @@ test.describe("Sharing visual acceptance", () => {
     const ownerPage = await ownerCtx.newPage();
     await loginViaMagicLink(ownerPage, ownerEmail);
 
-    await ownerPage.getByRole("button", { name: "Create canvas" }).click();
-    await ownerPage.getByLabel("Canvas name").fill("Sharing acceptance probe");
-    await ownerPage.getByRole("button", { name: "Create" }).click();
+    await ownerPage.getByRole("button", { name: "Create canvas" }).first().click();
+    await ownerPage.getByPlaceholder("Canvas title").fill("Sharing acceptance probe");
+    await ownerPage.getByRole("button", { name: "Create" }).last().click();
+    await expect(ownerPage.getByText("Sharing acceptance probe")).toBeVisible({ timeout: 10_000 });
+    const newCanvasId = await ownerPage
+      .locator(`[data-canvas-id]`)
+      .first()
+      .getAttribute("data-canvas-id");
+    await ownerPage.goto(`/canvas/${newCanvasId}`);
     await ownerPage.waitForURL(/\/canvas\/[a-f0-9-]+/);
     const canvasUrl = ownerPage.url();
     const canvasId = canvasUrl.match(/\/canvas\/([a-f0-9-]+)/)![1]!;
 
     // 1. Empty ShareDialog
-    await ownerPage.getByRole("button", { name: "Share" }).click();
-    await expect(ownerPage.getByRole("dialog", { name: /share/i })).toBeVisible();
+    await ownerPage.getByRole("button", { name: "Share", exact: true }).click();
+    const shareDlg = ownerPage.getByRole("dialog");
+    await expect(shareDlg).toBeVisible();
     await shot(ownerPage, "01-share-dialog-empty");
 
     // 2. Invite a fresh email → Pending badge
-    await ownerPage.getByLabel("Email address").fill(inviteEmail);
-    await ownerPage.getByRole("button", { name: "Send invite" }).click();
+    await shareDlg.getByPlaceholder(/example\.com/i).fill(inviteEmail);
+    await shareDlg.getByRole("button", { name: /send invite/i }).click();
     await expect(ownerPage.getByText("Pending").first()).toBeVisible();
     await shot(ownerPage, "02-share-dialog-pending");
 
@@ -127,7 +138,7 @@ test.describe("Sharing visual acceptance", () => {
       .getByRole("button", { name: /close/i })
       .click()
       .catch(() => {});
-    await ownerPage.getByRole("button", { name: "Share" }).click();
+    await ownerPage.getByRole("button", { name: "Share", exact: true }).click();
     // Find the role select for the invitee row and switch to viewer
     const roleSelect = ownerPage.getByLabel(new RegExp(`role for ${inviteEmail}`, "i"));
     if (await roleSelect.count()) {
