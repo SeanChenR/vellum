@@ -222,16 +222,13 @@ Project conventions in [`CLAUDE.md`](./CLAUDE.md). Spec analyzer rules in `.spec
 
 ---
 
-## Phase 2 Roadmap
+## Roadmap
 
-High-level themes for v1.0:
+| Phase | Theme | Status |
+|---|---|---|
+| **Phase 1** | Local-only canvas foundation — auth · CRUD · multiplayer · sharing · custom shapes · export · branding · i18n+a11y · test coverage | ✅ Shipped — see [docs/PHASE1_MILESTONES.md](./docs/PHASE1_MILESTONES.md) |
+| **Phase 2** | AI co-pilot integration — server-side agent · BYOK (9 models across Anthropic / OpenAI / Google) · low-level tool primitives · progressive streaming | 🚧 Planning — see [docs/PHASE2_MILESTONES.md](./docs/PHASE2_MILESTONES.md) |
+| **Pre-deploy** (before v1.0) | Hosting decision · Resend (real email) · GitHub Actions CI · Sentry · CSP headers · secrets store migration | ⏳ Deferred per [ADR-0004](./docs/adr/0004-defer-hosting-decision.md) |
+| **Phase 3+** | Mobile responsive · canvas asset cloud upload · cross-canvas memory · multi-agent orchestration · marketing surfaces | ⏳ Backlog |
 
-- Hosting decision (Vercel / Fly / Railway) and prod database
-- Real email via Resend (or alternative) — replace Mailpit
-- GitHub Actions CI — run unit + E2E suite + coverage gate
-- Monitoring — Sentry, structured logs to a hosted sink
-- Mobile responsive (< 768px) — currently a graceful "desktop-only" notice
-- Marketing surfaces — pricing, FAQ, changelog page (currently out of scope)
-- Canvas asset cloud upload — replace data-URL inlining
-
-Until then, Vellum runs locally and is ready for the patient builder.
+Until **v1.0**, Vellum runs locally and is ready for the patient builder.

@@ -222,16 +222,13 @@ discuss?  →  propose  →  apply  ⇄  ingest  →  archive
 
 ---
 
-## Phase 2 路線圖
+## 路線圖
 
-v1.0 高層主題：
+| Phase | 主題 | 狀態 |
+|---|---|---|
+| **Phase 1** | 本機 canvas 基礎 — auth · CRUD · 多人協作 · 分享 · 自訂形狀 · 匯出 · 品牌 · i18n+a11y · 測試覆蓋 | ✅ 已交付 — 見 [docs/PHASE1_MILESTONES.md](./docs/PHASE1_MILESTONES.md) |
+| **Phase 2** | AI co-pilot 整合 — server-side agent · BYOK（Anthropic / OpenAI / Google 9 個模型）· low-level tool primitives · progressive streaming | 🚧 規劃中 — 見 [docs/PHASE2_MILESTONES.md](./docs/PHASE2_MILESTONES.md) |
+| **Pre-deploy**（v1.0 前） | 部署選型 · Resend 真 Email · GitHub Actions CI · Sentry · CSP headers · secrets store 遷移 | ⏳ 暫緩，依 [ADR-0004](./docs/adr/0004-defer-hosting-decision.md) |
+| **Phase 3+** | 行動裝置適配 · 畫布資產雲端上傳 · 跨 canvas 記憶 · multi-agent 編排 · 行銷頁面 | ⏳ Backlog |
 
-- 部署選型決策（Vercel / Fly / Railway）與 prod database
-- 真實 Email 透過 Resend（或替代）— 取代 Mailpit
-- GitHub Actions CI — 跑 unit + E2E 套件 + 覆蓋率閘門
-- 監控 — Sentry、結構化日誌轉到雲端 sink
-- 行動裝置適配（< 768px）— 目前是優雅的「desktop-only」提示
-- 行銷頁面 — 訂價、FAQ、Changelog（目前 out of scope）
-- 畫布資產雲端上傳 — 取代 data URL 內嵌
-
-在那之前，Vellum 跑在本機，等耐心的工匠來打磨。
+在 **v1.0** 之前，Vellum 跑在本機，等耐心的工匠來打磨。
