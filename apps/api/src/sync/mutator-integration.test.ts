@@ -234,4 +234,223 @@ describe("Mutator integration — real broadcast through tldraw sync", () => {
       errorKey: "errors.devMutate.canvasNotInActiveRoom",
     });
   });
+
+  // -------------------------------------------------------------------------
+  // M12.2 — write variants beyond createShape
+  // -------------------------------------------------------------------------
+
+  test("updateShape merges partial onto an existing record (real room)", async () => {
+    env = buildEnv();
+    const ws = new WS(`ws://127.0.0.1:${env.port}/sync/${CANVAS_ID}`);
+    await waitForOpen(ws);
+    await flush(150);
+
+    const deps = { registry: env.syncServer.getRoomRegistry() };
+
+    const created = await applyMutation(deps, CANVAS_ID, [
+      makeMarkdownShape("shape:upd", "before"),
+    ]);
+    expect(created.ok).toBe(true);
+
+    const updated = await applyMutation(deps, CANVAS_ID, [
+      {
+        type: "updateShape",
+        payload: { id: "shape:upd", partial: { x: 999, props: { content: "after" } } },
+      },
+    ]);
+    expect(updated).toEqual({ ok: true, appliedCount: 1 });
+
+    const snap = env.registry.getRoom(CANVAS_ID)?.getCurrentSnapshot();
+    const rec = findRecordInSnapshot(snap, "shape:upd") as
+      | { x: number; props: { content?: string; w?: number; h?: number } }
+      | undefined;
+    expect(rec?.x).toBe(999);
+    expect(rec?.props.content).toBe("after");
+    // Pre-existing props (w/h) must NOT be lost by the partial merge.
+    expect(rec?.props.w).toBe(200);
+    expect(rec?.props.h).toBe(100);
+
+    ws.close();
+  });
+
+  test("deleteShape removes an existing record from the room (real room)", async () => {
+    env = buildEnv();
+    const ws = new WS(`ws://127.0.0.1:${env.port}/sync/${CANVAS_ID}`);
+    await waitForOpen(ws);
+    await flush(150);
+
+    const deps = { registry: env.syncServer.getRoomRegistry() };
+    await applyMutation(deps, CANVAS_ID, [makeMarkdownShape("shape:del", "doomed")]);
+
+    const result = await applyMutation(deps, CANVAS_ID, [
+      { type: "deleteShape", payload: { id: "shape:del" } },
+    ]);
+    expect(result).toEqual({ ok: true, appliedCount: 1 });
+
+    const snap = env.registry.getRoom(CANVAS_ID)?.getCurrentSnapshot();
+    expect(findRecordInSnapshot(snap, "shape:del")).toBeUndefined();
+
+    ws.close();
+  });
+
+  test("groupShapes inserts a group record and reparents children (real room)", async () => {
+    env = buildEnv();
+    const ws = new WS(`ws://127.0.0.1:${env.port}/sync/${CANVAS_ID}`);
+    await waitForOpen(ws);
+    await flush(150);
+
+    const deps = { registry: env.syncServer.getRoomRegistry() };
+    await applyMutation(deps, CANVAS_ID, [
+      makeMarkdownShape("shape:c1", "child 1"),
+      makeMarkdownShape("shape:c2", "child 2"),
+    ]);
+
+    const result = await applyMutation(deps, CANVAS_ID, [
+      {
+        type: "groupShapes",
+        payload: { shapeIds: ["shape:c1", "shape:c2"], groupId: "shape:grp" },
+      },
+    ]);
+    expect(result).toEqual({ ok: true, appliedCount: 1 });
+
+    const snap = env.registry.getRoom(CANVAS_ID)?.getCurrentSnapshot();
+    const group = findRecordInSnapshot(snap, "shape:grp") as
+      | { type: string; parentId: string }
+      | undefined;
+    expect(group?.type).toBe("group");
+    const c1 = findRecordInSnapshot(snap, "shape:c1") as { parentId: string } | undefined;
+    const c2 = findRecordInSnapshot(snap, "shape:c2") as { parentId: string } | undefined;
+    expect(c1?.parentId).toBe("shape:grp");
+    expect(c2?.parentId).toBe("shape:grp");
+
+    ws.close();
+  });
+
+  test("ungroupShape re-parents children and deletes the group (real room)", async () => {
+    env = buildEnv();
+    const ws = new WS(`ws://127.0.0.1:${env.port}/sync/${CANVAS_ID}`);
+    await waitForOpen(ws);
+    await flush(150);
+
+    const deps = { registry: env.syncServer.getRoomRegistry() };
+    await applyMutation(deps, CANVAS_ID, [
+      makeMarkdownShape("shape:u1", "u1"),
+      makeMarkdownShape("shape:u2", "u2"),
+    ]);
+    await applyMutation(deps, CANVAS_ID, [
+      {
+        type: "groupShapes",
+        payload: { shapeIds: ["shape:u1", "shape:u2"], groupId: "shape:gToUng" },
+      },
+    ]);
+
+    const result = await applyMutation(deps, CANVAS_ID, [
+      { type: "ungroupShape", payload: { groupId: "shape:gToUng" } },
+    ]);
+    expect(result).toEqual({ ok: true, appliedCount: 1 });
+
+    const snap = env.registry.getRoom(CANVAS_ID)?.getCurrentSnapshot();
+    expect(findRecordInSnapshot(snap, "shape:gToUng")).toBeUndefined();
+    const u1 = findRecordInSnapshot(snap, "shape:u1") as { parentId: string } | undefined;
+    expect(u1?.parentId).not.toBe("shape:gToUng");
+
+    ws.close();
+  });
+
+  test("connectShapes inserts an arrow + start/end binding records (real room)", async () => {
+    env = buildEnv();
+    const ws = new WS(`ws://127.0.0.1:${env.port}/sync/${CANVAS_ID}`);
+    await waitForOpen(ws);
+    await flush(150);
+
+    const deps = { registry: env.syncServer.getRoomRegistry() };
+    await applyMutation(deps, CANVAS_ID, [
+      makeMarkdownShape("shape:from", "from"),
+      makeMarkdownShape("shape:to", "to"),
+    ]);
+
+    const result = await applyMutation(deps, CANVAS_ID, [
+      {
+        type: "connectShapes",
+        payload: { fromId: "shape:from", toId: "shape:to", arrowId: "shape:arr", label: "auth" },
+      },
+    ]);
+    expect(result).toEqual({ ok: true, appliedCount: 1 });
+
+    const snap = env.registry.getRoom(CANVAS_ID)?.getCurrentSnapshot();
+    expect(findRecordInSnapshot(snap, "shape:arr")).toBeDefined();
+    // Two binding records exist (start + end).
+    const docs = snap?.documents ?? [];
+    const bindings = docs.filter((d) => {
+      const id = (d.state as { id?: string }).id ?? "";
+      return id.startsWith("binding:");
+    });
+    expect(bindings.length).toBe(2);
+
+    ws.close();
+  });
+
+  test("multi-variant batch [createShape, updateShape, connectShapes] commits as one transaction", async () => {
+    env = buildEnv();
+    const ws = new WS(`ws://127.0.0.1:${env.port}/sync/${CANVAS_ID}`);
+    await waitForOpen(ws);
+    await flush(150);
+
+    const deps = { registry: env.syncServer.getRoomRegistry() };
+    await applyMutation(deps, CANVAS_ID, [
+      makeMarkdownShape("shape:src2", "src"),
+      makeMarkdownShape("shape:dst2", "dst"),
+    ]);
+
+    const result = await applyMutation(deps, CANVAS_ID, [
+      makeMarkdownShape("shape:new2", "new"),
+      { type: "updateShape", payload: { id: "shape:src2", partial: { x: 555 } } },
+      {
+        type: "connectShapes",
+        payload: { fromId: "shape:src2", toId: "shape:dst2", arrowId: "shape:arr2" },
+      },
+    ]);
+    expect(result).toEqual({ ok: true, appliedCount: 3 });
+
+    const snap = env.registry.getRoom(CANVAS_ID)?.getCurrentSnapshot();
+    expect(findRecordInSnapshot(snap, "shape:new2")).toBeDefined();
+    const updated = findRecordInSnapshot(snap, "shape:src2") as { x: number } | undefined;
+    expect(updated?.x).toBe(555);
+    expect(findRecordInSnapshot(snap, "shape:arr2")).toBeDefined();
+
+    ws.close();
+  });
+
+  test("groupShapes fail-fast: missing child aborts whole transaction (no partial commit)", async () => {
+    env = buildEnv();
+    const ws = new WS(`ws://127.0.0.1:${env.port}/sync/${CANVAS_ID}`);
+    await waitForOpen(ws);
+    await flush(150);
+
+    const deps = { registry: env.syncServer.getRoomRegistry() };
+    await applyMutation(deps, CANVAS_ID, [makeMarkdownShape("shape:e1", "exists")]);
+
+    const result = await applyMutation(deps, CANVAS_ID, [
+      {
+        type: "groupShapes",
+        payload: {
+          shapeIds: ["shape:e1", "shape:missing-from-fail-fast"],
+          groupId: "shape:gAbort",
+        },
+      },
+    ]);
+    expect(result).toEqual({
+      ok: false,
+      errorKey: "errors.fullToolSurface.shapeNotFound",
+    });
+
+    // No group record committed; the existing child's parentId must NOT
+    // have been re-pointed even partially.
+    const snap = env.registry.getRoom(CANVAS_ID)?.getCurrentSnapshot();
+    expect(findRecordInSnapshot(snap, "shape:gAbort")).toBeUndefined();
+    const e1 = findRecordInSnapshot(snap, "shape:e1") as { parentId: string } | undefined;
+    expect(e1?.parentId).not.toBe("shape:gAbort");
+
+    ws.close();
+  });
 });

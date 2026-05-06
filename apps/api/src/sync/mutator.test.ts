@@ -26,26 +26,70 @@ interface StubRoom extends SyncRoomLike {
 interface StubStore {
   put: ReturnType<typeof mock>;
   get: ReturnType<typeof mock>;
+  delete: ReturnType<typeof mock>;
+  getAll: ReturnType<typeof mock>;
+  /** Inspect what the store ended up holding after the updater ran. */
+  records(): Map<string, Record<string, unknown>>;
 }
 
-function makeStubRoom(): { room: StubRoom; lastStore: StubStore | null } {
-  const ctx: { lastStore: StubStore | null } = { lastStore: null };
+/**
+ * Build a stub TLSocketRoom that backs `RoomStoreMethods` with an
+ * in-memory Map. The stub mirrors tldraw's `updateStore` semantics: the
+ * updater runs against a transactional buffer; if it throws, no
+ * commits happen.
+ *
+ * @param seed - records to pre-populate the store with (keyed by id)
+ */
+function makeStubRoom(seed: Record<string, unknown>[] = []): {
+  room: StubRoom;
+  lastStore: StubStore | null;
+} {
+  const ctx: { lastStore: StubStore | null; committed: Map<string, Record<string, unknown>> } = {
+    lastStore: null,
+    committed: new Map(),
+  };
+  for (const r of seed) {
+    const id = (r as { id?: string }).id;
+    if (id) ctx.committed.set(id, r as Record<string, unknown>);
+  }
+
   const updateStore = mock(async (updater: (store: StubStore) => void | Promise<void>) => {
+    // Snapshot of committed records the updater starts with; mutations
+    // happen on a working copy so a thrown updater leaves the room
+    // unchanged (mirrors `room.updateStore`'s atomic-on-throw semantic).
+    const working = new Map(ctx.committed);
     const store: StubStore = {
-      put: mock((_record: unknown) => {}),
-      get: mock(() => undefined),
+      put: mock((record: Record<string, unknown>) => {
+        const id = record["id"];
+        if (typeof id !== "string") throw new Error("record requires id");
+        working.set(id, record);
+      }),
+      get: mock((id: string) => working.get(id) ?? null),
+      delete: mock((idOrRecord: string | { id: string }) => {
+        const id = typeof idOrRecord === "string" ? idOrRecord : idOrRecord.id;
+        working.delete(id);
+      }),
+      getAll: mock(() => Array.from(working.values())),
+      records: () => working,
     };
     ctx.lastStore = store;
     await updater(store);
+    // Updater did not throw → commit working copy.
+    ctx.committed = working;
   });
+
   const room: StubRoom = {
-    getCurrentSnapshot: mock(() => ({ documents: [], schema: undefined as never })),
+    getCurrentSnapshot: mock(() => ({
+      documents: Array.from(ctx.committed.values()).map(
+        (state) => ({ state, lastChangedClock: 0 }) as never,
+      ),
+      schema: undefined as never,
+    })),
     isClosed: mock(() => false),
     close: mock(() => {}),
     updateStore,
-    // Cast: TLSocketRoom has updateStore but our SyncRoomLike interface
-    // does not include it (registry-level concern); mutator narrows via deps.
   } as unknown as StubRoom;
+
   return {
     room,
     get lastStore() {
@@ -149,5 +193,279 @@ describe("applyMutation — error containment", () => {
     const result = await applyMutation(deps, CANVAS_ID, [VALID_CREATE_SHAPE]);
 
     expect(result).toEqual({ ok: false, errorKey: "errors.devMutate.mutationFailed" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M12.2 — write variants beyond createShape
+// ---------------------------------------------------------------------------
+
+const SEED_GEO_A = {
+  id: "shape:src",
+  typeName: "shape",
+  type: "geo",
+  x: 10,
+  y: 20,
+  rotation: 0,
+  isLocked: false,
+  opacity: 1,
+  parentId: "page:page",
+  index: "a1",
+  meta: {},
+  props: { color: "red", w: 100 },
+};
+const SEED_GEO_B = {
+  id: "shape:dst",
+  typeName: "shape",
+  type: "geo",
+  x: 200,
+  y: 200,
+  rotation: 0,
+  isLocked: false,
+  opacity: 1,
+  parentId: "page:page",
+  index: "a2",
+  meta: {},
+  props: { color: "blue", w: 50 },
+};
+
+function depsWith(seed: Record<string, unknown>[]): {
+  deps: ApplyMutationDeps;
+  stub: ReturnType<typeof makeStubRoom>;
+} {
+  const s = makeStubRoom(seed);
+  return { stub: s, deps: { registry: makeRegistry(CANVAS_ID, s.room) } };
+}
+
+describe("applyMutation — updateShape variant", () => {
+  test("merges partial onto existing record (top-level + props)", async () => {
+    const { deps: d, stub: s } = depsWith([SEED_GEO_A]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      {
+        type: "updateShape",
+        payload: { id: "shape:src", partial: { x: 50, props: { color: "blue" } } },
+      },
+    ]);
+
+    expect(result).toEqual({ ok: true, appliedCount: 1 });
+    const merged = s.lastStore?.records().get("shape:src");
+    expect(merged).toMatchObject({
+      id: "shape:src",
+      type: "geo",
+      x: 50,
+      y: 20,
+      props: { color: "blue", w: 100 },
+    });
+  });
+
+  test("rejects unknown shape id with shapeNotFound, room state unchanged", async () => {
+    const { deps: d, stub: s } = depsWith([SEED_GEO_A]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      {
+        type: "updateShape",
+        payload: { id: "shape:does-not-exist", partial: { x: 0 } },
+      },
+    ]);
+
+    expect(result).toEqual({ ok: false, errorKey: "errors.fullToolSurface.shapeNotFound" });
+    // Stub commits only on clean updater run — committed records preserved.
+    const snap = s.room.getCurrentSnapshot();
+    expect(snap.documents).toHaveLength(1);
+  });
+});
+
+describe("applyMutation — deleteShape variant", () => {
+  test("removes existing shape", async () => {
+    const { deps: d, stub: s } = depsWith([SEED_GEO_A]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      { type: "deleteShape", payload: { id: "shape:src" } },
+    ]);
+
+    expect(result).toEqual({ ok: true, appliedCount: 1 });
+    expect(s.lastStore?.records().get("shape:src")).toBeUndefined();
+  });
+
+  test("rejects unknown shape id with shapeNotFound", async () => {
+    const { deps: d } = depsWith([]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      { type: "deleteShape", payload: { id: "shape:ghost" } },
+    ]);
+
+    expect(result).toEqual({ ok: false, errorKey: "errors.fullToolSurface.shapeNotFound" });
+  });
+});
+
+describe("applyMutation — groupShapes variant", () => {
+  test("creates group record and reparents children atomically", async () => {
+    const { deps: d, stub: s } = depsWith([SEED_GEO_A, SEED_GEO_B]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      {
+        type: "groupShapes",
+        payload: { shapeIds: ["shape:src", "shape:dst"], groupId: "shape:grp1" },
+      },
+    ]);
+
+    expect(result).toEqual({ ok: true, appliedCount: 1 });
+    const records = s.lastStore?.records();
+    const group = records?.get("shape:grp1");
+    expect(group).toMatchObject({ id: "shape:grp1", type: "group", parentId: "page:page" });
+    expect(records?.get("shape:src")?.["parentId"]).toBe("shape:grp1");
+    expect(records?.get("shape:dst")?.["parentId"]).toBe("shape:grp1");
+  });
+
+  test("rejects when any child does not exist (atomic abort)", async () => {
+    const { deps: d, stub: s } = depsWith([SEED_GEO_A]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      {
+        type: "groupShapes",
+        payload: { shapeIds: ["shape:src", "shape:missing"], groupId: "shape:grp2" },
+      },
+    ]);
+
+    expect(result).toEqual({ ok: false, errorKey: "errors.fullToolSurface.shapeNotFound" });
+    // Stub does not commit on throw — group record absent + parent unchanged.
+    const snap = s.room.getCurrentSnapshot();
+    const docs = snap.documents.map((d) => d.state) as unknown as Record<string, unknown>[];
+    expect(docs.find((r) => r["id"] === "shape:grp2")).toBeUndefined();
+    expect(docs.find((r) => r["id"] === "shape:src")?.["parentId"]).toBe("page:page");
+  });
+});
+
+describe("applyMutation — ungroupShape variant", () => {
+  test("re-parents children to the group's parent and removes the group", async () => {
+    const groupRecord = {
+      id: "shape:grp1",
+      typeName: "shape",
+      type: "group",
+      parentId: "page:page",
+      index: "a0",
+      meta: {},
+      props: {},
+      x: 0,
+      y: 0,
+      rotation: 0,
+      isLocked: false,
+      opacity: 1,
+    };
+    const child1 = { ...SEED_GEO_A, parentId: "shape:grp1" };
+    const child2 = { ...SEED_GEO_B, parentId: "shape:grp1" };
+    const { deps: d, stub: s } = depsWith([groupRecord, child1, child2]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      { type: "ungroupShape", payload: { groupId: "shape:grp1" } },
+    ]);
+
+    expect(result).toEqual({ ok: true, appliedCount: 1 });
+    const records = s.lastStore?.records();
+    expect(records?.get("shape:grp1")).toBeUndefined();
+    expect(records?.get("shape:src")?.["parentId"]).toBe("page:page");
+    expect(records?.get("shape:dst")?.["parentId"]).toBe("page:page");
+  });
+
+  test("rejects when target is not a group", async () => {
+    const { deps: d } = depsWith([SEED_GEO_A]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      { type: "ungroupShape", payload: { groupId: "shape:src" } },
+    ]);
+
+    expect(result).toEqual({ ok: false, errorKey: "errors.fullToolSurface.groupNotFound" });
+  });
+
+  test("rejects when group does not exist", async () => {
+    const { deps: d } = depsWith([]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      { type: "ungroupShape", payload: { groupId: "shape:missing" } },
+    ]);
+
+    expect(result).toEqual({ ok: false, errorKey: "errors.fullToolSurface.groupNotFound" });
+  });
+});
+
+describe("applyMutation — connectShapes variant", () => {
+  test("creates arrow + start + end binding records atomically", async () => {
+    const { deps: d, stub: s } = depsWith([SEED_GEO_A, SEED_GEO_B]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      {
+        type: "connectShapes",
+        payload: {
+          fromId: "shape:src",
+          toId: "shape:dst",
+          arrowId: "shape:arrow1",
+          label: "auth",
+        },
+      },
+    ]);
+
+    expect(result).toEqual({ ok: true, appliedCount: 1 });
+    const records = s.lastStore?.records();
+    const arrow = records?.get("shape:arrow1");
+    expect(arrow).toMatchObject({ id: "shape:arrow1", type: "arrow" });
+    // Two binding records exist (one per terminal).
+    const bindings = Array.from(records?.values() ?? []).filter((r) =>
+      String((r as { id?: string }).id ?? "").startsWith("binding:"),
+    );
+    expect(bindings).toHaveLength(2);
+    const terminals = bindings.map((b) => (b as { props?: { terminal?: string } }).props?.terminal);
+    expect(terminals.sort()).toEqual(["end", "start"]);
+  });
+
+  test("rejects when an endpoint does not exist", async () => {
+    const { deps: d, stub: s } = depsWith([SEED_GEO_A]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      {
+        type: "connectShapes",
+        payload: { fromId: "shape:src", toId: "shape:absent", arrowId: "shape:arrow2" },
+      },
+    ]);
+
+    expect(result).toEqual({ ok: false, errorKey: "errors.fullToolSurface.shapeNotFound" });
+    // Atomic abort — no arrow + no bindings committed.
+    const docs = s.room.getCurrentSnapshot().documents.map((d) => d.state) as unknown as Record<
+      string,
+      unknown
+    >[];
+    expect(docs.find((r) => r["id"] === "shape:arrow2")).toBeUndefined();
+    expect(docs.filter((r) => String(r["id"] ?? "").startsWith("binding:"))).toHaveLength(0);
+  });
+});
+
+describe("applyMutation — multi-variant batch", () => {
+  test("create + update + connect in one call commits as one batch", async () => {
+    const { deps: d, stub: s } = depsWith([SEED_GEO_A, SEED_GEO_B]);
+
+    const result = await applyMutation(d, CANVAS_ID, [
+      {
+        type: "createShape",
+        payload: {
+          id: "shape:new",
+          type: "geo",
+          x: 0,
+          y: 0,
+          props: { color: "green", w: 50, h: 50 },
+        },
+      },
+      { type: "updateShape", payload: { id: "shape:src", partial: { x: 99 } } },
+      {
+        type: "connectShapes",
+        payload: { fromId: "shape:src", toId: "shape:dst", arrowId: "shape:arr" },
+      },
+    ]);
+
+    expect(result).toEqual({ ok: true, appliedCount: 3 });
+    expect(s.room.updateStore).toHaveBeenCalledTimes(1);
+    const records = s.lastStore?.records();
+    expect(records?.get("shape:new")).toBeDefined();
+    expect(records?.get("shape:src")?.["x"]).toBe(99);
+    expect(records?.get("shape:arr")).toBeDefined();
   });
 });

@@ -1,10 +1,4 @@
-# server-mutation-bridge Specification
-
-## Purpose
-
-TBD - created by archiving change 'add-server-tldraw-mutator'. Update Purpose after archive.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Server tldraw Mutator exposes applyMutation for server-initiated room edits
 
@@ -48,203 +42,8 @@ The function SHALL return `{ ok: true, appliedCount }` on success and `{ ok: fal
 - **AND** the connected client MUST receive a single sync update batch that contains all resulting record changes
 - **AND** a single client-side undo MUST revert all three mutations together
 
+## ADDED Requirements
 
-<!-- @trace
-source: add-full-tool-surface
-updated: 2026-05-06
-code:
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/sync/mutator.ts
-  - packages/shared/src/locales/en.json
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/mutation-types.ts
-  - docs/adr/0014-full-tool-surface-tldraw-record-shapes.md
-  - packages/shared/src/tool-types.ts
-tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
-  - apps/api/src/sync/tool-registry.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
--->
-
----
-### Requirement: Mutator preserves batch undo semantics across the server-client bridge
-
-The mutator SHALL apply all mutations in a single `applyMutation` call as one atomic batch with respect to the tldraw editor's undo history. After the batch is applied, a single client-side `Cmd+Z` SHALL revert ALL mutations in that batch as one undo step. Internally the mutator SHALL use a single transaction or batch primitive on the `TLSocketRoom` so that the resulting broadcast represents one logical change, not N independent changes.
-
-#### Scenario: Two createShape mutations in one batch are undone in a single Cmd+Z
-
-- **GIVEN** a sync room exists for `<canvasId>` with one connected client whose tldraw editor has an empty document
-- **WHEN** the server calls `applyMutation(<canvasId>, [createShapeA, createShapeB])` and the client receives the resulting sync update
-- **AND** the client invokes the editor's undo action exactly once
-- **THEN** both `shapeA` and `shapeB` MUST be removed from the client's editor state
-- **AND** the client editor MUST be back at the empty document state
-
-#### Scenario: Single-mutation batch behaves identically to multi-mutation batch shape
-
-- **WHEN** the server calls `applyMutation(<canvasId>, [createShapeOnly])`
-- **THEN** the function MUST treat the single-element array as a one-mutation batch
-- **AND** a subsequent client-side undo MUST revert that one shape
-
-##### Example: undo behavior matrix
-
-| applyMutation input          | client editor state after apply      | client state after one Cmd+Z      |
-| ---------------------------- | ------------------------------------ | --------------------------------- |
-| `[A]`                        | shapes: { A }                        | shapes: { }                       |
-| `[A, B]`                     | shapes: { A, B }                     | shapes: { }                       |
-| `[A, B, C]`                  | shapes: { A, B, C }                  | shapes: { }                       |
-
-
-<!-- @trace
-source: add-server-tldraw-mutator
-updated: 2026-05-06
-code:
-  - packages/shared/src/mutation-types.ts
-  - scripts/dev-proxy.ts
-  - apps/api/src/index.ts
-  - apps/api/src/dev/mutate-endpoint.ts
-  - apps/api/src/sync/mutator.ts
-  - docs/adr/0013-server-tldraw-mutator-trade-offs.md
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/locales/en.json
-  - apps/api/src/lib/rate-limit-rules.ts
-  - apps/api/src/sync/index.ts
-tests:
-  - apps/api/src/sync/mutator-wiring.test.ts
-  - apps/api/src/dev/mutate-endpoint.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
-  - apps/api/src/sync/mutator.test.ts
--->
-
----
-### Requirement: Dev-only REST endpoint POST /dev/canvas/:id/mutate triggers the mutator
-
-The system SHALL register a REST endpoint `POST /dev/canvas/:id/mutate` ONLY when `Bun.env.NODE_ENV !== "production"`. The endpoint SHALL accept a JSON body matching the `Mutation[]` schema, SHALL validate it with Zod, SHALL call `applyMutation(:id, body.mutations)`, and SHALL return HTTP 200 with `{ ok: true, appliedCount }` on success or HTTP 4xx with `{ ok: false, errorKey }` on failure. When `Bun.env.NODE_ENV === "production"`, the endpoint SHALL NOT be registered in the server's route table — a request to that path in production SHALL return the same HTTP 404 response that any other unknown route returns (the path SHALL be physically absent from the route registration, not gated by an authn check).
-
-#### Scenario: Dev endpoint applies a createShape and returns 200
-
-- **GIVEN** the server is started with `NODE_ENV` unset (development mode)
-- **AND** a sync room is active for `<canvasId>` with at least one connected client
-- **WHEN** a `POST /dev/canvas/<canvasId>/mutate` is sent with body `{ "mutations": [{ "type": "createShape", "payload": { ...valid... } }] }`
-- **THEN** the response MUST be HTTP 200 with body `{ "ok": true, "appliedCount": 1 }`
-- **AND** the connected client MUST receive a sync update containing the new shape
-
-#### Scenario: Dev endpoint validates payload and returns 400 for malformed JSON
-
-- **WHEN** a `POST /dev/canvas/<canvasId>/mutate` is sent with body `{ "mutations": [{ "type": "createShape", "payload": {} }] }`
-- **THEN** the response MUST be HTTP 400 with body `{ "ok": false, "errorKey": "errors.devMutate.invalidPayload" }`
-
-#### Scenario: Dev endpoint returns 409 when no active room exists
-
-- **GIVEN** no client is connected to `<canvasId>` and no room exists in the registry
-- **WHEN** a `POST /dev/canvas/<canvasId>/mutate` is sent with a valid body
-- **THEN** the response MUST be HTTP 409 with body `{ "ok": false, "errorKey": "errors.devMutate.canvasNotInActiveRoom" }`
-
-#### Scenario: Production builds do not register the dev endpoint
-
-- **GIVEN** the server is started with `NODE_ENV=production`
-- **WHEN** a `POST /dev/canvas/<anyCanvasId>/mutate` is sent
-- **THEN** the response MUST be HTTP 404
-- **AND** the route MUST NOT appear in the server's registered route table
-
-
-<!-- @trace
-source: add-server-tldraw-mutator
-updated: 2026-05-06
-code:
-  - packages/shared/src/mutation-types.ts
-  - scripts/dev-proxy.ts
-  - apps/api/src/index.ts
-  - apps/api/src/dev/mutate-endpoint.ts
-  - apps/api/src/sync/mutator.ts
-  - docs/adr/0013-server-tldraw-mutator-trade-offs.md
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/locales/en.json
-  - apps/api/src/lib/rate-limit-rules.ts
-  - apps/api/src/sync/index.ts
-tests:
-  - apps/api/src/sync/mutator-wiring.test.ts
-  - apps/api/src/dev/mutate-endpoint.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
-  - apps/api/src/sync/mutator.test.ts
--->
-
----
-### Requirement: Dev mutator endpoint enforces a per-user rate limit
-
-The dev mutator endpoint SHALL declare a rate-limit rule named `dev.mutate` with a token bucket of 30 requests per 60 seconds per authenticated user. The rule SHALL be registered in `apps/api/src/lib/rate-limit-rules.ts` and consumed by the endpoint handler at request time. When the limit is exceeded the endpoint SHALL return HTTP 429 with body `{ "ok": false, "errorKey": "errors.rateLimit", "retryAfter": <seconds> }` and a `Retry-After` HTTP header carrying the same number of seconds.
-
-#### Scenario: 31st request inside a 60-second window is rejected
-
-- **GIVEN** an authenticated user has issued 30 successful `POST /dev/canvas/<canvasId>/mutate` requests inside the last 60 seconds
-- **WHEN** the same user issues a 31st `POST /dev/canvas/<canvasId>/mutate` request
-- **THEN** the response MUST be HTTP 429 with body `{ "ok": false, "errorKey": "errors.rateLimit", "retryAfter": <seconds> }`
-- **AND** the response MUST include a `Retry-After` header
-
-#### Scenario: Rate-limit rule registration is enforced at server startup
-
-- **WHEN** the dev endpoint is wired into the server without a corresponding `dev.mutate` rate-limit rule registration
-- **THEN** the server startup MUST fail
-- **AND** the failure MUST happen before the server begins accepting requests
-
-
-<!-- @trace
-source: add-server-tldraw-mutator
-updated: 2026-05-06
-code:
-  - packages/shared/src/mutation-types.ts
-  - scripts/dev-proxy.ts
-  - apps/api/src/index.ts
-  - apps/api/src/dev/mutate-endpoint.ts
-  - apps/api/src/sync/mutator.ts
-  - docs/adr/0013-server-tldraw-mutator-trade-offs.md
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/locales/en.json
-  - apps/api/src/lib/rate-limit-rules.ts
-  - apps/api/src/sync/index.ts
-tests:
-  - apps/api/src/sync/mutator-wiring.test.ts
-  - apps/api/src/dev/mutate-endpoint.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
-  - apps/api/src/sync/mutator.test.ts
--->
-
----
-### Requirement: Mutator integration test exercises the real sync broadcast path
-
-The change SHALL include an integration test that boots the real Bun.serve sync server, opens a real WebSocket client against `/sync/<canvasId>`, sends a `POST /dev/canvas/<canvasId>/mutate` request from the test, and asserts that the WebSocket client receives a sync update message containing the newly created shape's record. The test SHALL NOT mock the `TLSocketRoom`, the room registry, the WebSocket transport, or the broadcast path. The test SHALL use a fixture canvas record in a test database and SHALL clean up the canvas and any persisted snapshot after the test run.
-
-#### Scenario: Integration test asserts WS client receives a broadcast update
-
-- **GIVEN** the integration test harness has started the sync server and inserted a fixture canvas
-- **AND** a WebSocket client is connected to `/sync/<fixtureCanvasId>`
-- **WHEN** the test issues `POST /dev/canvas/<fixtureCanvasId>/mutate` with a `createShape` payload
-- **THEN** the test MUST receive an HTTP 200 response from the dev endpoint
-- **AND** the WebSocket client MUST receive at least one sync update message containing the new shape record within the test's timeout
-
-<!-- @trace
-source: add-server-tldraw-mutator
-updated: 2026-05-06
-code:
-  - packages/shared/src/mutation-types.ts
-  - scripts/dev-proxy.ts
-  - apps/api/src/index.ts
-  - apps/api/src/dev/mutate-endpoint.ts
-  - apps/api/src/sync/mutator.ts
-  - docs/adr/0013-server-tldraw-mutator-trade-offs.md
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/locales/en.json
-  - apps/api/src/lib/rate-limit-rules.ts
-  - apps/api/src/sync/index.ts
-tests:
-  - apps/api/src/sync/mutator-wiring.test.ts
-  - apps/api/src/dev/mutate-endpoint.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
-  - apps/api/src/sync/mutator.test.ts
--->
-
----
 ### Requirement: Mutator updateShape variant merges partial props onto an existing shape
 
 The mutator SHALL accept an `updateShape` mutation with payload `{ id: string, partial: ShapePartial }`. When applied, the mutator SHALL look up the record at `id` via `RoomStoreMethods.get`, merge the supplied `partial` fields onto that record (deep-merging `props` and shallow-merging top-level fields like `x`, `y`, `rotation`, `meta`), and write the merged record back via `RoomStoreMethods.put`. If no record exists at `id`, the mutator SHALL resolve to `{ ok: false, errorKey: "errors.fullToolSurface.shapeNotFound" }` and SHALL NOT touch the store.
@@ -271,27 +70,8 @@ The mutator SHALL accept an `updateShape` mutation with payload `{ id: string, p
 | `{ color: "red", w: 100 }` | `{ props: { h: 50 } }`       | `{ color: "red", w: 100, h: 50 }`|
 | `{ color: "red" }`         | `{ x: 99 }`                  | unchanged props; top-level x=99 |
 
-
-<!-- @trace
-source: add-full-tool-surface
-updated: 2026-05-06
-code:
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/sync/mutator.ts
-  - packages/shared/src/locales/en.json
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/mutation-types.ts
-  - docs/adr/0014-full-tool-surface-tldraw-record-shapes.md
-  - packages/shared/src/tool-types.ts
-tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
-  - apps/api/src/sync/tool-registry.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
--->
-
 ---
+
 ### Requirement: Mutator deleteShape variant removes a shape from the store
 
 The mutator SHALL accept a `deleteShape` mutation with payload `{ id: string }`. When applied, the mutator SHALL call `RoomStoreMethods.delete(id)`. If no record exists at `id`, the mutator SHALL resolve to `{ ok: false, errorKey: "errors.fullToolSurface.shapeNotFound" }` and SHALL NOT issue a delete. After a successful delete, the room MUST broadcast a sync update reflecting the removed record.
@@ -311,27 +91,8 @@ The mutator SHALL accept a `deleteShape` mutation with payload `{ id: string }`.
 - **THEN** the function MUST resolve to `{ ok: false, errorKey: "errors.fullToolSurface.shapeNotFound" }`
 - **AND** no delete MUST be issued
 
-
-<!-- @trace
-source: add-full-tool-surface
-updated: 2026-05-06
-code:
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/sync/mutator.ts
-  - packages/shared/src/locales/en.json
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/mutation-types.ts
-  - docs/adr/0014-full-tool-surface-tldraw-record-shapes.md
-  - packages/shared/src/tool-types.ts
-tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
-  - apps/api/src/sync/tool-registry.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
--->
-
 ---
+
 ### Requirement: Mutator groupShapes variant creates a group record and reparents children
 
 The mutator SHALL accept a `groupShapes` mutation with payload `{ shapeIds: string[], groupId: string }`. When applied, the mutator SHALL within a single `updateStore` transaction:
@@ -359,27 +120,8 @@ If any shape in `shapeIds` does not exist, the mutator SHALL throw inside the tr
 - **AND** no record at `shape:grp2` MUST be created
 - **AND** the `parentId` of `shape:a` MUST NOT change
 
-
-<!-- @trace
-source: add-full-tool-surface
-updated: 2026-05-06
-code:
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/sync/mutator.ts
-  - packages/shared/src/locales/en.json
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/mutation-types.ts
-  - docs/adr/0014-full-tool-surface-tldraw-record-shapes.md
-  - packages/shared/src/tool-types.ts
-tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
-  - apps/api/src/sync/tool-registry.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
--->
-
 ---
+
 ### Requirement: Mutator ungroupShape variant removes a group and re-parents children
 
 The mutator SHALL accept an `ungroupShape` mutation with payload `{ groupId: string }`. When applied, the mutator SHALL within a single `updateStore` transaction:
@@ -403,27 +145,8 @@ The mutator SHALL accept an `ungroupShape` mutation with payload `{ groupId: str
 - **THEN** the function MUST resolve to `{ ok: false, errorKey: "errors.fullToolSurface.groupNotFound" }`
 - **AND** no record MUST be deleted
 
-
-<!-- @trace
-source: add-full-tool-surface
-updated: 2026-05-06
-code:
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/sync/mutator.ts
-  - packages/shared/src/locales/en.json
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/mutation-types.ts
-  - docs/adr/0014-full-tool-surface-tldraw-record-shapes.md
-  - packages/shared/src/tool-types.ts
-tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
-  - apps/api/src/sync/tool-registry.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
--->
-
 ---
+
 ### Requirement: Mutator connectShapes variant creates an arrow shape with start and end bindings
 
 The mutator SHALL accept a `connectShapes` mutation with payload `{ fromId: string, toId: string, arrowId: string, label?: string }`. When applied, the mutator SHALL within a single `updateStore` transaction:
@@ -452,27 +175,8 @@ If either endpoint does not exist, the mutator SHALL throw so that the transacti
 - **AND** no record at `shape:arrow2` MUST be created
 - **AND** no binding records MUST be created
 
-
-<!-- @trace
-source: add-full-tool-surface
-updated: 2026-05-06
-code:
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/sync/mutator.ts
-  - packages/shared/src/locales/en.json
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/mutation-types.ts
-  - docs/adr/0014-full-tool-surface-tldraw-record-shapes.md
-  - packages/shared/src/tool-types.ts
-tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
-  - apps/api/src/sync/tool-registry.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
--->
-
 ---
+
 ### Requirement: Mutator readers expose snapshot-derived read tools without mutating the room
 
 The system SHALL provide a `mutator-readers` module that exposes the following read functions, each accepting a `canvasId` and returning a `Result<T>` shape:
@@ -534,27 +238,8 @@ If no active room exists for `canvasId`, every read function SHALL resolve to `{
 | `(50,50,50,50)`         | `(0,0,100,100)`      | yes (touches) |
 | `(99,99,2,2)`           | `(0,0,100,100)`      | yes (intersects edge) |
 
-
-<!-- @trace
-source: add-full-tool-surface
-updated: 2026-05-06
-code:
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/sync/mutator.ts
-  - packages/shared/src/locales/en.json
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/mutation-types.ts
-  - docs/adr/0014-full-tool-surface-tldraw-record-shapes.md
-  - packages/shared/src/tool-types.ts
-tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
-  - apps/api/src/sync/tool-registry.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
--->
-
 ---
+
 ### Requirement: Tool registry enumerates the full agent tool surface
 
 The system SHALL provide a `tool-registry` module that exposes a typed lookup table containing one entry per agent tool. The registry SHALL include all eleven tools defined in this capability: six write tools (`createShape`, `updateShape`, `deleteShape`, `groupShapes`, `ungroupShape`, `connectShapes`) and five read tools (`listShapesInViewport`, `listShapesInSelection`, `getShape`, `getCanvasBounds`, `getViewport`).
@@ -605,22 +290,3 @@ Write-tool entries SHALL invoke `applyMutation` with a single-element `Mutation[
 | `getShape`              | read  | mutator-readers.getShape                  |
 | `getCanvasBounds`       | read  | mutator-readers.getCanvasBounds           |
 | `getViewport`           | read  | mutator-readers.getViewport               |
-
-<!-- @trace
-source: add-full-tool-surface
-updated: 2026-05-06
-code:
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/sync/mutator.ts
-  - packages/shared/src/locales/en.json
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/mutation-types.ts
-  - docs/adr/0014-full-tool-surface-tldraw-record-shapes.md
-  - packages/shared/src/tool-types.ts
-tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
-  - apps/api/src/sync/tool-registry.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
--->

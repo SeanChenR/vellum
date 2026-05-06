@@ -33,14 +33,47 @@ export type MutationResult =
 export type MutationErrorKey =
   | "errors.devMutate.invalidPayload"
   | "errors.devMutate.canvasNotInActiveRoom"
-  | "errors.devMutate.mutationFailed";
+  | "errors.devMutate.mutationFailed"
+  | "errors.fullToolSurface.shapeNotFound"
+  | "errors.fullToolSurface.groupNotFound"
+  | "errors.fullToolSurface.invalidViewport"
+  | "errors.fullToolSurface.sessionNotFound";
 
 /**
- * Minimal store contract that updateStore's updater fn receives. We only
- * use `put` in M12.1; broader access (`get`, `delete`) lands in M12.2.
+ * Subset of tldraw's `RoomStoreMethods` that the mutator needs. Real
+ * TLSocketRoom satisfies this; tests inject a stub backed by a Map.
+ *
+ * `get` returns `null` for missing records (tldraw's contract); we throw
+ * `Error("errors.fullToolSurface.shapeNotFound")` on the spot in the
+ * caller so `applyMutation`'s catch can map back to the structured
+ * errorKey result.
  */
 interface MutatorStore {
-  put(record: unknown): void;
+  put(record: ShapeRecord): void;
+  get(id: string): ShapeRecord | null;
+  delete(idOrRecord: string | ShapeRecord): void;
+  getAll(): ShapeRecord[];
+}
+
+/**
+ * Best-effort shape of a tldraw record we round-trip through the
+ * mutator. `props` and `meta` are opaque at this layer — shape-type-
+ * specific schema validation runs inside tldraw when the record is put.
+ */
+interface ShapeRecord {
+  id: string;
+  typeName: string;
+  type: string;
+  x: number;
+  y: number;
+  rotation: number;
+  isLocked?: boolean;
+  opacity?: number;
+  parentId: string;
+  index: string;
+  meta: Record<string, unknown>;
+  props: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 /**
@@ -95,12 +128,29 @@ export async function applyMutation(
   // 3. Apply all mutations in a single batch.
   try {
     await commitBatch(room, parsed.data);
-  } catch {
-    // Per design "錯誤合約與 i18n": no exception escapes to the sync server.
-    return { ok: false, errorKey: "errors.devMutate.mutationFailed" };
+  } catch (err) {
+    // Mutator helpers throw `Error(<errorKey>)` for known failure modes
+    // (shape not found, group not found, etc.). Pluck a known errorKey
+    // off `err.message` if present; otherwise fall back to generic
+    // mutationFailed so no exception escapes to the sync server.
+    return { ok: false, errorKey: extractErrorKey(err) };
   }
 
   return { ok: true, appliedCount: parsed.data.length };
+}
+
+const KNOWN_ERROR_KEYS = new Set<MutationErrorKey>([
+  "errors.fullToolSurface.shapeNotFound",
+  "errors.fullToolSurface.groupNotFound",
+  "errors.fullToolSurface.invalidViewport",
+  "errors.fullToolSurface.sessionNotFound",
+]);
+
+function extractErrorKey(err: unknown): MutationErrorKey {
+  if (err instanceof Error && (KNOWN_ERROR_KEYS as Set<string>).has(err.message)) {
+    return err.message as MutationErrorKey;
+  }
+  return "errors.devMutate.mutationFailed";
 }
 
 // ---------------------------------------------------------------------------
@@ -127,10 +177,7 @@ async function commitBatch(room: MutatorRoom, ops: Mutation[]): Promise<void> {
 function applyOne(store: MutatorStore, op: Mutation): void {
   switch (op.type) {
     case "createShape": {
-      // Construct a tldraw shape record. The integration test (Section 8)
-      // exercises this against a real TLSocketRoom; the schema/defaults
-      // here intentionally mirror tldraw's shape record shape.
-      const record = {
+      const record: ShapeRecord = {
         id: op.payload.id,
         typeName: "shape",
         type: op.payload.type,
@@ -145,6 +192,165 @@ function applyOne(store: MutatorStore, op: Mutation): void {
         props: op.payload.props ?? {},
       };
       store.put(record);
+      return;
+    }
+
+    case "updateShape": {
+      const existing = store.get(op.payload.id);
+      if (!existing) throw new Error("errors.fullToolSurface.shapeNotFound");
+      const partial = op.payload.partial;
+      const merged: ShapeRecord = {
+        ...existing,
+        ...(partial.x !== undefined ? { x: partial.x } : {}),
+        ...(partial.y !== undefined ? { y: partial.y } : {}),
+        ...(partial.rotation !== undefined ? { rotation: partial.rotation } : {}),
+        ...(partial.parentId !== undefined ? { parentId: partial.parentId } : {}),
+        meta: partial.meta ? { ...existing.meta, ...partial.meta } : existing.meta,
+        props: partial.props ? { ...existing.props, ...partial.props } : existing.props,
+      };
+      store.put(merged);
+      return;
+    }
+
+    case "deleteShape": {
+      const existing = store.get(op.payload.id);
+      if (!existing) throw new Error("errors.fullToolSurface.shapeNotFound");
+      store.delete(op.payload.id);
+      return;
+    }
+
+    case "groupShapes": {
+      // Verify every child exists before mutating anything.
+      const children: ShapeRecord[] = [];
+      for (const id of op.payload.shapeIds) {
+        const r = store.get(id);
+        if (!r) throw new Error("errors.fullToolSurface.shapeNotFound");
+        children.push(r);
+      }
+      // Group inherits parentId from the first child (per design).
+      const groupParentId = children[0]!.parentId;
+      const groupRecord: ShapeRecord = {
+        id: op.payload.groupId,
+        typeName: "shape",
+        type: "group",
+        x: 0,
+        y: 0,
+        rotation: 0,
+        isLocked: false,
+        opacity: 1,
+        parentId: groupParentId,
+        index: "a1",
+        meta: {},
+        props: {},
+      };
+      store.put(groupRecord);
+      // Reparent children.
+      for (const child of children) {
+        store.put({ ...child, parentId: op.payload.groupId });
+      }
+      return;
+    }
+
+    case "ungroupShape": {
+      const group = store.get(op.payload.groupId);
+      if (!group || group.type !== "group") {
+        throw new Error("errors.fullToolSurface.groupNotFound");
+      }
+      const fallbackParent = group.parentId;
+      // Re-parent every child of this group.
+      for (const r of store.getAll()) {
+        if (r.parentId === op.payload.groupId) {
+          store.put({ ...r, parentId: fallbackParent });
+        }
+      }
+      store.delete(op.payload.groupId);
+      return;
+    }
+
+    case "connectShapes": {
+      const from = store.get(op.payload.fromId);
+      const to = store.get(op.payload.toId);
+      if (!from || !to) throw new Error("errors.fullToolSurface.shapeNotFound");
+
+      // tldraw 4.x arrow shape requires a fully-populated props bag —
+      // any missing field fails schema validation. Defaults below mirror
+      // tldraw's own `arrowShape.getDefaultProps()`.
+      const labelText = op.payload.label ?? "";
+      const richText = labelText
+        ? {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: labelText }],
+              },
+            ],
+          }
+        : { type: "doc", content: [{ type: "paragraph" }] };
+      const arrowRecord: ShapeRecord = {
+        id: op.payload.arrowId,
+        typeName: "shape",
+        type: "arrow",
+        x: 0,
+        y: 0,
+        rotation: 0,
+        isLocked: false,
+        opacity: 1,
+        parentId: "page:page",
+        index: "a1",
+        meta: {},
+        props: {
+          kind: "arc",
+          labelColor: "black",
+          color: "black",
+          fill: "none",
+          dash: "draw",
+          size: "m",
+          arrowheadStart: "none",
+          arrowheadEnd: "arrow",
+          font: "draw",
+          start: { x: 0, y: 0 },
+          end: { x: 100, y: 100 },
+          bend: 0,
+          richText,
+          labelPosition: 0.5,
+          scale: 1,
+          elbowMidPoint: 0.5,
+        },
+      };
+      store.put(arrowRecord);
+
+      const baseId = op.payload.arrowId.replace(/^shape:/, "");
+      const bindingProps = (terminal: "start" | "end") => ({
+        terminal,
+        normalizedAnchor: { x: 0.5, y: 0.5 },
+        isExact: false,
+        isPrecise: false,
+        snap: "none" as const,
+      });
+      // Bindings are a distinct record type (no x/y/rotation/parentId
+      // /index). Cast through `unknown → ShapeRecord` so the loose
+      // typing tolerates the narrower binding shape.
+      const startBinding = {
+        id: `binding:${baseId}:start`,
+        typeName: "binding",
+        type: "arrow",
+        fromId: op.payload.arrowId,
+        toId: op.payload.fromId,
+        props: bindingProps("start"),
+        meta: {},
+      } as unknown as ShapeRecord;
+      const endBinding = {
+        id: `binding:${baseId}:end`,
+        typeName: "binding",
+        type: "arrow",
+        fromId: op.payload.arrowId,
+        toId: op.payload.toId,
+        props: bindingProps("end"),
+        meta: {},
+      } as unknown as ShapeRecord;
+      store.put(startBinding);
+      store.put(endBinding);
       return;
     }
   }

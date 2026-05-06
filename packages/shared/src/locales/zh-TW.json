@@ -357,6 +357,12 @@
       "canvasNotInActiveRoom": "此畫布目前沒有任何使用者連線，無法套用變更",
       "mutationFailed": "套用 mutation 時發生錯誤"
     },
+    "fullToolSurface": {
+      "shapeNotFound": "找不到指定的 shape",
+      "groupNotFound": "找不到指定的群組",
+      "invalidViewport": "Viewport 矩形不合法",
+      "sessionNotFound": "找不到對應的連線 session"
+    },
     "byok": {
       "invalidKey": "Anthropic 金鑰看起來不正確，請確認複製內容",
       "outOfCredits": "Anthropic 帳號已沒有額度",

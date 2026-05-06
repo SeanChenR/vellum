@@ -357,6 +357,12 @@
       "canvasNotInActiveRoom": "No clients are connected to this canvas — cannot apply mutation",
       "mutationFailed": "An error occurred while applying the mutation"
     },
+    "fullToolSurface": {
+      "shapeNotFound": "The referenced shape does not exist on this canvas",
+      "groupNotFound": "The referenced group does not exist on this canvas",
+      "invalidViewport": "Viewport rectangle is invalid",
+      "sessionNotFound": "No connected client session matches the supplied id"
+    },
     "byok": {
       "invalidKey": "Your Anthropic key looks invalid. Check it's copied correctly.",
       "outOfCredits": "Your Anthropic account is out of credits.",
