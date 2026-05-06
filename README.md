@@ -4,7 +4,7 @@
 
 A canvas-based collaborative whiteboard built on the tldraw SDK with custom chrome, custom shapes, real-time multiplayer, and a full account / sharing / export shell.
 
-Made with care · v0.9.0 · © 2026 Sean Chen
+Made with care · v0.1.0 · © 2026 Sean Chen
 
 ---
 
