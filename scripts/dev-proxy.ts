@@ -30,10 +30,34 @@ const MIME: Record<string, string> = {
   ".map": "application/json; charset=utf-8",
 };
 
-const server = Bun.serve({
+interface ProxyWsData {
+  upstream: WebSocket | null;
+  buffered: Array<string | ArrayBufferLike | Uint8Array>;
+  target: string;
+  cookie: string;
+}
+
+const server = Bun.serve<ProxyWsData>({
   port: 3002,
-  async fetch(req) {
+  async fetch(req, srv) {
     const url = new URL(req.url);
+
+    // /sync/* — upgrade to WebSocket and proxy to upstream API on :3000.
+    // The single-binary architecture co-locates HTTP + WS on :3000; this
+    // proxy hop only exists in dev so the browser sees same-origin :3002
+    // (or, when fronted by Cloudflare Tunnel, the public host).
+    if (url.pathname.startsWith("/sync/")) {
+      const target = "ws://localhost:3000" + url.pathname + url.search;
+      const cookie = req.headers.get("cookie") ?? "";
+      if (
+        srv.upgrade(req, {
+          data: { upstream: null, buffered: [], target, cookie },
+        })
+      ) {
+        return;
+      }
+      return new Response("Upgrade failed", { status: 426 });
+    }
 
     // API + health → upstream API
     if (url.pathname.startsWith("/api/") || url.pathname === "/health") {
@@ -77,6 +101,52 @@ const server = Bun.serve({
     if (!exists) return new Response("Not Found", { status: 404 });
     const mime = MIME[extname(pathname)] ?? "application/octet-stream";
     return new Response(f, { headers: { "content-type": mime } });
+  },
+
+  websocket: {
+    open(ws) {
+      // The fetch handler stashed the upstream target + browser cookie on
+      // ws.data; open an upstream socket and pipe both directions. We pass
+      // the cookie via the Bun WebSocket `headers` option so better-auth
+      // upstream sees the same session as the browser.
+      const { target, cookie } = ws.data;
+      if (!target) {
+        ws.close(1011, "missing upstream target");
+        return;
+      }
+      const upstream = new WebSocket(target, {
+        headers: cookie ? { cookie } : {},
+      } as unknown as undefined);
+      ws.data.upstream = upstream;
+      upstream.binaryType = "arraybuffer";
+      upstream.addEventListener("open", () => {
+        for (const m of ws.data.buffered) upstream.send(m as never);
+        ws.data.buffered = [];
+      });
+      upstream.addEventListener("message", (e) => {
+        ws.send(e.data as string | ArrayBuffer | Uint8Array);
+      });
+      upstream.addEventListener("close", (e) => {
+        try {
+          ws.close(e.code, e.reason);
+        } catch {}
+      });
+      upstream.addEventListener("error", () => {
+        try {
+          ws.close(1011, "upstream error");
+        } catch {}
+      });
+    },
+    message(ws, message) {
+      const up = ws.data.upstream;
+      if (up && up.readyState === 1) up.send(message as never);
+      else ws.data.buffered.push(message);
+    },
+    close(ws) {
+      try {
+        ws.data.upstream?.close();
+      } catch {}
+    },
   },
 });
 
