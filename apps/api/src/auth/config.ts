@@ -35,7 +35,12 @@ export function createAuth(emailService: EmailService) {
     // better-auth — listing the dev hosts unblocks Playwright runs and any
     // user hitting :3002 directly. Production should set BETTER_AUTH_URL
     // to the canonical host.
-    trustedOrigins: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
+    trustedOrigins: [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:3002",
+      ...(Bun.env.BETTER_AUTH_URL ? [Bun.env.BETTER_AUTH_URL] : []),
+    ],
 
     socialProviders: {
       google: {
