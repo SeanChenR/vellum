@@ -61,5 +61,12 @@ export default defineConfig({
     timeout: 120_000,
     stdout: "ignore",
     stderr: "pipe",
+    // Override the shell's BETTER_AUTH_URL — when developing against a
+    // Cloudflare tunnel the dev shell sets it to a public host, but the
+    // E2E browser always runs against localhost:3002 and would otherwise
+    // reject session cookies scoped to the tunnel domain.
+    env: {
+      BETTER_AUTH_URL: "http://localhost:3002",
+    },
   },
 });
