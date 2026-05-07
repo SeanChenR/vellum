@@ -24,11 +24,17 @@
  *   - "Rate limits — 60 / 10 / 30 per minute per session for GET / POST / DELETE"
  */
 
-import { BYOK_DELETE_RULE, BYOK_LIST_RULE, BYOK_SAVE_RULE } from "../lib/rate-limit-rules";
+import {
+  BYOK_DELETE_RULE,
+  BYOK_LIST_RULE,
+  BYOK_PREFERENCE_RULE,
+  BYOK_SAVE_RULE,
+} from "../lib/rate-limit-rules";
 import type { RateLimiter, RateLimitRule } from "../lib/rate-limiter";
 import type { ProviderAdapter } from "./providers/types";
 import type { Vault } from "./vault";
 import { byokSaveBodySchema, byokProviderParamSchema } from "./byok-validator";
+import { byokPreferencesBodySchema } from "./preferences-validator";
 
 // ---------------------------------------------------------------------------
 // Repo contract — minimal surface the handlers need from the persistence
@@ -57,10 +63,28 @@ export interface ListedApiKey {
   lastUsedAt: Date | null;
 }
 
+/** One default-model preference row — one row per (user, provider) pair. */
+export interface StoredPreferences {
+  provider: string;
+  model: string;
+  updatedAt: Date;
+}
+
 export interface ByokRepo {
   list(userId: string): Promise<ListedApiKey[]>;
   upsert(userId: string, provider: string, encryptedKey: string): Promise<ListedApiKey>;
   delete(userId: string, provider: string): Promise<void>;
+  /**
+   * Returns every preference row (one per provider) for the user. Empty
+   * array when the user has not set any preferences. Caller (route
+   * handler) is responsible for shaping into a Record / map.
+   */
+  getPreferences(userId: string): Promise<StoredPreferences[]>;
+  /**
+   * Insert-or-update by composite PK `(user_id, provider)`. Refreshes
+   * `updated_at` to NOW(). Other providers' rows are left untouched.
+   */
+  upsertPreferences(userId: string, provider: string, model: string): Promise<StoredPreferences>;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,6 +108,7 @@ interface SessionLike {
 // ---------------------------------------------------------------------------
 
 const PATH_LIST = /^\/api\/account\/byok\/?$/;
+const PATH_PREFERENCES = /^\/api\/account\/byok\/preferences\/?$/;
 const PATH_PROVIDER = /^\/api\/account\/byok\/([^/]+)\/?$/;
 
 function jsonResp(status: number, body: object, extraHeaders?: Record<string, string>): Response {
@@ -135,6 +160,28 @@ function listToDto(items: ListedApiKey[]): {
   }));
 }
 
+function preferencesArrayToMap(
+  prefs: StoredPreferences[],
+): Record<string, { model: string; updatedAt: string }> {
+  const out: Record<string, { model: string; updatedAt: string }> = {};
+  for (const p of prefs) {
+    out[p.provider] = { model: p.model, updatedAt: p.updatedAt.toISOString() };
+  }
+  return out;
+}
+
+function preferenceRowToDto(prefs: StoredPreferences): {
+  provider: string;
+  model: string;
+  updatedAt: string;
+} {
+  return {
+    provider: prefs.provider,
+    model: prefs.model,
+    updatedAt: prefs.updatedAt.toISOString(),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Route dispatcher
 // ---------------------------------------------------------------------------
@@ -154,6 +201,14 @@ export async function handleByokRequest(
 
   if (PATH_LIST.test(path)) {
     if (req.method === "GET") return handleList(session, deps);
+    return errorResp(405, "errors.validation");
+  }
+
+  // Preferences endpoint must match BEFORE the generic :provider regex
+  // (otherwise `/byok/preferences` would be parsed as provider="preferences"
+  // and rejected with `errors.byok.providerUnknown`).
+  if (PATH_PREFERENCES.test(path)) {
+    if (req.method === "PATCH") return handlePreferences(req, session, deps);
     return errorResp(405, "errors.validation");
   }
 
@@ -177,8 +232,41 @@ async function handleList(session: SessionLike | null, deps: ByokDeps): Promise<
   const rl = checkRate(deps.rateLimiter, "list", session.userId, BYOK_LIST_RULE);
   if (rl) return rl;
 
-  const items = await deps.repo.list(session.userId);
-  return jsonResp(200, { data: listToDto(items) });
+  const [items, prefs] = await Promise.all([
+    deps.repo.list(session.userId),
+    deps.repo.getPreferences(session.userId),
+  ]);
+  return jsonResp(200, {
+    data: { keys: listToDto(items), preferences: preferencesArrayToMap(prefs) },
+  });
+}
+
+async function handlePreferences(
+  req: Request,
+  session: SessionLike | null,
+  deps: ByokDeps,
+): Promise<Response> {
+  if (!session) return notAuthenticated();
+  const rl = checkRate(deps.rateLimiter, "pref", session.userId, BYOK_PREFERENCE_RULE);
+  if (rl) return rl;
+
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return errorResp(400, "errors.byok.invalidPreference");
+  }
+  const parsed = byokPreferencesBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    return errorResp(400, "errors.byok.invalidPreference");
+  }
+
+  const stored = await deps.repo.upsertPreferences(
+    session.userId,
+    parsed.data.provider,
+    parsed.data.model,
+  );
+  return jsonResp(200, { data: preferenceRowToDto(stored) });
 }
 
 async function handleSave(

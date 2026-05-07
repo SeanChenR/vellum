@@ -26,6 +26,7 @@ import {
   BYOK_LIST_RULE,
   BYOK_SAVE_RULE,
   BYOK_DELETE_RULE,
+  BYOK_PREFERENCE_RULE,
 } from "./rate-limit-rules";
 
 function makeClock() {
@@ -121,5 +122,9 @@ describe("Rule constants match design spec", () => {
   test("BYOK_DELETE_RULE is 30/60s", () => {
     expect(BYOK_DELETE_RULE.max).toBe(30);
     expect(BYOK_DELETE_RULE.windowMs).toBe(60_000);
+  });
+  test("BYOK_PREFERENCE_RULE is 60/60s (per-session, no vendor side-effect)", () => {
+    expect(BYOK_PREFERENCE_RULE.max).toBe(60);
+    expect(BYOK_PREFERENCE_RULE.windowMs).toBe(60_000);
   });
 });

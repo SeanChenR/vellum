@@ -11,6 +11,9 @@
 
 import { z } from "zod";
 
+import type { ProviderId } from "./byok-pricing";
+export type { ProviderId } from "./byok-pricing";
+
 // ---------------------------------------------------------------------------
 // ErrorKey — exhaustive list of error keys returned by the API
 // ---------------------------------------------------------------------------
@@ -33,6 +36,7 @@ export type ErrorKey =
   | "errors.byok.unreachable"
   | "errors.byok.providerUnknown"
   | "errors.byok.notAuthenticated"
+  | "errors.byok.invalidPreference"
   | "errors.validation"
   | "errors.rateLimit"
   | "errors.internal";
@@ -120,14 +124,54 @@ export type FolderUpdateInput = z.infer<typeof folderUpdateInputSchema>;
  * a key for. Plaintext / encrypted bytes never leave the server.
  */
 export interface BYOKProviderListItem {
-  /** `'anthropic'` only in M11.1; M11.2 extends. */
-  provider: string;
+  /** One of the supported providers (`'anthropic' | 'openai' | 'google'`). */
+  provider: ProviderId;
   createdAt: string;
   /** Touched by the agent runtime (M13.1+); null until then. */
   lastUsedAt: string | null;
 }
 
-export type BYOKProviderListResponse = ApiSuccess<BYOKProviderListItem[]>;
+/**
+ * Single default-model preference row — what PATCH /preferences returns
+ * for the addressed (provider, model) pair.
+ */
+export interface BYOKPreferences {
+  provider: ProviderId;
+  /** Canonical model identifier; member of the BYOK pricing catalog. */
+  model: string;
+  updatedAt: string;
+}
+
+/** Compact per-provider entry used inside the preferences map. */
+export interface BYOKPreferenceEntry {
+  model: string;
+  updatedAt: string;
+}
+
+/**
+ * Per-provider preferences map carried by GET /api/account/byok. A
+ * missing key means "no preference set for that provider"; an empty
+ * object `{}` is the empty state. Replaces the M11.3 nullable single-
+ * preference shape with a per-provider record.
+ */
+export type BYOKPreferencesMap = Partial<Record<ProviderId, BYOKPreferenceEntry>>;
+
+/**
+ * `GET /api/account/byok` envelope. M11.2 / M11.3 extended the inner
+ * shape from `BYOKProviderListItem[]` to `{ keys, preferences }` so a
+ * single round-trip primes the Settings UI.
+ */
+export type BYOKListResponse = ApiSuccess<{
+  keys: BYOKProviderListItem[];
+  preferences: BYOKPreferencesMap;
+}>;
+
+/**
+ * @deprecated kept as alias for downstream callers transitioning off the
+ * old `{ data: BYOKProviderListItem[] }` envelope. New code should use
+ * `BYOKListResponse`.
+ */
+export type BYOKProviderListResponse = BYOKListResponse;
 
 /**
  * `POST /api/account/byok/:provider` — body shape; validated by
@@ -142,3 +186,15 @@ export interface BYOKSaveRequest {
  * shape of a list-item entry for the saved provider.
  */
 export type BYOKSaveResponse = ApiSuccess<BYOKProviderListItem>;
+
+/**
+ * `PATCH /api/account/byok/preferences` — request body. Server runs the
+ * same shape through `byokPreferencesBodySchema` (zod) for validation.
+ */
+export interface BYOKPreferencesPatchBody {
+  provider: ProviderId;
+  model: string;
+}
+
+/** `PATCH /api/account/byok/preferences` — success response. */
+export type BYOKPreferencesResponse = ApiSuccess<BYOKPreferences>;

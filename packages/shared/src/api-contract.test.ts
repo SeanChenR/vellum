@@ -196,17 +196,61 @@ describe("BYOK contract types", () => {
     expect(sample.data.provider).toBe("anthropic");
   });
 
-  test("BYOKProviderListResponse wraps a list-item array in the standard envelope", () => {
-    const sample: import("./api-contract").BYOKProviderListResponse = {
-      data: [
-        {
-          provider: "anthropic",
-          createdAt: "2026-05-06T10:00:00.000Z",
-          lastUsedAt: null,
-        },
-      ],
+  test("BYOKListResponse envelope wraps { keys, preferences } with empty {} preferences when none set", () => {
+    const sample: import("./api-contract").BYOKListResponse = {
+      data: {
+        keys: [
+          {
+            provider: "anthropic",
+            createdAt: "2026-05-06T10:00:00.000Z",
+            lastUsedAt: null,
+          },
+        ],
+        preferences: {},
+      },
     };
-    expect(Array.isArray(sample.data)).toBe(true);
+    expect(Array.isArray(sample.data.keys)).toBe(true);
+    expect(sample.data.preferences).toEqual({});
+  });
+
+  test("BYOKListResponse.preferences keyed by provider when populated", () => {
+    const sample: import("./api-contract").BYOKListResponse = {
+      data: {
+        keys: [],
+        preferences: {
+          openai: { model: "gpt-5-mini", updatedAt: "2026-05-07T10:00:00.000Z" },
+          anthropic: { model: "claude-haiku-4-5", updatedAt: "2026-05-07T11:00:00.000Z" },
+        },
+      },
+    };
+    expect(sample.data.preferences.openai?.model).toBe("gpt-5-mini");
+    expect(sample.data.preferences.anthropic?.model).toBe("claude-haiku-4-5");
+    expect(sample.data.preferences.google).toBeUndefined();
+  });
+
+  test("BYOKPreferencesPatchBody is { provider, model }", () => {
+    const sample: import("./api-contract").BYOKPreferencesPatchBody = {
+      provider: "google",
+      model: "gemini-2.5-flash-lite",
+    };
+    expect(sample.provider).toBe("google");
+    expect(sample.model).toBe("gemini-2.5-flash-lite");
+  });
+
+  test("BYOKPreferencesResponse mirrors BYOKPreferences in the success envelope", () => {
+    const sample: import("./api-contract").BYOKPreferencesResponse = {
+      data: {
+        provider: "anthropic",
+        model: "claude-haiku-4-5",
+        updatedAt: "2026-05-07T10:00:00.000Z",
+      },
+    };
+    expect(sample.data.provider).toBe("anthropic");
+  });
+
+  test("ProviderId is the 3-element union 'anthropic' | 'openai' | 'google'", () => {
+    const ids: import("./api-contract").ProviderId[] = ["anthropic", "openai", "google"];
+    expect(ids).toHaveLength(3);
   });
 
   test("ErrorKey union covers every BYOK error key from the design", () => {
@@ -217,7 +261,8 @@ describe("BYOK contract types", () => {
       "errors.byok.unreachable",
       "errors.byok.providerUnknown",
       "errors.byok.notAuthenticated",
+      "errors.byok.invalidPreference",
     ];
-    expect(keys).toHaveLength(6);
+    expect(keys).toHaveLength(7);
   });
 });

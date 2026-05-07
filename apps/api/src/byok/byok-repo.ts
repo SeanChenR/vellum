@@ -12,8 +12,8 @@
 
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../db/index";
-import { apiKeys } from "../db/schema";
-import type { ByokRepo, ListedApiKey } from "./routes";
+import { apiKeys, userAiPreferences } from "../db/schema";
+import type { ByokRepo, ListedApiKey, StoredPreferences } from "./routes";
 
 export function createDrizzleByokRepo(): ByokRepo {
   return {
@@ -55,6 +55,39 @@ export function createDrizzleByokRepo(): ByokRepo {
       await db
         .delete(apiKeys)
         .where(and(eq(apiKeys.userId, userId), eq(apiKeys.provider, provider)));
+    },
+
+    async getPreferences(userId): Promise<StoredPreferences[]> {
+      const db = getDb();
+      const rows = await db
+        .select({
+          provider: userAiPreferences.provider,
+          model: userAiPreferences.model,
+          updatedAt: userAiPreferences.updatedAt,
+        })
+        .from(userAiPreferences)
+        .where(eq(userAiPreferences.userId, userId));
+      return rows;
+    },
+
+    async upsertPreferences(userId, provider, model): Promise<StoredPreferences> {
+      const db = getDb();
+      const [row] = await db
+        .insert(userAiPreferences)
+        .values({ userId, provider, model })
+        .onConflictDoUpdate({
+          target: [userAiPreferences.userId, userAiPreferences.provider],
+          set: { model, updatedAt: sql`NOW()` },
+        })
+        .returning({
+          provider: userAiPreferences.provider,
+          model: userAiPreferences.model,
+          updatedAt: userAiPreferences.updatedAt,
+        });
+      if (!row) {
+        throw new Error("BYOK upsertPreferences returned no row");
+      }
+      return row;
     },
   };
 }

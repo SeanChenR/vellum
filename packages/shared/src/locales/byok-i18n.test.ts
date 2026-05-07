@@ -66,6 +66,7 @@ describe("BYOK i18n parity (en vs zh-TW)", () => {
       "unreachable",
       "providerUnknown",
       "notAuthenticated",
+      "invalidPreference",
     ]) {
       expect(enKeys.has(k)).toBe(true);
     }
@@ -76,9 +77,17 @@ describe("BYOK i18n parity (en vs zh-TW)", () => {
     for (const k of [
       "title",
       "subtitle",
+      // Per-provider rows (anthropic + openai + google).
       "providers.anthropic.label",
       "providers.anthropic.placeholder",
       "providers.anthropic.helpUrl",
+      "providers.openai.label",
+      "providers.openai.placeholder",
+      "providers.openai.helpUrl",
+      "providers.google.label",
+      "providers.google.placeholder",
+      "providers.google.helpUrl",
+      // Common UI bits.
       "actions.save",
       "actions.delete",
       "actions.replace",
@@ -86,8 +95,31 @@ describe("BYOK i18n parity (en vs zh-TW)", () => {
       "status.saved",
       "confirm.deleteTitle",
       "confirm.deleteBody",
+      // Pricing table (3 tiers + 6 columns + heading).
+      "pricing.title",
+      "pricing.subtitle",
+      "pricing.tier.flagship",
+      "pricing.tier.balanced",
+      "pricing.tier.economy",
+      "pricing.column.provider",
+      "pricing.column.tier",
+      "pricing.column.model",
+      "pricing.column.inputCost",
+      "pricing.column.outputCost",
+      "pricing.column.link",
+      // Default-model picker.
+      "defaultModel.title",
+      "defaultModel.subtitle",
+      "defaultModel.unset",
     ]) {
       expect(enKeys.has(k)).toBe(true);
     }
+  });
+
+  test("nav.userMenu contains apiKeys entry in both locales", () => {
+    const enKeys = flatKeysAt(en as unknown as Tree, "nav.userMenu");
+    const zhKeys = flatKeysAt(zhTW as unknown as Tree, "nav.userMenu");
+    expect(enKeys.has("apiKeys")).toBe(true);
+    expect(zhKeys.has("apiKeys")).toBe(true);
   });
 });

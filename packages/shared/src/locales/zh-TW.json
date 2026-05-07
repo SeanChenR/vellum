@@ -23,6 +23,7 @@
       "dashboard": "返回 Dashboard",
       "profile": "個人資料",
       "sessions": "登入裝置",
+      "apiKeys": "API 金鑰",
       "signOut": "登出"
     }
   },
@@ -364,12 +365,13 @@
       "sessionNotFound": "找不到對應的連線 session"
     },
     "byok": {
-      "invalidKey": "Anthropic 金鑰看起來不正確，請確認複製內容",
-      "outOfCredits": "Anthropic 帳號已沒有額度",
-      "rateLimited": "Anthropic 端速率限制中，請稍後再試",
-      "unreachable": "無法連到 Anthropic，請檢查網路後再試",
+      "invalidKey": "金鑰似乎無效，請確認複製內容",
+      "outOfCredits": "供應商帳號已沒有額度",
+      "rateLimited": "供應商端速率限制中，請稍後再試",
+      "unreachable": "無法連到供應商，請檢查網路後再試",
       "providerUnknown": "不支援的 provider",
-      "notAuthenticated": "請先登入以管理 API 金鑰"
+      "notAuthenticated": "請先登入以管理 API 金鑰",
+      "invalidPreference": "所選的供應商或模型不支援"
     },
     "validation": "輸入資料有誤，請確認後再試",
     "rateLimit": "請求次數過多，請稍後再試",
@@ -418,6 +420,16 @@
           "label": "Anthropic",
           "placeholder": "sk-ant-...",
           "helpUrl": "https://console.anthropic.com/settings/keys"
+        },
+        "openai": {
+          "label": "OpenAI",
+          "placeholder": "sk-proj-...",
+          "helpUrl": "https://platform.openai.com/api-keys"
+        },
+        "google": {
+          "label": "Google",
+          "placeholder": "AIza...",
+          "helpUrl": "https://aistudio.google.com/apikey"
         }
       },
       "actions": {
@@ -430,8 +442,30 @@
         "saved": "已儲存"
       },
       "confirm": {
-        "deleteTitle": "刪除 Anthropic 金鑰？",
-        "deleteBody": "已儲存的金鑰將被移除。AI 功能將停止運作，直到您再次儲存新的金鑰。"
+        "deleteTitle": "刪除 API 金鑰？",
+        "deleteBody": "已儲存的金鑰將被移除。對應供應商的 AI 功能將停止運作，直到您再次儲存新的金鑰。"
+      },
+      "pricing": {
+        "title": "定價",
+        "subtitle": "USD / 百萬 tokens",
+        "tier": {
+          "flagship": "旗艦",
+          "balanced": "平衡",
+          "economy": "經濟"
+        },
+        "column": {
+          "provider": "供應商",
+          "tier": "等級",
+          "model": "模型",
+          "inputCost": "輸入",
+          "outputCost": "輸出",
+          "link": "詳情"
+        }
+      },
+      "defaultModel": {
+        "title": "預設模型",
+        "subtitle": "開啟 AI panel 時的預設選擇。",
+        "unset": "尚未選擇預設"
       }
     }
   }

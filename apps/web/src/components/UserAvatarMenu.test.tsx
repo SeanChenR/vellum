@@ -50,17 +50,18 @@ beforeEach(async () => {
 afterEach(() => cleanup());
 
 describe("UserAvatarMenu", () => {
-  test("menu opens to four interactive items in the spec-defined order", async () => {
+  test("menu opens to five interactive items in the spec-defined order", async () => {
     const user = userEvent.setup();
     renderMenu();
     await openMenu(user);
     const items = screen.getAllByRole("menuitem");
-    expect(items.length).toBe(4);
+    expect(items.length).toBe(5);
     const labels = items.map((el) => el.textContent?.trim() ?? "");
     expect(labels[0]).toMatch(/Go to Dashboard/i);
     expect(labels[1]).toMatch(/Profile/i);
     expect(labels[2]).toMatch(/Active sessions|Sessions/i);
-    expect(labels[3]).toMatch(/Sign out/i);
+    expect(labels[3]).toMatch(/API keys/i);
+    expect(labels[4]).toMatch(/Sign out/i);
   });
 
   test("Go-to-Dashboard item is an anchor pointing to /dashboard", async () => {
@@ -82,6 +83,15 @@ describe("UserAvatarMenu", () => {
     expect(
       screen.getByRole("menuitem", { name: /Active sessions|Sessions/i }).getAttribute("href"),
     ).toBe("/account/sessions");
+  });
+
+  test("API keys menuitem is an anchor pointing to /account/api-keys", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    await openMenu(user);
+    const item = screen.getByRole("menuitem", { name: /API keys/i });
+    expect(item.tagName.toLowerCase()).toBe("a");
+    expect(item.getAttribute("href")).toBe("/account/api-keys");
   });
 
   test("Sign-out menuitem invokes the onSignOut callback", async () => {

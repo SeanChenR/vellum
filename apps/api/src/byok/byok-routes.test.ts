@@ -13,7 +13,13 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { randomBytes } from "node:crypto";
 import { RateLimiter } from "../lib/rate-limiter";
 import { initVault } from "./vault";
-import { handleByokRequest, type ByokDeps, type ByokRepo, type StoredApiKey } from "./routes";
+import {
+  handleByokRequest,
+  type ByokDeps,
+  type ByokRepo,
+  type StoredApiKey,
+  type StoredPreferences,
+} from "./routes";
 import type { ProviderAdapter } from "./providers/types";
 
 const USER_ID = "user-test-1";
@@ -25,10 +31,19 @@ const VALID_KEY_BODY = { apiKey: "sk-ant-valid-12345678" };
 // In-memory repo
 // ---------------------------------------------------------------------------
 
-function makeMemoryRepo(): ByokRepo & { rows: StoredApiKey[] } {
+interface StoredPreferenceRow extends StoredPreferences {
+  userId: string;
+}
+
+function makeMemoryRepo(): ByokRepo & {
+  rows: StoredApiKey[];
+  prefRows: StoredPreferenceRow[];
+} {
   const rows: StoredApiKey[] = [];
+  const prefRows: StoredPreferenceRow[] = [];
   return {
     rows,
+    prefRows,
     async list(userId) {
       return rows
         .filter((r) => r.userId === userId)
@@ -56,6 +71,22 @@ function makeMemoryRepo(): ByokRepo & { rows: StoredApiKey[] } {
     async delete(userId, provider) {
       const idx = rows.findIndex((r) => r.userId === userId && r.provider === provider);
       if (idx >= 0) rows.splice(idx, 1);
+    },
+    async getPreferences(userId) {
+      return prefRows
+        .filter((r) => r.userId === userId)
+        .map((r) => ({ provider: r.provider, model: r.model, updatedAt: r.updatedAt }));
+    },
+    async upsertPreferences(userId, provider, model) {
+      const now = new Date();
+      const existing = prefRows.find((r) => r.userId === userId && r.provider === provider);
+      if (existing) {
+        existing.model = model;
+        existing.updatedAt = now;
+        return { provider, model, updatedAt: now };
+      }
+      prefRows.push({ userId, provider, model, updatedAt: now });
+      return { provider, model, updatedAt: now };
     },
   };
 }
@@ -90,10 +121,21 @@ afterEach(() => {
 });
 
 function depsFor(adapter: ProviderAdapter): ByokDeps {
+  // All three providers share the same stub adapter unless a test overrides
+  // them via depsForAdapters. Sufficient for save / list / delete tests.
   return {
     repo,
     vault: VAULT,
-    adapters: { anthropic: adapter },
+    adapters: { anthropic: adapter, openai: adapter, google: adapter },
+    rateLimiter,
+  };
+}
+
+function depsForAdapters(adapters: Record<string, ProviderAdapter>): ByokDeps {
+  return {
+    repo,
+    vault: VAULT,
+    adapters,
     rateLimiter,
   };
 }
@@ -137,11 +179,14 @@ describe("GET /api/account/byok — auth", () => {
 // ---------------------------------------------------------------------------
 
 describe("GET /api/account/byok — list", () => {
-  test("authenticated, no rows → 200 with data: []", async () => {
+  test("authenticated, no rows / no preferences → 200 with { keys: [], preferences: {} }", async () => {
     const resp = await call("GET", "/api/account/byok", { userId: USER_ID }, undefined);
     expect(resp.status).toBe(200);
-    const body = (await resp.json()) as { data: unknown[] };
-    expect(body.data).toEqual([]);
+    const body = (await resp.json()) as {
+      data: { keys: unknown[]; preferences: Record<string, unknown> };
+    };
+    expect(body.data.keys).toEqual([]);
+    expect(body.data.preferences).toEqual({});
   });
 
   test("authenticated, one anthropic row → 200 with one entry, no encryptedKey field", async () => {
@@ -155,12 +200,16 @@ describe("GET /api/account/byok — list", () => {
     const resp = await call("GET", "/api/account/byok", { userId: USER_ID }, undefined);
     expect(resp.status).toBe(200);
     const body = (await resp.json()) as {
-      data: Array<{ provider: string; createdAt: string; lastUsedAt: string | null }>;
+      data: {
+        keys: Array<{ provider: string; createdAt: string; lastUsedAt: string | null }>;
+        preferences: Record<string, unknown>;
+      };
     };
-    expect(body.data).toHaveLength(1);
-    expect(body.data[0]?.provider).toBe("anthropic");
-    expect(body.data[0]?.lastUsedAt).toBeNull();
-    expect("encryptedKey" in (body.data[0] as object)).toBe(false);
+    expect(body.data.keys).toHaveLength(1);
+    expect(body.data.keys[0]?.provider).toBe("anthropic");
+    expect(body.data.keys[0]?.lastUsedAt).toBeNull();
+    expect("encryptedKey" in (body.data.keys[0] as object)).toBe(false);
+    expect(body.data.preferences).toEqual({});
   });
 });
 
@@ -323,12 +372,12 @@ describe("DELETE /api/account/byok/:provider", () => {
 // ---------------------------------------------------------------------------
 
 describe("Unknown provider", () => {
-  test("POST /api/account/byok/openai → 400 + errors.byok.providerUnknown, adapter never looked up", async () => {
-    // pass an adapter for anthropic only; openai path must reject before hitting it
+  test("POST /api/account/byok/cohere → 400 + errors.byok.providerUnknown, adapter never looked up", async () => {
+    // pass an adapter (used by valid providers); cohere path must reject before hitting any adapter
     const { adapter, validateKey } = makeAdapter({ ok: true });
     const resp = await call(
       "POST",
-      "/api/account/byok/openai",
+      "/api/account/byok/cohere",
       { userId: USER_ID },
       VALID_KEY_BODY,
       adapter,
@@ -427,5 +476,340 @@ describe("Rate limits — Section 9.4", () => {
       adapter,
     );
     expect(resp.status).toBe(200);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 13.1 — in-memory repo: preferences contract
+// ---------------------------------------------------------------------------
+
+describe("in-memory repo — preferences helper contract (per-provider)", () => {
+  test("getPreferences returns empty array for users with no preference rows", async () => {
+    expect(await repo.getPreferences(USER_ID)).toEqual([]);
+  });
+
+  test("upsertPreferences inserts a row keyed by (user, provider) on first call", async () => {
+    const result = await repo.upsertPreferences(USER_ID, "anthropic", "claude-haiku-4-5");
+    expect(result.provider).toBe("anthropic");
+    expect(result.model).toBe("claude-haiku-4-5");
+    expect(result.updatedAt).toBeInstanceOf(Date);
+    expect(repo.prefRows).toHaveLength(1);
+  });
+
+  test("second upsert on the SAME provider updates in place", async () => {
+    await repo.upsertPreferences(USER_ID, "anthropic", "claude-haiku-4-5");
+    const second = await repo.upsertPreferences(USER_ID, "anthropic", "claude-sonnet-4-6");
+
+    expect(repo.prefRows).toHaveLength(1);
+    expect(second.model).toBe("claude-sonnet-4-6");
+
+    const fetched = await repo.getPreferences(USER_ID);
+    expect(fetched).toHaveLength(1);
+    expect(fetched[0]).toEqual({
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      updatedAt: second.updatedAt,
+    });
+  });
+
+  test("upsert on a DIFFERENT provider inserts a new row, leaving the first untouched", async () => {
+    await repo.upsertPreferences(USER_ID, "anthropic", "claude-haiku-4-5");
+    const second = await repo.upsertPreferences(USER_ID, "openai", "gpt-5-mini");
+
+    expect(repo.prefRows).toHaveLength(2);
+    expect(second.provider).toBe("openai");
+
+    const fetched = await repo.getPreferences(USER_ID);
+    const byProvider = Object.fromEntries(fetched.map((p) => [p.provider, p.model]));
+    expect(byProvider).toEqual({
+      anthropic: "claude-haiku-4-5",
+      openai: "gpt-5-mini",
+    });
+  });
+
+  test("upsertPreferences refreshes updatedAt on every write to the same row", async () => {
+    const first = await repo.upsertPreferences(USER_ID, "anthropic", "claude-haiku-4-5");
+    await new Promise((r) => setTimeout(r, 5));
+    const second = await repo.upsertPreferences(USER_ID, "anthropic", "claude-haiku-4-5");
+    expect(second.updatedAt.getTime()).toBeGreaterThan(first.updatedAt.getTime());
+  });
+
+  test("preferences are scoped per user — user-A's rows do not surface for user-B", async () => {
+    await repo.upsertPreferences(USER_ID, "anthropic", "claude-haiku-4-5");
+    expect(await repo.getPreferences(OTHER_USER_ID)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 17.1 PATCH preferences endpoint
+// ---------------------------------------------------------------------------
+
+describe("PATCH /api/account/byok/preferences — auth + happy path", () => {
+  test("unauthenticated → 401 + errors.byok.notAuthenticated", async () => {
+    const resp = await call("PATCH", "/api/account/byok/preferences", null, {
+      provider: "openai",
+      model: "gpt-5-mini",
+    });
+    expect(resp.status).toBe(401);
+    const body = (await resp.json()) as { error: string };
+    expect(body.error).toBe("errors.byok.notAuthenticated");
+  });
+
+  test("valid combo → 200 + persists row + returns updatedAt", async () => {
+    const resp = await call(
+      "PATCH",
+      "/api/account/byok/preferences",
+      { userId: USER_ID },
+      { provider: "openai", model: "gpt-5-mini" },
+    );
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as {
+      data: { provider: string; model: string; updatedAt: string };
+    };
+    expect(body.data.provider).toBe("openai");
+    expect(body.data.model).toBe("gpt-5-mini");
+    expect(typeof body.data.updatedAt).toBe("string");
+    expect(repo.prefRows).toHaveLength(1);
+    expect(repo.prefRows[0]?.userId).toBe(USER_ID);
+  });
+});
+
+describe("PATCH /api/account/byok/preferences — rejection paths", () => {
+  test("unknown model id → 400 + errors.byok.invalidPreference, no row written", async () => {
+    const resp = await call(
+      "PATCH",
+      "/api/account/byok/preferences",
+      { userId: USER_ID },
+      { provider: "openai", model: "gpt-9000" },
+    );
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as { error: string };
+    expect(body.error).toBe("errors.byok.invalidPreference");
+    expect(repo.prefRows).toHaveLength(0);
+  });
+
+  test("unknown provider → 400 + errors.byok.invalidPreference", async () => {
+    const resp = await call(
+      "PATCH",
+      "/api/account/byok/preferences",
+      { userId: USER_ID },
+      { provider: "cohere", model: "command" },
+    );
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as { error: string };
+    expect(body.error).toBe("errors.byok.invalidPreference");
+    expect(repo.prefRows).toHaveLength(0);
+  });
+
+  test("missing fields → 400 + errors.byok.invalidPreference", async () => {
+    const resp = await call("PATCH", "/api/account/byok/preferences", { userId: USER_ID }, {});
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as { error: string };
+    expect(body.error).toBe("errors.byok.invalidPreference");
+  });
+
+  test("PATCH only updates the addressed provider's row", async () => {
+    // Seed an existing anthropic preference.
+    repo.prefRows.push({
+      userId: USER_ID,
+      provider: "anthropic",
+      model: "claude-haiku-4-5",
+      updatedAt: new Date("2026-05-07T10:00:00.000Z"),
+    });
+    const resp = await call(
+      "PATCH",
+      "/api/account/byok/preferences",
+      { userId: USER_ID },
+      { provider: "google", model: "gemini-2.5-flash" },
+    );
+    expect(resp.status).toBe(200);
+    expect(repo.prefRows).toHaveLength(2);
+    const byProvider = Object.fromEntries(repo.prefRows.map((p) => [p.provider, p.model]));
+    expect(byProvider.anthropic).toBe("claude-haiku-4-5");
+    expect(byProvider.google).toBe("gemini-2.5-flash");
+  });
+
+  test("preference allowed even when corresponding key not yet saved", async () => {
+    // No openai row in repo.rows; PATCH still accepts the preference.
+    expect(repo.rows).toHaveLength(0);
+    const resp = await call(
+      "PATCH",
+      "/api/account/byok/preferences",
+      { userId: USER_ID },
+      { provider: "openai", model: "gpt-5" },
+    );
+    expect(resp.status).toBe(200);
+  });
+});
+
+describe("PATCH /api/account/byok/preferences — rate limit", () => {
+  test("61st request within one minute → 429 + Retry-After", async () => {
+    // Drain the 60-token bucket.
+    for (let i = 0; i < 60; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await call(
+        "PATCH",
+        "/api/account/byok/preferences",
+        { userId: USER_ID },
+        { provider: "anthropic", model: "claude-haiku-4-5" },
+      );
+    }
+    const resp = await call(
+      "PATCH",
+      "/api/account/byok/preferences",
+      { userId: USER_ID },
+      { provider: "anthropic", model: "claude-haiku-4-5" },
+    );
+    expect(resp.status).toBe(429);
+    expect(resp.headers.get("retry-after")).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 17.2 GET response — preferences field
+// ---------------------------------------------------------------------------
+
+describe("GET /api/account/byok — preferences map (per-provider)", () => {
+  test("preferences: empty {} when none set", async () => {
+    repo.rows.push({
+      userId: USER_ID,
+      provider: "openai",
+      encryptedKey: "cipher",
+      createdAt: new Date(),
+      lastUsedAt: null,
+    });
+    const resp = await call("GET", "/api/account/byok", { userId: USER_ID }, undefined);
+    const body = (await resp.json()) as {
+      data: { keys: unknown[]; preferences: Record<string, unknown> };
+    };
+    expect(body.data.preferences).toEqual({});
+  });
+
+  test("preferences keyed by provider when one is set", async () => {
+    repo.prefRows.push({
+      userId: USER_ID,
+      provider: "anthropic",
+      model: "claude-haiku-4-5",
+      updatedAt: new Date("2026-05-07T10:00:00.000Z"),
+    });
+    const resp = await call("GET", "/api/account/byok", { userId: USER_ID }, undefined);
+    const body = (await resp.json()) as {
+      data: {
+        keys: unknown[];
+        preferences: Record<string, { model: string; updatedAt: string }>;
+      };
+    };
+    expect(Object.keys(body.data.preferences)).toEqual(["anthropic"]);
+    expect(body.data.preferences.anthropic?.model).toBe("claude-haiku-4-5");
+    expect(typeof body.data.preferences.anthropic?.updatedAt).toBe("string");
+  });
+
+  test("preferences holds multiple entries when several providers are set", async () => {
+    repo.prefRows.push(
+      {
+        userId: USER_ID,
+        provider: "anthropic",
+        model: "claude-haiku-4-5",
+        updatedAt: new Date("2026-05-07T10:00:00.000Z"),
+      },
+      {
+        userId: USER_ID,
+        provider: "openai",
+        model: "gpt-5-mini",
+        updatedAt: new Date("2026-05-07T11:00:00.000Z"),
+      },
+    );
+    const resp = await call("GET", "/api/account/byok", { userId: USER_ID }, undefined);
+    const body = (await resp.json()) as {
+      data: { preferences: Record<string, { model: string }> };
+    };
+    expect(Object.keys(body.data.preferences).sort()).toEqual(["anthropic", "openai"]);
+    expect(body.data.preferences.anthropic?.model).toBe("claude-haiku-4-5");
+    expect(body.data.preferences.openai?.model).toBe("gpt-5-mini");
+    expect(body.data.preferences.google).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 17.3 POST multi-provider — happy + isolation
+// ---------------------------------------------------------------------------
+
+describe("POST /api/account/byok/:provider — multi-provider happy path", () => {
+  test("openai save: 200 + row inserted with provider='openai'", async () => {
+    const resp = await call(
+      "POST",
+      "/api/account/byok/openai",
+      { userId: USER_ID },
+      { apiKey: "sk-proj-openai-12345678" },
+    );
+    expect(resp.status).toBe(200);
+    expect(repo.rows.find((r) => r.userId === USER_ID && r.provider === "openai")).toBeDefined();
+  });
+
+  test("google save: 200 + row inserted with provider='google'", async () => {
+    const resp = await call(
+      "POST",
+      "/api/account/byok/google",
+      { userId: USER_ID },
+      { apiKey: "AIza-google-12345678" },
+    );
+    expect(resp.status).toBe(200);
+    expect(repo.rows.find((r) => r.userId === USER_ID && r.provider === "google")).toBeDefined();
+  });
+
+  test("save openai does not affect existing anthropic row", async () => {
+    repo.rows.push({
+      userId: USER_ID,
+      provider: "anthropic",
+      encryptedKey: "anthropic-cipher",
+      createdAt: new Date("2026-05-01T00:00:00.000Z"),
+      lastUsedAt: null,
+    });
+    const resp = await call(
+      "POST",
+      "/api/account/byok/openai",
+      { userId: USER_ID },
+      { apiKey: "sk-proj-openai-12345678" },
+    );
+    expect(resp.status).toBe(200);
+    const anthropicRow = repo.rows.find((r) => r.userId === USER_ID && r.provider === "anthropic");
+    expect(anthropicRow?.encryptedKey).toBe("anthropic-cipher");
+    expect(repo.rows.filter((r) => r.userId === USER_ID)).toHaveLength(2);
+  });
+
+  test("openai save with adapter rejection → 400 + errorKey, no row inserted", async () => {
+    const { adapter } = makeAdapter({ ok: false, errorKey: "errors.byok.invalidKey" });
+    const resp = await call(
+      "POST",
+      "/api/account/byok/openai",
+      { userId: USER_ID },
+      { apiKey: "sk-proj-bad-12345678" },
+      adapter,
+    );
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as { error: string };
+    expect(body.error).toBe("errors.byok.invalidKey");
+    expect(repo.rows).toHaveLength(0);
+  });
+
+  test("openai save uses the openai adapter, not anthropic's", async () => {
+    const anthropic = makeAdapter({ ok: true });
+    const openai = makeAdapter({ ok: true });
+    const google = makeAdapter({ ok: true });
+
+    const r = req("POST", "/api/account/byok/openai", { apiKey: "sk-proj-routing-test" });
+    const resp = await handleByokRequest(
+      r,
+      { userId: USER_ID },
+      depsForAdapters({
+        anthropic: anthropic.adapter,
+        openai: openai.adapter,
+        google: google.adapter,
+      }),
+    );
+    expect(resp?.status).toBe(200);
+    expect(openai.validateKey).toHaveBeenCalledTimes(1);
+    expect(anthropic.validateKey).not.toHaveBeenCalled();
+    expect(google.validateKey).not.toHaveBeenCalled();
   });
 });

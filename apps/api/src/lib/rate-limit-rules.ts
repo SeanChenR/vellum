@@ -118,3 +118,12 @@ export const BYOK_SAVE_RULE: RateLimitRule = { windowMs: s(60), max: 10 };
 
 /** DELETE /api/account/byok/:provider — 30 deletes per 60s per user. */
 export const BYOK_DELETE_RULE: RateLimitRule = { windowMs: s(60), max: 30 };
+
+/**
+ * PATCH /api/account/byok/preferences — 60 writes per 60s per user.
+ * Same envelope as BYOK_LIST_RULE: no vendor ping on write, so the
+ * oracle-prevention pressure that drives BYOK_SAVE_RULE down to 10/min
+ * doesn't apply. 60/min is generous enough that picker fiddling never
+ * trips the limit.
+ */
+export const BYOK_PREFERENCE_RULE: RateLimitRule = { windowMs: s(60), max: 60 };

@@ -57,3 +57,35 @@ export const apiKeys = pgTable(
 
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// user_ai_preferences — one row per (user, provider) pair holding that
+// provider's default model selection. Read by the AI side panel default
+// selection (M14.1) and written by PATCH /api/account/byok/preferences.
+//
+// Composite PK `(user_id, provider)` enforces "at most one preference
+// per provider per user"; rows for different providers coexist
+// independently. Cascade-delete with the user. `provider` and `model`
+// are validated against the BYOK pricing catalog at the route handler —
+// the schema itself stays catalog-agnostic (permissive `text`) so vendor
+// catalog churn doesn't trigger migrations.
+// ---------------------------------------------------------------------------
+
+export const userAiPreferences = pgTable(
+  "user_ai_preferences",
+  {
+    /** FK → users.id (text PK from better-auth); cascade-delete with user. */
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Provider id; one of `'anthropic' | 'openai' | 'google'`. */
+    provider: text("provider").notNull(),
+    /** Selected model id for this provider; validated against the catalog. */
+    model: text("model").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.provider] })],
+);
+
+export type UserAiPreference = typeof userAiPreferences.$inferSelect;
+export type NewUserAiPreference = typeof userAiPreferences.$inferInsert;

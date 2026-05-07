@@ -23,6 +23,7 @@
       "dashboard": "Go to Dashboard",
       "profile": "Profile",
       "sessions": "Active sessions",
+      "apiKeys": "API keys",
       "signOut": "Sign out"
     }
   },
@@ -364,12 +365,13 @@
       "sessionNotFound": "No connected client session matches the supplied id"
     },
     "byok": {
-      "invalidKey": "Your Anthropic key looks invalid. Check it's copied correctly.",
-      "outOfCredits": "Your Anthropic account is out of credits.",
-      "rateLimited": "Hit Anthropic's rate limit. Wait a moment and try again.",
-      "unreachable": "Unable to reach Anthropic. Check your network and try again.",
+      "invalidKey": "That key looks invalid. Check it's copied correctly.",
+      "outOfCredits": "Your provider account is out of credits.",
+      "rateLimited": "Hit the provider's rate limit. Wait a moment and try again.",
+      "unreachable": "Unable to reach the provider. Check your network and try again.",
       "providerUnknown": "Unsupported provider.",
-      "notAuthenticated": "Sign in to manage API keys."
+      "notAuthenticated": "Sign in to manage API keys.",
+      "invalidPreference": "Selected provider or model is not supported."
     },
     "validation": "Invalid input. Please check your data and try again.",
     "rateLimit": "Too many requests. Please try again later.",
@@ -418,6 +420,16 @@
           "label": "Anthropic",
           "placeholder": "sk-ant-...",
           "helpUrl": "https://console.anthropic.com/settings/keys"
+        },
+        "openai": {
+          "label": "OpenAI",
+          "placeholder": "sk-proj-...",
+          "helpUrl": "https://platform.openai.com/api-keys"
+        },
+        "google": {
+          "label": "Google",
+          "placeholder": "AIza...",
+          "helpUrl": "https://aistudio.google.com/apikey"
         }
       },
       "actions": {
@@ -430,8 +442,30 @@
         "saved": "Saved"
       },
       "confirm": {
-        "deleteTitle": "Delete Anthropic key?",
-        "deleteBody": "Your saved key will be removed. AI features will stop working until you save a new key."
+        "deleteTitle": "Delete API key?",
+        "deleteBody": "Your saved key will be removed. AI features for that provider will stop working until you save a new key."
+      },
+      "pricing": {
+        "title": "Pricing",
+        "subtitle": "USD per 1M tokens",
+        "tier": {
+          "flagship": "Flagship",
+          "balanced": "Balanced",
+          "economy": "Economy"
+        },
+        "column": {
+          "provider": "Provider",
+          "tier": "Tier",
+          "model": "Model",
+          "inputCost": "Input",
+          "outputCost": "Output",
+          "link": "Details"
+        }
+      },
+      "defaultModel": {
+        "title": "Default model",
+        "subtitle": "Used when you open the AI panel.",
+        "unset": "No default selected"
       }
     }
   }

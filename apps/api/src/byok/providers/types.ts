@@ -1,17 +1,20 @@
 /**
  * types.ts — ProviderAdapter strategy interface for BYOK validation.
  *
- * M11.1 implements only the `anthropic` variant. M11.2 will extend
- * `ProviderId` to include `'openai' | 'google'`; new providers register
- * a sibling adapter file and add an entry to the `adapters` record in
- * `./index.ts` — `routes.ts` is unchanged.
+ * `ProviderId` is the 3-element literal union `'anthropic' | 'openai' |
+ * 'google'`. The single source of truth lives in
+ * `@vellum/shared/byok-pricing` (the shared package needs the same union
+ * for the pricing catalog and preferences validator); this file
+ * re-exports it so server code keeps importing from the local
+ * `./types` module.
  *
- * Design ref: openspec/changes/add-byok-anthropic/design.md decision
- * "ProviderAdapter strategy interface; one file per provider".
+ * Design ref: openspec/changes/add-byok-multi-provider-and-pricing/design.md
+ *   "ProviderId becomes a 3-element union, exhaustiveness via
+ *   Record<ProviderId, ProviderAdapter>".
  */
 
-/** Provider identifier — extend in M11.2 to `'anthropic' | 'openai' | 'google'`. */
-export type ProviderId = "anthropic";
+import type { ProviderId } from "@vellum/shared/byok-pricing";
+export type { ProviderId };
 
 export interface ValidationOk {
   ok: true;

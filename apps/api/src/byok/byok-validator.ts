@@ -1,14 +1,15 @@
 /**
  * byok-validator.ts — Zod schemas for the BYOK REST surface.
  *
- * Spec ref: openspec/changes/add-byok-anthropic/specs/byok-keys/spec.md
+ * Spec ref: openspec/changes/add-byok-multi-provider-and-pricing/specs/byok-keys/spec.md
  *
  * `apiKey` length bounds (8 ≤ len ≤ 512) are conservative: real
  * provider keys are well within this range, but the cap defends the
  * encryption + DB + log paths from pathologically long inputs.
  *
- * `provider` is constrained to `'anthropic'` in M11.1; M11.2 will
- * extend the literal union to add `'openai' | 'google'`.
+ * `provider` is the 3-element union `'anthropic' | 'openai' | 'google'`
+ * — kept aligned with `ProviderId` in
+ * `@vellum/shared/byok-pricing`.
  */
 
 import { z } from "zod";
@@ -19,6 +20,6 @@ export const byokSaveBodySchema = z.object({
 
 export type BYOKSaveBody = z.infer<typeof byokSaveBodySchema>;
 
-export const byokProviderParamSchema = z.enum(["anthropic"]);
+export const byokProviderParamSchema = z.enum(["anthropic", "openai", "google"]);
 
 export type BYOKProviderParam = z.infer<typeof byokProviderParamSchema>;

@@ -74,6 +74,14 @@ export function UserAvatarMenu({ user, onSignOut }: UserAvatarMenuProps) {
           >
             {t("nav.userMenu.sessions")}
           </a>
+          <a
+            role="menuitem"
+            href="/account/api-keys"
+            onClick={() => setOpen(false)}
+            className="focus-visible-ring block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+          >
+            {t("nav.userMenu.apiKeys")}
+          </a>
           <div className="my-1 border-t border-ink-navy/10" />
           <button
             type="button"

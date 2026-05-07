@@ -31,8 +31,15 @@ export { users, sessions, accounts, verifications } from "@vellum/shared/db/auth
 export type { User, Session, Account, Verification } from "@vellum/shared/db/auth-schema";
 
 // BYOK (Phase 2, M11.1) — per-user × per-provider encrypted API keys.
-export { apiKeys } from "@vellum/shared/db/byok-schema";
-export type { ApiKey, NewApiKey } from "@vellum/shared/db/byok-schema";
+// M11.2 / M11.3 add `user_ai_preferences` for the user's default model
+// selection (one row per user, PK = user_id).
+export { apiKeys, userAiPreferences } from "@vellum/shared/db/byok-schema";
+export type {
+  ApiKey,
+  NewApiKey,
+  UserAiPreference,
+  NewUserAiPreference,
+} from "@vellum/shared/db/byok-schema";
 
 // ---------------------------------------------------------------------------
 // folders — flat, 1-level only (no parent_id)

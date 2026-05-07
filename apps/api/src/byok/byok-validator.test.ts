@@ -54,12 +54,16 @@ describe("byokProviderParamSchema", () => {
     expect(byokProviderParamSchema.safeParse("anthropic").success).toBe(true);
   });
 
-  test("rejects 'openai' (M11.2 territory; not yet enabled)", () => {
-    expect(byokProviderParamSchema.safeParse("openai").success).toBe(false);
+  test("accepts 'openai'", () => {
+    expect(byokProviderParamSchema.safeParse("openai").success).toBe(true);
   });
 
-  test("rejects 'google' (M11.2 territory; not yet enabled)", () => {
-    expect(byokProviderParamSchema.safeParse("google").success).toBe(false);
+  test("accepts 'google'", () => {
+    expect(byokProviderParamSchema.safeParse("google").success).toBe(true);
+  });
+
+  test("rejects 'cohere' (out of supported set)", () => {
+    expect(byokProviderParamSchema.safeParse("cohere").success).toBe(false);
   });
 
   test("rejects unknown provider", () => {
