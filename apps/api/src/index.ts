@@ -48,6 +48,7 @@ import {
   shouldRegisterDevMutate,
   assertDevMutateRuleRegistered,
 } from "./dev/mutate-endpoint";
+import type { PermissionGuardDeps } from "./lib/permission-guard";
 import { DEV_MUTATE_RULE } from "./lib/rate-limit-rules";
 import { initVault } from "./byok/vault";
 import { createProviderAdapters } from "./byok/providers/index";
@@ -169,6 +170,32 @@ const byokDeps: ByokDeps = {
   rateLimiter,
 };
 
+// Permission Guard deps — single resolver shared between the sync handshake
+// and write-side AI surfaces (dev mutate today, M13/M14 production endpoints
+// later). Defined here so syncDeps and the dev mutate endpoint reuse the
+// same DB lookup, per add-permission-guard "Production wiring" decision.
+async function resolveCanvasRoleForGuard(
+  userId: string,
+  canvasId: string,
+): Promise<{ canvasExists: boolean; role: "owner" | "editor" | "viewer" | "anon" | null }> {
+  const db = getDb();
+  const canvas = await db.query.canvases.findFirst({
+    where: (c, { eq: eq_ }) => eq_(c.id, canvasId),
+    columns: { ownerId: true },
+  });
+  if (!canvas) return { canvasExists: false, role: null };
+  if (canvas.ownerId === userId) return { canvasExists: true, role: "editor" };
+  const share = await db.query.canvasShares.findFirst({
+    where: (t, { eq: eq_, and: and_ }) => and_(eq_(t.canvasId, canvasId), eq_(t.userId, userId)),
+  });
+  if (share) return { canvasExists: true, role: share.role };
+  return { canvasExists: true, role: null };
+}
+
+const permissionGuardDeps: PermissionGuardDeps = {
+  resolveCanvasRole: resolveCanvasRoleForGuard,
+};
+
 const syncDeps: SyncServerDeps = {
   registry: syncRegistry,
   rateLimiter,
@@ -176,20 +203,14 @@ const syncDeps: SyncServerDeps = {
   auth: {
     resolveSession: getSession,
     async resolveCanvasRole(userId, canvasId) {
-      const db = getDb();
-      const canvas = await db.query.canvases.findFirst({
-        where: (c, { eq: eq_ }) => eq_(c.id, canvasId),
-        columns: { ownerId: true },
-      });
-      if (!canvas) return { canvasExists: false, role: null };
-      if (canvas.ownerId === userId) return { canvasExists: true, role: "editor" };
-      // add-sharing: shared editor / shared viewer via canvas_shares.
-      const share = await db.query.canvasShares.findFirst({
-        where: (t, { eq: eq_, and: and_ }) =>
-          and_(eq_(t.canvasId, canvasId), eq_(t.userId, userId)),
-      });
-      if (share) return { canvasExists: true, role: share.role };
-      return { canvasExists: true, role: null };
+      const result = await resolveCanvasRoleForGuard(userId, canvasId);
+      // Sync handshake's SyncRole is "editor" | "viewer" — narrow from the
+      // wider CanvasRole the guard speaks. Production resolveCanvasRoleForGuard
+      // never returns "owner" or "anon" (owner is mapped to "editor" above).
+      return {
+        canvasExists: result.canvasExists,
+        role: result.role === "editor" || result.role === "viewer" ? result.role : null,
+      };
     },
     async resolveCanvasShareLink(token) {
       const db = getDb();
@@ -601,14 +622,6 @@ const server = Bun.serve<SyncSocketData>({
       const match = url.pathname.match(/^\/dev\/canvas\/([^/]+)\/mutate$/);
       if (match && match[1]) {
         const session = await getSession(req);
-        if (!session) {
-          return respond(
-            new Response(JSON.stringify({ ok: false, errorKey: "errors.auth.unauthorized" }), {
-              status: 401,
-              headers: { "content-type": "application/json" },
-            }),
-          );
-        }
         const resp = await handleDevMutateRequest(
           req,
           session,
@@ -616,6 +629,7 @@ const server = Bun.serve<SyncSocketData>({
             rateLimiter,
             applyMutation: (canvasId, mutations) =>
               applyMutation({ registry: syncRegistry }, canvasId, mutations),
+            permissionGuard: permissionGuardDeps,
           },
           match[1],
         );

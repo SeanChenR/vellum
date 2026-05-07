@@ -19,6 +19,7 @@
 
 import { z } from "zod";
 import { mutationSchema, type Mutation } from "@vellum/shared/mutation-types";
+import { requireRole, type PermissionGuardDeps } from "../lib/permission-guard";
 import { DEV_MUTATE_RULE } from "../lib/rate-limit-rules";
 import type { RateLimiter, RateLimitRule } from "../lib/rate-limiter";
 import type { MutationResult } from "../sync/mutator";
@@ -30,6 +31,11 @@ import type { MutationResult } from "../sync/mutator";
 export interface DevMutateDeps {
   rateLimiter: RateLimiter;
   applyMutation: (canvasId: string, mutations: Mutation[]) => Promise<MutationResult>;
+  /**
+   * Permission Guard deps — wired in apps/api/src/index.ts to the same
+   * resolver the sync handshake uses. Tests inject a stub.
+   */
+  permissionGuard: PermissionGuardDeps;
 }
 
 interface SessionLike {
@@ -84,7 +90,19 @@ export function assertDevMutateRuleRegistered(rule: RateLimitRule | undefined): 
 const RATE_LIMIT_KEY_PREFIX = "api:dev.mutate";
 
 function rlKey(userId: string): string {
-  return `${RATE_LIMIT_KEY_PREFIX}:${userId}`;
+  return `${RATE_LIMIT_KEY_PREFIX}:user:${userId}`;
+}
+
+/**
+ * Anonymous (null-session) requests are bucketed by client IP so the guard
+ * stage stays after rate-limit admission per the spec ordering matrix.
+ * Falls back to a fixed bucket when no IP header is present (covers test /
+ * unproxied dev where x-forwarded-for is absent).
+ */
+function rlKeyAnon(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  const ip = forwarded ? (forwarded.split(",")[0]?.trim() ?? "unknown") : "unknown";
+  return `${RATE_LIMIT_KEY_PREFIX}:ip:${ip}`;
 }
 
 function jsonResp(status: number, body: object, extraHeaders?: Record<string, string>): Response {
@@ -115,18 +133,29 @@ function statusForErrorKey(errorKey: string): number {
 
 export async function handleDevMutateRequest(
   req: Request,
-  session: SessionLike,
+  session: SessionLike | null,
   deps: DevMutateDeps,
   canvasId: string,
 ): Promise<Response> {
-  // Rate limit (per user).
-  const rl = deps.rateLimiter.limit(rlKey(session.userId), DEV_MUTATE_RULE);
+  // Rate limit — fires before guard so even null-session requests are
+  // bucketed (per add-permission-guard spec ordering matrix).
+  const limiterKey = session ? rlKey(session.userId) : rlKeyAnon(req);
+  const rl = deps.rateLimiter.limit(limiterKey, DEV_MUTATE_RULE);
   if (!rl.allowed) {
     return jsonResp(
       429,
       { ok: false, errorKey: "errors.rateLimit", retryAfter: rl.retryAfterSeconds },
       { "retry-after": String(rl.retryAfterSeconds) },
     );
+  }
+
+  // Permission Guard — runs after rate-limit, before payload validation.
+  const guardResult = await requireRole(deps.permissionGuard, session, canvasId, [
+    "owner",
+    "editor",
+  ]);
+  if (!guardResult.ok) {
+    return jsonResp(guardResult.status, { ok: false, errorKey: guardResult.errorKey });
   }
 
   // Parse JSON body.
