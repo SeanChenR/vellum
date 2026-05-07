@@ -3,13 +3,19 @@
  *
  * - Fetches GET /api/account/profile; cache key ['auth', 'session'].
  * - Calls i18n.changeLanguage(user.locale) on first successful load.
- * - Returns { user, isLoading, isAuthenticated }.
+ * - Returns { user, isLoading, isAuthenticated, logout }.
+ *
+ * Logout navigates to `/` (landing) — never `/login`. Sign-out is a full
+ * session reset, so the hook does a hard navigation via
+ * `window.location.assign` to flush all in-memory state (i18n, Zustand,
+ * query cache). Tests inject a `navigate` override.
  */
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
 import i18n from "../i18n";
 import type { SupportedLanguage } from "../i18n";
+import { performLogout } from "./perform-logout";
 
 export interface AuthUser {
   id: string;
@@ -40,9 +46,7 @@ export interface UseAuthReturn {
   logout: () => Promise<void>;
 }
 
-export function useAuth(): UseAuthReturn {
-  const queryClient = useQueryClient();
-
+export function useAuth(navigate?: (href: string) => void): UseAuthReturn {
   const { data: user = null, isLoading } = useQuery<AuthUser | null>({
     queryKey: ["auth", "session"],
     queryFn: fetchProfile,
@@ -58,13 +62,16 @@ export function useAuth(): UseAuthReturn {
   }, [user?.locale]);
 
   const logout = useCallback(async () => {
-    await fetch("/api/auth/sign-out", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
+    await performLogout({
+      signOut: async () => {
+        await fetch("/api/auth/sign-out", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+        });
+      },
+      navigate: navigate ?? ((href: string) => window.location.assign(href)),
     });
-    queryClient.setQueryData(["auth", "session"], null);
-    await queryClient.invalidateQueries({ queryKey: ["auth"] });
-  }, [queryClient]);
+  }, [navigate]);
 
   return {
     user,
