@@ -326,10 +326,17 @@ async function handleUpdate(
     return errorResp(400, "errors.validation", { details: parsed.error.issues });
   }
 
-  const db = getDb();
-  const canvas = await db.query.canvases.findFirst({
-    where: (c, { eq: eq_ }) => eq_(c.id, canvasId),
-  });
+  // Existence check via injected deps when available, falling back to a
+  // direct DB query in production. Tests inject `loadCanvas` returning
+  // null to exercise the 404 branch without depending on
+  // `Bun.env.DATABASE_URL` (see fix-canvas-test-di-isolation). `getDb()`
+  // is intentionally NOT called before this check so a 404-stub test
+  // never touches the env.
+  const canvas = deps.loadCanvas
+    ? await deps.loadCanvas(canvasId)
+    : await getDb().query.canvases.findFirst({
+        where: (c, { eq: eq_ }) => eq_(c.id, canvasId),
+      });
 
   if (!canvas) {
     return errorResp(404, "errors.canvas.notFound");
@@ -340,6 +347,8 @@ async function handleUpdate(
   }
 
   const { title, folderId, snapshot } = parsed.data;
+  // From here we definitely need DB writes — safe to resolve `getDb()`.
+  const db = getDb();
 
   // Multiplayer-sync: HTTP-driven snapshot writes MUST NOT race with the
   // server-authoritative room state. If a sync room is currently active for
@@ -388,14 +397,19 @@ async function handleDelete(
   session: SessionLike,
   rateLimiter: RateLimiter,
   canvasId: string,
+  deps: CanvasHandlerDeps,
 ): Promise<Response> {
   const rl = rateLimiter.limit(rlKey("delete", session.userId), CANVAS_DELETE_RULE);
   if (!rl.allowed) return rateLimitResp(rl.retryAfterSeconds);
 
-  const db = getDb();
-  const canvas = await db.query.canvases.findFirst({
-    where: (c, { eq: eq_ }) => eq_(c.id, canvasId),
-  });
+  // Existence check via deps when injected; defers `getDb()` so a 404
+  // stub test never touches `Bun.env.DATABASE_URL`. See
+  // fix-canvas-test-di-isolation.
+  const canvas = deps.loadCanvas
+    ? await deps.loadCanvas(canvasId)
+    : await getDb().query.canvases.findFirst({
+        where: (c, { eq: eq_ }) => eq_(c.id, canvasId),
+      });
 
   if (!canvas) {
     return errorResp(404, "errors.canvas.notFound");
@@ -405,7 +419,7 @@ async function handleDelete(
     return errorResp(403, "errors.canvas.forbidden");
   }
 
-  await db.delete(canvases).where(eq(canvases.id, canvasId));
+  await getDb().delete(canvases).where(eq(canvases.id, canvasId));
 
   return new Response(null, { status: 204 });
 }
@@ -488,7 +502,7 @@ export async function handleCanvasRequest(
       return handleUpdate(req, session!, rateLimiter, canvasId, deps);
     }
     if (method === "DELETE") {
-      return handleDelete(req, session!, rateLimiter, canvasId);
+      return handleDelete(req, session!, rateLimiter, canvasId, deps);
     }
   }
 

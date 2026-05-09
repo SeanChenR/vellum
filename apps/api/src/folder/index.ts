@@ -36,6 +36,23 @@ interface SessionLike {
   userId: string;
 }
 
+/**
+ * Optional dependency hooks for `handleFolderRequest`. Production wiring
+ * (apps/api/src/index.ts) leaves this undefined and the handler falls
+ * back to direct `getDb()` queries — pre-DI behaviour preserved. Unit
+ * tests inject `loadFolder` to exercise the not-found branch without
+ * depending on `Bun.env.DATABASE_URL` (see fix-canvas-test-di-isolation).
+ */
+export interface FolderHandlerDeps {
+  loadFolder?(folderId: string): Promise<{
+    id: string;
+    ownerId: string;
+    name: string;
+    createdAt: Date;
+    updatedAt: Date;
+  } | null>;
+}
+
 function errorResp(status: number, error: string, extra?: object): Response {
   return Response.json({ error, ...extra }, { status });
 }
@@ -123,6 +140,7 @@ async function handleUpdate(
   session: SessionLike,
   rateLimiter: RateLimiter,
   folderId: string,
+  deps: FolderHandlerDeps,
 ): Promise<Response> {
   const rl = rateLimiter.limit(rlKey("update", session.userId), FOLDER_UPDATE_RULE);
   if (!rl.allowed) return rateLimitResp(rl.retryAfterSeconds);
@@ -139,10 +157,14 @@ async function handleUpdate(
     return errorResp(400, "errors.validation", { details: parsed.error.issues });
   }
 
-  const db = getDb();
-  const folder = await db.query.folders.findFirst({
-    where: (f, { eq: eq_ }) => eq_(f.id, folderId),
-  });
+  // Existence check via injected deps when available; defers `getDb()`
+  // so a 404-stub test never touches `Bun.env.DATABASE_URL`. See
+  // fix-canvas-test-di-isolation.
+  const folder = deps.loadFolder
+    ? await deps.loadFolder(folderId)
+    : await getDb().query.folders.findFirst({
+        where: (f, { eq: eq_ }) => eq_(f.id, folderId),
+      });
 
   if (!folder) {
     return errorResp(404, "errors.folder.notFound");
@@ -152,7 +174,7 @@ async function handleUpdate(
     return errorResp(403, "errors.folder.forbidden");
   }
 
-  const [updated] = await db
+  const [updated] = await getDb()
     .update(folders)
     .set({ name: parsed.data.name, updatedAt: new Date() })
     .where(eq(folders.id, folderId))
@@ -170,14 +192,18 @@ async function handleDelete(
   session: SessionLike,
   rateLimiter: RateLimiter,
   folderId: string,
+  deps: FolderHandlerDeps,
 ): Promise<Response> {
   const rl = rateLimiter.limit(rlKey("delete", session.userId), FOLDER_DELETE_RULE);
   if (!rl.allowed) return rateLimitResp(rl.retryAfterSeconds);
 
-  const db = getDb();
-  const folder = await db.query.folders.findFirst({
-    where: (f, { eq: eq_ }) => eq_(f.id, folderId),
-  });
+  // Existence check via deps when injected; defers `getDb()` so 404
+  // tests never touch DATABASE_URL.
+  const folder = deps.loadFolder
+    ? await deps.loadFolder(folderId)
+    : await getDb().query.folders.findFirst({
+        where: (f, { eq: eq_ }) => eq_(f.id, folderId),
+      });
 
   if (!folder) {
     return errorResp(404, "errors.folder.notFound");
@@ -187,6 +213,8 @@ async function handleDelete(
     return errorResp(403, "errors.folder.forbidden");
   }
 
+  // From here we definitely need DB access — safe to resolve once.
+  const db = getDb();
   // Non-empty guard: reject delete if any canvas still references this folder
   const [countResult] = await db
     .select({ n: count() })
@@ -230,12 +258,16 @@ const FOLDER_PREFIX = "/api/folder";
  * @param req         - Incoming request
  * @param session     - Resolved session from better-auth (null if unauthed)
  * @param rateLimiter - Shared RateLimiter singleton
+ * @param deps        - Optional handler dependencies for testability. Production
+ *                      wiring leaves this undefined (handler falls back to
+ *                      direct DB queries).
  * @returns Response or null (caller continues routing)
  */
 export async function handleFolderRequest(
   req: Request,
   session: SessionLike | null,
   rateLimiter: RateLimiter,
+  deps: FolderHandlerDeps = {},
 ): Promise<Response | null> {
   const url = new URL(req.url);
   const path = url.pathname;
@@ -266,10 +298,10 @@ export async function handleFolderRequest(
     const folderId = idMatch[1]!;
 
     if (method === "PATCH") {
-      return handleUpdate(req, session, rateLimiter, folderId);
+      return handleUpdate(req, session, rateLimiter, folderId, deps);
     }
     if (method === "DELETE") {
-      return handleDelete(req, session, rateLimiter, folderId);
+      return handleDelete(req, session, rateLimiter, folderId, deps);
     }
   }
 

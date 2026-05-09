@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { handleFolderRequest } from "./index";
+import { handleFolderRequest, type FolderHandlerDeps } from "./index";
 import type { RateLimiter } from "../lib/rate-limiter";
 
 // ---------------------------------------------------------------------------
@@ -39,6 +39,18 @@ const denyRateLimiter: RateLimiter = {
   clear: () => {},
   size: () => 0,
 } as unknown as RateLimiter;
+
+/**
+ * FolderHandlerDeps stub for the "non-existent folder returns 404" path.
+ * `loadFolder` resolves to null so the handler hits its NOT_FOUND branch
+ * without ever calling `getDb()`. See fix-canvas-test-di-isolation.
+ *
+ * Spec ref: openspec/specs/folder-management/spec.md
+ *   "Folder handler not-found path is unit-testable without DB access".
+ */
+const notFoundFolderDeps: FolderHandlerDeps = {
+  loadFolder: async () => null,
+};
 
 function makeFolderId() {
   return "22222222-2222-2222-2222-" + Math.random().toString(16).slice(2, 14).padStart(12, "0");
@@ -116,7 +128,12 @@ describe("PATCH /api/folder/:id — Folder rename", () => {
   test("non-existent folder returns 404", async () => {
     const folderId = makeFolderId();
     const r = req("PATCH", `/api/folder/${folderId}`, { body: { name: "New" } });
-    const resp = await handleFolderRequest(r, { userId: "u1" }, allowRateLimiter);
+    const resp = await handleFolderRequest(
+      r,
+      { userId: "u1" },
+      allowRateLimiter,
+      notFoundFolderDeps,
+    );
     expect(resp?.status).toBe(404);
     const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.folder.notFound");
@@ -147,7 +164,12 @@ describe("DELETE /api/folder/:id — Folder delete", () => {
   test("non-existent folder returns 404", async () => {
     const folderId = makeFolderId();
     const r = req("DELETE", `/api/folder/${folderId}`);
-    const resp = await handleFolderRequest(r, { userId: "u1" }, allowRateLimiter);
+    const resp = await handleFolderRequest(
+      r,
+      { userId: "u1" },
+      allowRateLimiter,
+      notFoundFolderDeps,
+    );
     expect(resp?.status).toBe(404);
     const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.folder.notFound");

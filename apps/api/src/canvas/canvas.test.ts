@@ -16,7 +16,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { handleCanvasRequest } from "./index";
+import { handleCanvasRequest, type CanvasHandlerDeps } from "./index";
 import type { RateLimiter } from "../lib/rate-limiter";
 
 // ---------------------------------------------------------------------------
@@ -64,6 +64,21 @@ const denyRateLimiter: RateLimiter = {
   clear: () => {},
   size: () => 0,
 } as unknown as RateLimiter;
+
+/**
+ * CanvasHandlerDeps stub for the "non-existent canvas returns 404" path.
+ *
+ * `loadCanvas` resolves to null so the handler hits its NOT_FOUND branch
+ * without ever calling the production `getDb()` fallback. This isolates
+ * the 404 assertion from `Bun.env.DATABASE_URL` (which `bun test` from
+ * the repo root does NOT auto-load) — see fix-canvas-test-di-isolation.
+ *
+ * Spec ref: openspec/specs/canvas-management/spec.md
+ *   "Canvas handler not-found path is unit-testable without DB access".
+ */
+const notFoundCanvasDeps: CanvasHandlerDeps = {
+  loadCanvas: async () => null,
+};
 
 // ---------------------------------------------------------------------------
 // 5.1 Canvas creation — POST /api/canvas
@@ -163,7 +178,7 @@ describe("GET /api/canvas/:id — Canvas read by id", () => {
     const userId = makeUserId();
     const canvasId = makeCanvasId();
     const r = req("GET", `/api/canvas/${canvasId}`);
-    const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter);
+    const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter, notFoundCanvasDeps);
     expect(resp?.status).toBe(404);
     const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.canvas.notFound");
@@ -186,7 +201,7 @@ describe("PATCH /api/canvas/:id — Canvas update", () => {
     const userId = makeUserId();
     const canvasId = makeCanvasId();
     const r = req("PATCH", `/api/canvas/${canvasId}`, { body: { title: "Renamed" } });
-    const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter);
+    const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter, notFoundCanvasDeps);
     expect(resp?.status).toBe(404);
     const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.canvas.notFound");
@@ -229,7 +244,7 @@ describe("DELETE /api/canvas/:id — Canvas delete", () => {
     const userId = makeUserId();
     const canvasId = makeCanvasId();
     const r = req("DELETE", `/api/canvas/${canvasId}`);
-    const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter);
+    const resp = await handleCanvasRequest(r, { userId }, allowRateLimiter, notFoundCanvasDeps);
     expect(resp?.status).toBe(404);
     const body = (await resp!.json()) as { error: string };
     expect(body.error).toBe("errors.canvas.notFound");
