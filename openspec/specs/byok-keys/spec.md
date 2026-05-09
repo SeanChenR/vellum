@@ -1083,11 +1083,13 @@ tests:
 ---
 ### Requirement: OpenAI key validation via vendor ping
 
-The OpenAI provider adapter SHALL validate a candidate key by sending a single POST request to `${OPENAI_API_BASE_URL}/v1/chat/completions` (default base URL `https://api.openai.com`) with the body `{"model": "gpt-5-nano", "max_tokens": 1, "messages": [{"role": "user", "content": "hi"}]}`, the header `Authorization: Bearer <plaintext>`, and a 5-second abort timeout. The adapter MUST translate the response into an `errorKey` according to the table below.
+The OpenAI provider adapter SHALL validate a candidate key by sending a single GET request to `${OPENAI_API_BASE_URL}/v1/models` (default base URL `https://api.openai.com`) with the header `Authorization: Bearer <plaintext>` and a 5-second abort timeout. The adapter MUST translate the response into an `errorKey` according to the table below.
+
+The endpoint shape is GET-with-no-body — not POST `/v1/chat/completions`. The legacy chat-completions ping was incompatible with reasoning-style validation models (e.g., `gpt-5-nano`), which reserve internal thinking-token budget BEFORE emitting any response token; a small `max_tokens` / `max_completion_tokens` cap caused OpenAI to return HTTP 400 (`max_tokens reached`) and the validator to surface `errors.byok.unreachable` to the user. The list-models endpoint is token-free, payload-free, and matches the Google adapter's authentication-only ping pattern.
 
 #### Scenario: Successful validation returns ok
 
-- **WHEN** the OpenAI API responds with HTTP 200 or 201
+- **WHEN** the OpenAI API responds with HTTP 200 (a JSON list of models)
 - **THEN** the adapter returns `{ ok: true }`
 
 #### Scenario: HTTP status maps to errorKey
@@ -1117,82 +1119,49 @@ The OpenAI provider adapter SHALL validate a candidate key by sending a single P
 - **WHEN** the adapter issues the validation request
 - **THEN** the outgoing HTTP request carries `Authorization: Bearer <plaintext>` and no other auth header
 
+#### Scenario: Validation request is GET with no body
 
-<!-- @trace
-source: add-byok-multi-provider-and-pricing
-updated: 2026-05-08
-code: []
-tests: []
--->
+- **WHEN** the adapter issues the validation request
+- **THEN** the outgoing HTTP method SHALL be `GET`, the request SHALL have no body, and the URL SHALL be `${OPENAI_API_BASE_URL}/v1/models` exactly. The adapter SHALL NOT send `model`, `messages`, `max_tokens`, or `max_completion_tokens` parameters because the endpoint does not accept them.
 
 
 <!-- @trace
-source: add-byok-multi-provider-and-pricing
-updated: 2026-05-08
+source: add-agent-runtime-streaming
+updated: 2026-05-09
 code:
-  - packages/shared/src/db/byok-schema.ts
-  - apps/api/src/dev/mutate-endpoint.ts
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/byok/providers/types.ts
-  - apps/web/src/components/UserAvatarMenu.tsx
-  - apps/web/src/account/useApiKeys.ts
-  - apps/api/src/sync/mutator.ts
-  - apps/api/drizzle/meta/_journal.json
-  - apps/api/drizzle/0005_per_provider_prefs.sql
-  - apps/api/src/byok/providers/google.ts
-  - apps/api/drizzle/0004_true_dakota_north.sql
-  - apps/api/drizzle/meta/0005_snapshot.json
-  - apps/api/src/db/schema.ts
-  - apps/api/src/lib/rate-limit-rules.ts
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/byok-pricing.ts
-  - apps/web/src/account/ApiKeyRow.tsx
-  - apps/api/.env.example
-  - apps/api/src/byok/providers/index.ts
-  - apps/web/src/auth/perform-logout.ts
-  - docs/adr/0014-full-tool-surface-tldraw-record-shapes.md
+  - apps/api/src/agent/runtime.ts
+  - apps/api/src/agent/streaming.ts
+  - apps/api/src/agent/wiring.ts
+  - packages/shared/src/agent-digest.ts
+  - apps/api/src/agent/digest.ts
+  - packages/shared/src/agent-events.ts
+  - bun.lock
   - packages/shared/src/locales/en.json
-  - apps/api/src/byok/byok-repo.ts
-  - apps/api/src/lib/permission-guard.ts
-  - apps/api/src/byok/byok-validator.ts
-  - apps/web/src/account/ApiKeysPricingTable.tsx
-  - apps/web/src/auth/useAuth.ts
-  - packages/shared/src/api-contract.ts
-  - packages/shared/src/mutation-types.ts
-  - apps/api/src/byok/__fixtures__/vendor-stubs.ts
-  - apps/web/src/account/ApiKeysPage.tsx
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/drizzle/meta/0004_snapshot.json
-  - scripts/test-permission-guard.sh
-  - apps/api/src/index.ts
-  - apps/api/src/byok/preferences-validator.ts
+  - scripts/agent-smoke.sh
+  - packages/shared/src/index.ts
+  - apps/api/src/sync/tool-registry.ts
+  - apps/api/src/agent/sse-endpoint.ts
   - apps/api/src/byok/providers/openai.ts
-  - apps/api/src/byok/routes.ts
-  - packages/shared/src/tool-types.ts
+  - apps/api/src/lib/rate-limit-rules.ts
+  - packages/shared/src/mutation-types.ts
+  - scripts/dev-proxy.ts
+  - apps/api/src/agent/cancel.ts
+  - packages/shared/src/locales/zh-TW.json
+  - scripts/dev.ts
+  - docs/adr/0019-m13-e2e-five-bug-postmortem.md
+  - apps/api/src/index.ts
+  - docs/PHASE2_MILESTONES.md
+  - apps/api/package.json
 tests:
-  - apps/web/src/components/UserAvatarMenu.test.tsx
-  - apps/api/src/sync/mutator-readers.test.ts
-  - packages/shared/src/byok-pricing.test.ts
-  - apps/web/src/account/ApiKeysPage.test.tsx
-  - apps/api/src/byok/providers/openai.test.ts
-  - apps/web/src/auth/perform-logout.test.ts
-  - packages/shared/src/locales/byok-i18n.test.ts
-  - apps/api/src/byok/providers/google.test.ts
-  - apps/api/src/byok/byok-routes.test.ts
-  - apps/api/src/byok/providers/index.test.ts
-  - apps/api/src/byok/byok-validator.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
-  - apps/api/src/lib/permission-guard.test.ts
-  - apps/api/src/lib/rate-limit-rules.test.ts
-  - apps/api/src/byok/preferences-validator.test.ts
-  - apps/api/src/dev/mutate-endpoint.test.ts
-  - apps/api/src/sync/mutator.test.ts
-  - packages/shared/src/db/byok-schema.test.ts
-  - apps/web/src/account/useApiKeys.test.ts
-  - apps/web/src/account/ApiKeyRow.test.tsx
-  - apps/web/src/account/ApiKeysPricingTable.test.tsx
-  - packages/shared/src/api-contract.test.ts
+  - apps/api/src/agent/digest.test.ts
+  - packages/shared/src/agent-events.test.ts
   - apps/api/src/sync/tool-registry.test.ts
+  - apps/api/src/agent/cancel.test.ts
+  - apps/api/src/agent/integration.test.ts
+  - apps/api/src/agent/runtime.test.ts
+  - apps/api/src/byok/providers/openai.test.ts
+  - apps/api/src/agent/sse-endpoint.test.ts
+  - apps/api/src/agent/streaming.test.ts
 -->
 
 ---

@@ -17,6 +17,8 @@ The system SHALL provide a server-side `Server tldraw Mutator` module exposing `
 - `{ type: "ungroupShape", payload: UngroupShapePayload }`
 - `{ type: "connectShapes", payload: ConnectShapesPayload }`
 
+`CreateShapePayload` SHALL have a REQUIRED `props: Record<string, unknown>` field (NOT optional). Callers that genuinely have no props for a given shape type SHALL pass `props: {}` explicitly. Reason: every vellum custom shape type (markdown, code, callout, link-card) requires at least one type-specific prop key, and OpenAI strict tool calling treats `optional()` Zod fields as "skippable", which the LLM did skip — producing tldraw schema-validation rejections at apply time. Making `props` required forces the contract through both the schema and the LLM tool surface.
+
 The function SHALL return `{ ok: true, appliedCount }` on success and `{ ok: false, errorKey }` on failure, where `errorKey` is one of the i18n keys defined under `errors.devMutate.*` or `errors.fullToolSurface.*`. The function SHALL NOT throw for expected failure modes (invalid payload, room not active, mutation rejected by the room, referenced shape or group not found) — those modes MUST be returned as `{ ok: false, errorKey }`. All mutations in a single `applyMutation` call SHALL be applied within one `room.updateStore` transaction so that the client SHALL treat the resulting broadcast as a single undo entry.
 
 #### Scenario: Mutator applies a single createShape mutation against an active room
@@ -32,6 +34,12 @@ The function SHALL return `{ ok: true, appliedCount }` on success and `{ ok: fal
 - **THEN** the function MUST resolve to `{ ok: false, errorKey: "errors.devMutate.invalidPayload" }`
 - **AND** the room state MUST NOT change
 - **AND** no sync update MUST be broadcast
+
+#### Scenario: Mutator rejects a createShape payload without props
+
+- **WHEN** the server calls `applyMutation(<canvasId>, [{ type: "createShape", payload: { id: "shape:no-props", type: "markdown", x: 0, y: 0 } }])` (note: no `props` field)
+- **THEN** the function MUST resolve to `{ ok: false, errorKey: "errors.devMutate.invalidPayload" }`
+- **AND** the room state MUST NOT change
 
 #### Scenario: Mutator rejects when no active room exists for the canvas
 
@@ -50,22 +58,42 @@ The function SHALL return `{ ok: true, appliedCount }` on success and `{ ok: fal
 
 
 <!-- @trace
-source: add-full-tool-surface
-updated: 2026-05-06
+source: add-agent-runtime-streaming
+updated: 2026-05-09
 code:
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/sync/mutator.ts
+  - apps/api/src/agent/runtime.ts
+  - apps/api/src/agent/streaming.ts
+  - apps/api/src/agent/wiring.ts
+  - packages/shared/src/agent-digest.ts
+  - apps/api/src/agent/digest.ts
+  - packages/shared/src/agent-events.ts
+  - bun.lock
   - packages/shared/src/locales/en.json
-  - packages/shared/src/locales/zh-TW.json
+  - scripts/agent-smoke.sh
+  - packages/shared/src/index.ts
+  - apps/api/src/sync/tool-registry.ts
+  - apps/api/src/agent/sse-endpoint.ts
+  - apps/api/src/byok/providers/openai.ts
+  - apps/api/src/lib/rate-limit-rules.ts
   - packages/shared/src/mutation-types.ts
-  - docs/adr/0014-full-tool-surface-tldraw-record-shapes.md
-  - packages/shared/src/tool-types.ts
+  - scripts/dev-proxy.ts
+  - apps/api/src/agent/cancel.ts
+  - packages/shared/src/locales/zh-TW.json
+  - scripts/dev.ts
+  - docs/adr/0019-m13-e2e-five-bug-postmortem.md
+  - apps/api/src/index.ts
+  - docs/PHASE2_MILESTONES.md
+  - apps/api/package.json
 tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
+  - apps/api/src/agent/digest.test.ts
+  - packages/shared/src/agent-events.test.ts
   - apps/api/src/sync/tool-registry.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
+  - apps/api/src/agent/cancel.test.ts
+  - apps/api/src/agent/integration.test.ts
+  - apps/api/src/agent/runtime.test.ts
+  - apps/api/src/byok/providers/openai.test.ts
+  - apps/api/src/agent/sse-endpoint.test.ts
+  - apps/api/src/agent/streaming.test.ts
 -->
 
 ---
@@ -563,6 +591,7 @@ Each registry entry SHALL contain:
 
 - `name: ToolName` — exhaustive string literal type covering all eleven tool names
 - `kind: "write" | "read"` — discriminator distinguishing mutator-bound tools from snapshot-derived readers
+- `description: string` — REQUIRED non-empty LLM-facing description forwarded by the agent runtime to the underlying LLM provider tool surface; for `createShape` the description SHALL enumerate every supported shape type and the per-type required `props` keys (matching `apps/api/src/sync/shape-schemas.ts`)
 - `schema: ZodSchema` — Zod schema validating the tool's input payload
 - `execute: (deps, canvasId, input) => Promise<Result>` — function that runs the tool against the active room or snapshot
 
@@ -574,13 +603,19 @@ Write-tool entries SHALL invoke `applyMutation` with a single-element `Mutation[
 - **THEN** the array MUST contain exactly eleven entries
 - **AND** entries with `kind: "write"` MUST be six (one per write tool)
 - **AND** entries with `kind: "read"` MUST be five (one per read tool)
-- **AND** every entry MUST have a non-empty `name`, a Zod `schema`, and a callable `execute`
+- **AND** every entry MUST have a non-empty `name`, a non-empty `description`, a Zod `schema`, and a callable `execute`
+
+#### Scenario: createShape description enumerates every supported shape type's required props
+
+- **WHEN** consumer code reads `toolRegistry.createShape.description`
+- **THEN** the description string MUST contain the substrings `markdown`, `code`, `callout`, `link-card`
+- **AND** the description MUST name the per-type required prop keys (`content` for markdown, `source` + `language` for code, `variant` + `body` for callout, `url` for link-card)
 
 #### Scenario: Write-tool execute routes through applyMutation
 
 - **GIVEN** an entry `toolRegistry["createShape"]`
-- **WHEN** consumer code calls `entry.execute(deps, <canvasId>, { id: "shape:abc", type: "geo", x: 0, y: 0 })`
-- **THEN** the function MUST internally call `applyMutation(deps, <canvasId>, [{ type: "createShape", payload: { id: "shape:abc", type: "geo", x: 0, y: 0 } }])`
+- **WHEN** consumer code calls `entry.execute(deps, <canvasId>, { id: "shape:abc", type: "geo", x: 0, y: 0, props: {} })`
+- **THEN** the function MUST internally call `applyMutation(deps, <canvasId>, [{ type: "createShape", payload: { id: "shape:abc", type: "geo", x: 0, y: 0, props: {} } }])`
 - **AND** the resolved result MUST equal what `applyMutation` returned
 
 #### Scenario: Read-tool execute routes through the corresponding reader
@@ -590,37 +625,41 @@ Write-tool entries SHALL invoke `applyMutation` with a single-element `Mutation[
 - **THEN** the function MUST internally call `getShape(deps, <canvasId>, "shape:abc")`
 - **AND** the resolved result MUST equal what `getShape` returned
 
-##### Example: tool registry composition
-
-| name                    | kind  | execute path                              |
-| ----------------------- | ----- | ----------------------------------------- |
-| `createShape`           | write | applyMutation                             |
-| `updateShape`           | write | applyMutation                             |
-| `deleteShape`           | write | applyMutation                             |
-| `groupShapes`           | write | applyMutation                             |
-| `ungroupShape`          | write | applyMutation                             |
-| `connectShapes`         | write | applyMutation                             |
-| `listShapesInViewport`  | read  | mutator-readers.listShapesInViewport      |
-| `listShapesInSelection` | read  | mutator-readers.listShapesInSelection     |
-| `getShape`              | read  | mutator-readers.getShape                  |
-| `getCanvasBounds`       | read  | mutator-readers.getCanvasBounds           |
-| `getViewport`           | read  | mutator-readers.getViewport               |
-
 <!-- @trace
-source: add-full-tool-surface
-updated: 2026-05-06
+source: add-agent-runtime-streaming
+updated: 2026-05-09
 code:
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/sync/mutator.ts
+  - apps/api/src/agent/runtime.ts
+  - apps/api/src/agent/streaming.ts
+  - apps/api/src/agent/wiring.ts
+  - packages/shared/src/agent-digest.ts
+  - apps/api/src/agent/digest.ts
+  - packages/shared/src/agent-events.ts
+  - bun.lock
   - packages/shared/src/locales/en.json
-  - packages/shared/src/locales/zh-TW.json
+  - scripts/agent-smoke.sh
+  - packages/shared/src/index.ts
+  - apps/api/src/sync/tool-registry.ts
+  - apps/api/src/agent/sse-endpoint.ts
+  - apps/api/src/byok/providers/openai.ts
+  - apps/api/src/lib/rate-limit-rules.ts
   - packages/shared/src/mutation-types.ts
-  - docs/adr/0014-full-tool-surface-tldraw-record-shapes.md
-  - packages/shared/src/tool-types.ts
+  - scripts/dev-proxy.ts
+  - apps/api/src/agent/cancel.ts
+  - packages/shared/src/locales/zh-TW.json
+  - scripts/dev.ts
+  - docs/adr/0019-m13-e2e-five-bug-postmortem.md
+  - apps/api/src/index.ts
+  - docs/PHASE2_MILESTONES.md
+  - apps/api/package.json
 tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
+  - apps/api/src/agent/digest.test.ts
+  - packages/shared/src/agent-events.test.ts
   - apps/api/src/sync/tool-registry.test.ts
-  - apps/api/src/sync/mutator-integration.test.ts
+  - apps/api/src/agent/cancel.test.ts
+  - apps/api/src/agent/integration.test.ts
+  - apps/api/src/agent/runtime.test.ts
+  - apps/api/src/byok/providers/openai.test.ts
+  - apps/api/src/agent/sse-endpoint.test.ts
+  - apps/api/src/agent/streaming.test.ts
 -->
