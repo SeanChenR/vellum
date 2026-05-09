@@ -468,5 +468,21 @@
         "unset": "尚未選擇預設"
       }
     }
+  },
+  "agent": {
+    "error": {
+      "byokMissing": "尚未設定該供應商的 API Key，請到設定 → API Keys 新增。",
+      "providerAuth": "供應商認證失敗，請確認 API Key 仍有效。",
+      "providerRateLimit": "已達供應商速率限制，請稍候再試。",
+      "providerServer": "供應商暫時無法回應，請稍候再試。",
+      "wallTimeout": "本輪 AI 執行超過 60 秒上限，已中止。",
+      "toolCallCap": "本輪 AI 工具呼叫次數達 20 次上限，已中止。",
+      "permissionDenied": "目前帳號對此 canvas 沒有編輯權限，無法啟動 AI。",
+      "cancelled": "AI 執行已取消。",
+      "internal": "AI 服務內部錯誤，請稍後再試。",
+      "invalidRequest": "請求參數有誤，請檢查格式。",
+      "runIdReused": "此 run id 已使用過，請重新開啟新的對話。",
+      "rateLimited": "短時間內 AI 請求次數過多，請稍候再試。"
+    }
   }
 }

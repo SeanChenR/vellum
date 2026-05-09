@@ -1,14 +1,25 @@
 /**
  * openai.ts — OpenAI Provider Adapter.
  *
- * Validates a candidate OpenAI API key by sending a single
- * `/v1/chat/completions` request with the cheapest economy-tier model
- * (`gpt-5-nano`, max_tokens=1) and translating HTTP status into a
- * stable user-facing `errorKey`.
+ * Validates a candidate OpenAI API key by sending a single GET request
+ * to `/v1/models` (token-free, payload-free) and translating HTTP
+ * status into a stable user-facing `errorKey`.
  *
- * Design ref:
- *   openspec/changes/add-byok-multi-provider-and-pricing/design.md
- *   "OpenAI adapter — Bearer auth, /v1/chat/completions ping with gpt-5-nano"
+ * Endpoint shape note: list-models is used INSTEAD OF
+ * `/v1/chat/completions`. The original M11 design picked chat-completions
+ * with `model: gpt-5-nano, max_tokens: 1`, but reasoning-style models
+ * reserve internal thinking-token budget BEFORE emitting any response
+ * token. With cap=1 OpenAI returns HTTP 400 (`max_tokens` reached or
+ * `unsupported_parameter` for older field name), and the validator
+ * surfaces `errors.byok.unreachable` to the user even though the key
+ * is valid. Renaming the field to `max_completion_tokens` did not
+ * help — the cap itself was the wall. Switching to GET /v1/models
+ * sidesteps thinking-token economics entirely and matches the Google
+ * adapter's authentication-only ping pattern.
+ *
+ * Spec ref:
+ *   openspec/specs/byok-keys/spec.md
+ *   "OpenAI key validation via vendor ping" (after add-agent-runtime-streaming).
  *
  * Tests inject a fake `fetch` and an optional shorter `timeoutMs` so
  * timeout behaviour can be exercised without 5-second waits.
@@ -22,7 +33,6 @@ interface OpenAIAdapterOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 5_000;
-const VALIDATION_MODEL = "gpt-5-nano";
 
 /**
  * Map HTTP response status to the catalogued errorKey.
@@ -60,17 +70,11 @@ export function createOpenAIAdapter(
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const res = await fetchImpl(`${baseUrl}/v1/chat/completions`, {
-        method: "POST",
+      const res = await fetchImpl(`${baseUrl}/v1/models`, {
+        method: "GET",
         headers: {
           authorization: `Bearer ${plaintext}`,
-          "content-type": "application/json",
         },
-        body: JSON.stringify({
-          model: VALIDATION_MODEL,
-          max_tokens: 1,
-          messages: [{ role: "user", content: "hi" }],
-        }),
         signal: controller.signal,
       });
 

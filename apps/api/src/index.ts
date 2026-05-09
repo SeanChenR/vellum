@@ -52,6 +52,7 @@ import type { PermissionGuardDeps } from "./lib/permission-guard";
 import { DEV_MUTATE_RULE } from "./lib/rate-limit-rules";
 import { initVault } from "./byok/vault";
 import { createProviderAdapters } from "./byok/providers/index";
+import { buildProductionAgentEndpoints } from "./agent/wiring";
 import { createDrizzleByokRepo } from "./byok/byok-repo";
 import { handleByokRequest, type ByokDeps } from "./byok/routes";
 
@@ -195,6 +196,22 @@ async function resolveCanvasRoleForGuard(
 const permissionGuardDeps: PermissionGuardDeps = {
   resolveCanvasRole: resolveCanvasRoleForGuard,
 };
+
+// ---------------------------------------------------------------------------
+// Agent endpoint wiring — Phase 2, M13.
+// Builds the production AgentEndpoints (BYOK Vault decrypt path, Vercel
+// AI SDK provider adapter, in-memory cancellation registry, Pino child
+// with redaction) over the same singletons the dev mutate endpoint uses.
+// Spec: openspec/specs/{agent-runtime,canvas-digest,streaming-channel}/spec.md.
+// ---------------------------------------------------------------------------
+const { endpoints: agentEndpoints } = buildProductionAgentEndpoints({
+  vault: byokVault,
+  permissionGuard: permissionGuardDeps,
+  rateLimiter,
+  toolRegistryDeps: { registry: syncRegistry, applyMutation },
+  digestDeps: { registry: syncRegistry },
+  logger,
+});
 
 const syncDeps: SyncServerDeps = {
   registry: syncRegistry,
@@ -634,6 +651,32 @@ const server = Bun.serve<SyncSocketData>({
           match[1],
         );
         return respond(resp);
+      }
+    }
+
+    // Agent endpoints (Phase 2, M13) — per-user SSE streaming run + cancel.
+    // Spec: openspec/specs/streaming-channel/spec.md.
+    if (req.method === "POST") {
+      const runMatch = url.pathname.match(/^\/agent\/canvas\/([^/]+)\/run$/);
+      if (runMatch && runMatch[1]) {
+        const session = await getSession(req);
+        return respond(
+          await agentEndpoints.runHandler(
+            req,
+            runMatch[1],
+            session ? { userId: session.userId } : null,
+          ),
+        );
+      }
+      const cancelMatch = url.pathname.match(/^\/agent\/run\/([^/]+)\/cancel$/);
+      if (cancelMatch && cancelMatch[1]) {
+        const session = await getSession(req);
+        return respond(
+          await agentEndpoints.cancelHandler(
+            cancelMatch[1],
+            session ? { userId: session.userId } : null,
+          ),
+        );
       }
     }
 

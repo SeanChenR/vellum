@@ -31,6 +31,41 @@ describe("toolRegistry — composition", () => {
     }
   });
 
+  test("every entry has a non-empty description for LLM tool-surface consumption", () => {
+    // Spec: openspec/specs/server-mutation-bridge/spec.md
+    //   "Tool registry enumerates the full agent tool surface".
+    //
+    // The agent runtime (M13.6) projects each entry into a ProviderToolDef
+    // and forwards the `description` to the underlying LLM provider.
+    // OpenAI / Anthropic / Google all rely on tool descriptions to decide
+    // when and how to invoke a tool — empty descriptions mean the LLM
+    // omits required arguments (the M13 e2e finding that triggered §13).
+    for (const entry of Object.values(toolRegistry)) {
+      expect(typeof entry.description).toBe("string");
+      expect(entry.description.length).toBeGreaterThan(20);
+    }
+  });
+
+  test("createShape description names the four custom shape types and their required props", () => {
+    // The LLM has no other source of truth for what props each shape type
+    // expects. Without listing them here, OpenAI strict mode strips the
+    // (optional) `props` argument and the mutator's tldraw schema rejects
+    // the resulting record. Tested types — markdown, code, callout,
+    // link-card — match `apps/api/src/sync/shape-schemas.ts`.
+    const desc = toolRegistry.createShape.description;
+    for (const shapeType of ["markdown", "code", "callout", "link-card"]) {
+      expect(desc).toContain(shapeType);
+    }
+    // Spot-check that the per-type required-prop names appear at least once
+    // each so the LLM has a concrete handle to populate them.
+    expect(desc).toContain("content");
+    expect(desc).toContain("source");
+    expect(desc).toContain("language");
+    expect(desc).toContain("variant");
+    expect(desc).toContain("body");
+    expect(desc).toContain("url");
+  });
+
   test("all eleven expected tool names are present", () => {
     const expected = [
       "createShape",

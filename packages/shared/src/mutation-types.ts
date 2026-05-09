@@ -21,13 +21,21 @@ import { z } from "zod";
  * new shape into a sync room's store. `props` is opaque at this layer
  * because tldraw shape props are shape-type-specific; the mutator and
  * the room together validate at apply time.
+ *
+ * `props` is REQUIRED (not optional). Reasoning: tldraw shape schemas
+ * always have at least one required prop (e.g. markdown.content,
+ * code.source, callout.body, link-card.url, plus w/h on every custom
+ * vellum shape). Marking it optional encouraged OpenAI strict-mode tool
+ * calling to drop the field entirely, which surfaced as
+ * `errors.devMutate.mutationFailed` in M13 e2e (see task §13). Callers
+ * who genuinely have no props must pass `props: {}` — explicit consent.
  */
 export const createShapePayloadSchema = z.object({
   id: z.string().regex(/^shape:[A-Za-z0-9_-]+$/),
   type: z.string().min(1),
   x: z.number().finite(),
   y: z.number().finite(),
-  props: z.record(z.string(), z.unknown()).optional(),
+  props: z.record(z.string(), z.unknown()),
 });
 
 export type CreateShapePayload = z.infer<typeof createShapePayloadSchema>;

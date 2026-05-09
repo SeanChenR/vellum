@@ -43,7 +43,15 @@ describe("openaiAdapter — validateKey happy path", () => {
     expect(await adapter.validateKey("sk-proj-201")).toEqual({ ok: true });
   });
 
-  test("happy path POSTs to /v1/chat/completions with Bearer auth and gpt-5-nano body", async () => {
+  test("happy path GETs /v1/models with Bearer auth and no body", async () => {
+    // Spec: openspec/specs/byok-keys/spec.md
+    //   "OpenAI key validation via vendor ping" >
+    //   "Validation request is GET with no body".
+    //
+    // Rationale (see spec body): chat-completions ping was incompatible
+    // with reasoning-style validation models (gpt-5-nano) which reserve
+    // thinking-token budget before emitting any response token. Switched
+    // to GET /v1/models — token-free, payload-free, same auth shape.
     const { fetchImpl, calls } = recordingFetch(200);
     const adapter = createOpenAIAdapter(BASE, fetchImpl);
 
@@ -51,16 +59,38 @@ describe("openaiAdapter — validateKey happy path", () => {
 
     expect(calls).toHaveLength(1);
     const c = calls[0]!;
-    expect(c.url).toBe(`${BASE}/v1/chat/completions`);
-    expect(c.init.method).toBe("POST");
+    expect(c.url).toBe(`${BASE}/v1/models`);
+    expect(c.init.method).toBe("GET");
     const headers = new Headers(c.init.headers);
     expect(headers.get("authorization")).toBe("Bearer sk-proj-headers-probe");
     expect(headers.get("x-api-key")).toBeNull();
-    expect(headers.get("content-type")).toBe("application/json");
-    const body = JSON.parse((c.init.body as string) ?? "{}");
-    expect(body.model).toBe("gpt-5-nano");
-    expect(body.max_tokens).toBe(1);
-    expect(body.messages).toEqual([{ role: "user", content: "hi" }]);
+    // No body, no content-type — list-models is a pure GET.
+    expect(c.init.body).toBeFalsy();
+  });
+
+  test("validation request carries no chat-completions body fields", async () => {
+    // Spec: openspec/specs/byok-keys/spec.md
+    //   "OpenAI key validation via vendor ping" >
+    //   "Validation request is GET with no body".
+    //
+    // Negative assertion guarding against regression to chat/completions
+    // shape: the body MUST NOT contain model / messages / max_tokens /
+    // max_completion_tokens because /v1/models does not accept them.
+    const { fetchImpl, calls } = recordingFetch(200);
+    const adapter = createOpenAIAdapter(BASE, fetchImpl);
+
+    await adapter.validateKey("sk-proj-no-body-fields");
+
+    expect(calls).toHaveLength(1);
+    const raw = calls[0]!.init.body;
+    if (raw) {
+      // If a body was inadvertently set, none of these fields may exist.
+      const body = JSON.parse(raw as string);
+      expect(body).not.toHaveProperty("model");
+      expect(body).not.toHaveProperty("messages");
+      expect(body).not.toHaveProperty("max_tokens");
+      expect(body).not.toHaveProperty("max_completion_tokens");
+    }
   });
 });
 
@@ -125,6 +155,6 @@ describe("openaiAdapter — base URL override", () => {
     await adapter.validateKey("sk-proj-baseurl");
 
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe(`${customBase}/v1/chat/completions`);
+    expect(calls[0]?.url).toBe(`${customBase}/v1/models`);
   });
 });

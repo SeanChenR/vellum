@@ -11,11 +11,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "~3.0.75",
+    "@ai-sdk/google": "~3.0.68",
+    "@ai-sdk/openai": "~3.0.62",
     "@react-email/components": "^1.0.12",
     "@tldraw/sync-core": "4.5.10",
     "@tldraw/tlschema": "4.5.10",
     "@tldraw/validate": "4.5.10",
     "@vellum/shared": "workspace:*",
+    "ai": "~6.0.175",
     "better-auth": "^1.6.9",
     "drizzle-orm": "^0.45.2",
     "ipaddr.js": "^2.3.0",

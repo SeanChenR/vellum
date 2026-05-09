@@ -26,20 +26,47 @@ const APP_WEB = resolve(ROOT, "apps/web");
 
 const children: Array<{ label: string; proc: ReturnType<typeof spawn> }> = [];
 
-function shutdown(code = 0): never {
+/**
+ * Graceful shutdown — signal children with SIGTERM, then wait up to
+ * 5 s per child for it to exit so async cleanup (e.g. the api process'
+ * `flushThenShutdown`, which flushes dirty snapshot mutations to DB)
+ * can complete. Without the wait, debounced mutations are lost on
+ * Ctrl-C — see M13 task §16.1 / docs/adr/0019.
+ */
+const CHILD_SHUTDOWN_TIMEOUT_MS = 5_000;
+
+async function shutdown(code = 0): Promise<never> {
   console.log("\n[dev] stopping children...");
   for (const { proc } of children) {
     try {
-      proc.kill();
+      proc.kill("SIGTERM");
     } catch {
       // already gone
     }
   }
+  await Promise.all(
+    children.map(({ label, proc }) =>
+      Promise.race([
+        proc.exited.then(() => log(label, "exited")),
+        new Promise<void>((resolve) =>
+          globalThis.setTimeout(() => {
+            log(label, "shutdown timeout — forcing");
+            try {
+              proc.kill("SIGKILL");
+            } catch {
+              // already gone
+            }
+            resolve();
+          }, CHILD_SHUTDOWN_TIMEOUT_MS),
+        ),
+      ]),
+    ),
+  );
   process.exit(code);
 }
 
-process.on("SIGINT", () => shutdown(0));
-process.on("SIGTERM", () => shutdown(0));
+process.on("SIGINT", () => void shutdown(0));
+process.on("SIGTERM", () => void shutdown(0));
 
 function log(label: string, msg: string): void {
   console.log(`[${label}] ${msg}`);
@@ -197,7 +224,7 @@ startChild("api", "32", ["bun", "--hot", "src/index.ts"], APP_API, {
   DISABLE_AUTH_RATE_LIMIT: "1",
 });
 startChild("web", "35", ["bun", "build", "src/index.html", "--outdir=dist", "--watch"], APP_WEB);
-startChild("proxy", "36", ["bun", "scripts/dev-proxy.ts"], ROOT);
+startChild("proxy", "36", ["bun", "--hot", "scripts/dev-proxy.ts"], ROOT);
 
 await waitForPort("api", 3000);
 await waitForPort("proxy", 3002);

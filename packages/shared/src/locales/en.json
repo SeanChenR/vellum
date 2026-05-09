@@ -468,5 +468,21 @@
         "unset": "No default selected"
       }
     }
+  },
+  "agent": {
+    "error": {
+      "byokMissing": "No API key set for this provider. Go to Settings → API Keys to add one.",
+      "providerAuth": "Provider authentication failed. Please confirm your API key is still valid.",
+      "providerRateLimit": "Provider rate limit reached. Please wait and try again.",
+      "providerServer": "Provider is temporarily unavailable. Please retry shortly.",
+      "wallTimeout": "This run exceeded the 60-second wall-clock limit and was aborted.",
+      "toolCallCap": "This run reached the 20 tool-call cap and was aborted.",
+      "permissionDenied": "Your account does not have editor access to this canvas; AI cannot start.",
+      "cancelled": "AI run cancelled.",
+      "internal": "Internal AI service error. Please retry shortly.",
+      "invalidRequest": "Invalid request payload. Please check the format.",
+      "runIdReused": "This run id has already been used. Please start a new conversation.",
+      "rateLimited": "Too many AI requests in a short window. Please wait and try again."
+    }
   }
 }

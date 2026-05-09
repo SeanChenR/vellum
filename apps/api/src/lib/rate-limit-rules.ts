@@ -127,3 +127,18 @@ export const BYOK_DELETE_RULE: RateLimitRule = { windowMs: s(60), max: 30 };
  * trips the limit.
  */
 export const BYOK_PREFERENCE_RULE: RateLimitRule = { windowMs: s(60), max: 60 };
+
+// ---------------------------------------------------------------------------
+// Agent runtime (Phase 2, M13.7) — POST /agent/canvas/:id/run.
+// Bucket key format: `api:agent.run:user:<userId>`.
+// Spec: openspec/specs/streaming-channel/spec.md "AGENT_RUN_RULE rate limit".
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /agent/canvas/:canvasId/run — 5 runs per 60s per user.
+ * Single source of truth for the rule; the agent endpoint imports this.
+ * The cancel endpoint (/agent/run/:runId/cancel) is intentionally NOT
+ * rate-limited because cancel is a stop-loss action that must always be
+ * permitted.
+ */
+export const AGENT_RUN_RULE: RateLimitRule = { windowMs: s(60), max: 5 };
