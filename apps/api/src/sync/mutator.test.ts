@@ -276,6 +276,130 @@ describe("applyMutation — updateShape variant", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Geo shape normalisation — tldraw `geo` records need a full prop set; the
+// mutator fills the gaps so the LLM agent surface can stay minimal.
+// ---------------------------------------------------------------------------
+
+describe("applyMutation — geo createShape backfills required props", () => {
+  test("fills tldraw-required defaults (geo/dash/fill/size/font/align/.../richText)", async () => {
+    const { deps: d, stub: s } = depsWith([]);
+    const result = await applyMutation(d, CANVAS_ID, [
+      {
+        type: "createShape",
+        payload: {
+          id: "shape:g1",
+          type: "geo",
+          x: 0,
+          y: 0,
+          props: { color: "red" },
+        },
+      },
+    ]);
+    expect(result).toEqual({ ok: true, appliedCount: 1 });
+    const stored = s.lastStore?.records().get("shape:g1");
+    expect(stored?.props).toMatchObject({
+      geo: "rectangle",
+      color: "red",
+      fill: "none",
+      dash: "draw",
+      size: "m",
+      font: "draw",
+      align: "middle",
+      verticalAlign: "middle",
+      labelColor: "black",
+      url: "",
+      growY: 0,
+      scale: 1,
+    });
+    expect((stored?.props as Record<string, unknown>)?.richText).toMatchObject({ type: "doc" });
+  });
+
+  test("user-supplied geo + color + text are honoured", async () => {
+    const { deps: d, stub: s } = depsWith([]);
+    await applyMutation(d, CANVAS_ID, [
+      {
+        type: "createShape",
+        payload: {
+          id: "shape:g2",
+          type: "geo",
+          x: 0,
+          y: 0,
+          props: { geo: "ellipse", color: "blue", text: "label" },
+        },
+      },
+    ]);
+    const stored = s.lastStore?.records().get("shape:g2");
+    expect(stored?.props).toMatchObject({ geo: "ellipse", color: "blue" });
+    expect((stored?.props as Record<string, unknown>)?.text).toBeUndefined();
+    expect(JSON.stringify((stored?.props as Record<string, unknown>)?.richText)).toContain("label");
+  });
+
+  test("non-geo shape types are NOT normalised", async () => {
+    const { deps: d, stub: s } = depsWith([]);
+    await applyMutation(d, CANVAS_ID, [
+      {
+        type: "createShape",
+        payload: {
+          id: "shape:m1",
+          type: "markdown",
+          x: 0,
+          y: 0,
+          props: { content: "hello", w: 320, h: 180 },
+        },
+      },
+    ]);
+    const stored = s.lastStore?.records().get("shape:m1");
+    expect(stored?.props).toEqual({ content: "hello", w: 320, h: 180 });
+  });
+});
+
+describe("applyMutation — geo updateShape converts text → richText", () => {
+  const SEED_GEO_C = {
+    id: "shape:gu",
+    typeName: "shape",
+    type: "geo",
+    x: 0,
+    y: 0,
+    rotation: 0,
+    isLocked: false,
+    opacity: 1,
+    parentId: "page:page",
+    index: "a1",
+    meta: {},
+    props: { geo: "rectangle", color: "black" },
+  };
+
+  test("partial with text converts to richText without injecting other defaults", async () => {
+    const { deps: d, stub: s } = depsWith([SEED_GEO_C]);
+    const result = await applyMutation(d, CANVAS_ID, [
+      {
+        type: "updateShape",
+        payload: { id: "shape:gu", partial: { props: { text: "new" } } },
+      },
+    ]);
+    expect(result).toEqual({ ok: true, appliedCount: 1 });
+    const stored = s.lastStore?.records().get("shape:gu");
+    const props = stored?.props as Record<string, unknown>;
+    expect(props.text).toBeUndefined();
+    expect(JSON.stringify(props.richText)).toContain("new");
+    // Existing color preserved (no clobber by default values).
+    expect(props.color).toBe("black");
+  });
+
+  test("partial with non-text props passes through unchanged", async () => {
+    const { deps: d, stub: s } = depsWith([SEED_GEO_C]);
+    await applyMutation(d, CANVAS_ID, [
+      {
+        type: "updateShape",
+        payload: { id: "shape:gu", partial: { props: { color: "violet" } } },
+      },
+    ]);
+    const stored = s.lastStore?.records().get("shape:gu");
+    expect(((stored?.props ?? {}) as Record<string, unknown>).color).toBe("violet");
+  });
+});
+
 describe("applyMutation — deleteShape variant", () => {
   test("removes existing shape", async () => {
     const { deps: d, stub: s } = depsWith([SEED_GEO_A]);

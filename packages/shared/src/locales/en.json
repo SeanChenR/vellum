@@ -482,7 +482,39 @@
       "internal": "Internal AI service error. Please retry shortly.",
       "invalidRequest": "Invalid request payload. Please check the format.",
       "runIdReused": "This run id has already been used. Please start a new conversation.",
-      "rateLimited": "Too many AI requests in a short window. Please wait and try again."
+      "rateLimited": "Too many AI requests in a short window. Please wait and try again.",
+      "threadNotFound": "AI thread not found — it may have been deleted."
+    },
+    "panel": {
+      "toggleOpen": "Open AI assistant",
+      "toggleClose": "Close AI assistant",
+      "placeholder": "Ask AI to edit your canvas (Cmd+Enter to send)",
+      "send": "Send",
+      "cancel": "Cancel",
+      "newChat": "New chat",
+      "clearThread": "Clear messages",
+      "deleteThread": "Delete chat",
+      "noProvider": "No BYOK key configured. Add one in Settings.",
+      "noApiKeyHint": "No BYOK keys configured. Add a key in Settings → API Keys to start chatting with the AI.",
+      "providerLabel": "Provider",
+      "modelLabel": "Model",
+      "untitled": "New chat",
+      "thinking": "AI is thinking…"
+    },
+    "usage": {
+      "thisRun": "This run:",
+      "threadTotal": "Total:",
+      "inputTokens": "{{count}} input",
+      "outputTokens": "{{count}} output",
+      "cost": "${{cost}}",
+      "costSubCent": "<$0.0001",
+      "noUsage": "—"
+    },
+    "badge": {
+      "aiEditingTooltip": "{{name}} is editing with AI"
+    },
+    "thread": {
+      "fallbackTitleEmpty": "New chat"
     }
   }
 }

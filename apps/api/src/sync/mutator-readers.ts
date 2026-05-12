@@ -155,6 +155,26 @@ export async function getShape(
   return { ok: true, data: found ? toSummary(found) : null };
 }
 
+/**
+ * List every shape on the canvas as a ShapeSummary, regardless of
+ * viewport. Used by the agent runtime to bootstrap the system prompt
+ * with the full canvas digest so the model knows where existing shapes
+ * sit before it places new ones.
+ *
+ * Distinct from `listShapesInViewport` which filters by an explicit
+ * rectangle — that one is exposed as an LLM tool so the model can
+ * narrow down "what is visible to the user"; this one is internal-only
+ * and not registered in the tool registry.
+ */
+export async function listAllShapes(
+  deps: MutatorReadersDeps,
+  canvasId: string,
+): Promise<ReaderResult<ShapeSummary[]>> {
+  const room = getRoom(deps, canvasId);
+  if (!room) return { ok: false, errorKey: "errors.devMutate.canvasNotInActiveRoom" };
+  return { ok: true, data: listShapeRecords(room).map(toSummary) };
+}
+
 export async function listShapesInViewport(
   deps: MutatorReadersDeps,
   canvasId: string,

@@ -21,6 +21,7 @@ import {
   type ProviderEvent,
   type RunOutcome,
 } from "./runtime";
+import { buildInMemoryThreadRepo, type ThreadRepo } from "./threads/repo";
 
 const VALID_RUN_ID = "11111111-1111-4111-8111-111111111111";
 const ALT_RUN_ID = "22222222-2222-4222-8222-222222222222";
@@ -28,6 +29,8 @@ const CANVAS_ID = "cnv_a";
 const SESSION_ID = "sess_a";
 const USER_A = "user_a";
 const USER_B = "user_b";
+const THREAD_A = "thr_a";
+const THREAD_B = "thr_b";
 
 interface TestHarness {
   endpoints: AgentEndpoints;
@@ -67,12 +70,18 @@ function makeHarness(
     rateLimiter?: RateLimiter;
     provider?: ProviderAdapter;
   } = {},
-): TestHarness {
+): TestHarness & { repo: ThreadRepo } {
   const role = opts.role === undefined ? "editor" : opts.role;
   const provider = opts.provider ?? makeProvider([[{ type: "step-finish", finishReason: "stop" }]]);
   const registry = new CancellationRegistry();
   const rateLimiter = opts.rateLimiter ?? new RateLimiter();
   const recordedRuns: Array<{ runId: string; userId: string }> = [];
+  const repo = buildInMemoryThreadRepo();
+  // Seed a default thread for USER_A on CANVAS_ID so any test that uses
+  // {threadId: THREAD_A} body finds an owned thread by default. Tests that
+  // need a different ownership shape (cross-user, missing) seed their own
+  // via repo._test_seedThread.
+  repo._test_seedThread!({ id: THREAD_A, userId: USER_A, canvasId: CANVAS_ID });
 
   const deps: AgentEndpointDeps = {
     cancellation: registry,
@@ -105,6 +114,7 @@ function makeHarness(
     },
     rateLimiter,
     rateLimitRule: AGENT_RUN_RULE,
+    threadRepo: repo,
     onRunStart: (runId, userId) => {
       recordedRuns.push({ runId, userId });
     },
@@ -116,6 +126,7 @@ function makeHarness(
     rateLimiter,
     provider,
     recordedRuns,
+    repo,
   };
 }
 
@@ -177,8 +188,8 @@ describe("Run endpoint — body validation + headers", () => {
         runId: VALID_RUN_ID,
         provider: "openai",
         model: "gpt-4o-mini",
-        messages: [{ role: "user", content: "hi" }],
-        sessionId: SESSION_ID,
+        userMessage: "hi",
+        threadId: THREAD_A,
       },
     });
     const res = await h.endpoints.runHandler(req, CANVAS_ID, fakeSession(USER_A));
@@ -199,8 +210,8 @@ describe("Run endpoint — body validation + headers", () => {
         runId: VALID_RUN_ID,
         provider: "unknown",
         model: "gpt-4o-mini",
-        messages: [{ role: "user", content: "hi" }],
-        sessionId: SESSION_ID,
+        userMessage: "hi",
+        threadId: THREAD_A,
       },
     });
     const res = await h.endpoints.runHandler(req, CANVAS_ID, fakeSession(USER_A));
@@ -216,8 +227,8 @@ describe("Run endpoint — body validation + headers", () => {
         runId: "abc",
         provider: "openai",
         model: "gpt-4o-mini",
-        messages: [{ role: "user", content: "hi" }],
-        sessionId: SESSION_ID,
+        userMessage: "hi",
+        threadId: THREAD_A,
       },
     });
     const res = await h.endpoints.runHandler(req, CANVAS_ID, fakeSession(USER_A));
@@ -232,8 +243,8 @@ describe("Run endpoint — body validation + headers", () => {
       body: {
         provider: "openai",
         model: "gpt-4o-mini",
-        messages: [{ role: "user", content: "hi" }],
-        sessionId: SESSION_ID,
+        userMessage: "hi",
+        threadId: THREAD_A,
       },
     });
     const res = await h.endpoints.runHandler(req, CANVAS_ID, fakeSession(USER_A));
@@ -245,6 +256,151 @@ describe("Run endpoint — body validation + headers", () => {
     );
   });
 
+  it("returns 400 + invalidRequest when body contains the legacy messages field (M14 contract)", async () => {
+    const h = makeHarness();
+    const req = makeRequest({
+      body: {
+        runId: VALID_RUN_ID,
+        provider: "openai",
+        model: "gpt-4o-mini",
+        threadId: THREAD_A,
+        userMessage: "hi",
+        // forbidden under M14
+        messages: [{ role: "user", content: "hi" }],
+      },
+    });
+    const res = await h.endpoints.runHandler(req, CANVAS_ID, fakeSession(USER_A));
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { errorKey: string };
+    expect(json.errorKey).toBe("agent.error.invalidRequest");
+  });
+
+  it("returns 400 + invalidRequest when threadId is missing", async () => {
+    const h = makeHarness();
+    const req = makeRequest({
+      body: {
+        runId: VALID_RUN_ID,
+        provider: "openai",
+        model: "gpt-4o-mini",
+        userMessage: "hi",
+      },
+    });
+    const res = await h.endpoints.runHandler(req, CANVAS_ID, fakeSession(USER_A));
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { errorKey: string };
+    expect(json.errorKey).toBe("agent.error.invalidRequest");
+  });
+
+  it("returns 400 + invalidRequest when thread belongs to another user (no existence leak)", async () => {
+    const h = makeHarness();
+    // Seed a thread owned by USER_B; USER_A asks to run against it.
+    h.repo._test_seedThread!({ id: THREAD_B, userId: USER_B, canvasId: CANVAS_ID });
+    const req = makeRequest({
+      body: {
+        runId: VALID_RUN_ID,
+        provider: "openai",
+        model: "gpt-4o-mini",
+        threadId: THREAD_B,
+        userMessage: "hi",
+      },
+    });
+    const res = await h.endpoints.runHandler(req, CANVAS_ID, fakeSession(USER_A));
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { errorKey: string };
+    expect(json.errorKey).toBe("agent.error.invalidRequest");
+  });
+
+  it("returns 400 + invalidRequest when threadId does not exist", async () => {
+    const h = makeHarness();
+    const req = makeRequest({
+      body: {
+        runId: VALID_RUN_ID,
+        provider: "openai",
+        model: "gpt-4o-mini",
+        threadId: "thr_nonexistent",
+        userMessage: "hi",
+      },
+    });
+    const res = await h.endpoints.runHandler(req, CANVAS_ID, fakeSession(USER_A));
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { errorKey: string };
+    expect(json.errorKey).toBe("agent.error.invalidRequest");
+  });
+
+  it("appends userMessage to the thread before issuing the provider call", async () => {
+    const h = makeHarness();
+    const req = makeRequest({
+      body: {
+        runId: VALID_RUN_ID,
+        provider: "openai",
+        model: "gpt-4o-mini",
+        threadId: THREAD_A,
+        userMessage: "create a markdown shape",
+      },
+    });
+    const res = await h.endpoints.runHandler(req, CANVAS_ID, fakeSession(USER_A));
+    expect(res.status).toBe(200);
+    await readSseEvents(res);
+    const rows = await h.repo.loadMessages(THREAD_A);
+    // First row of the thread MUST be the user message persisted before the run.
+    expect(rows[0]?.role).toBe("user");
+    expect(rows[0]?.content).toEqual({ text: "create a markdown shape" });
+  });
+
+  it("emits done event with usage payload populated when provider reports usage", async () => {
+    const provider = makeProvider([
+      [
+        { type: "text-delta", delta: "ok" },
+        { type: "usage", usage: { input: 1500, output: 800 } },
+        { type: "step-finish", finishReason: "stop" },
+      ],
+    ]);
+    const h = makeHarness({ provider });
+    const req = makeRequest({
+      body: {
+        runId: VALID_RUN_ID,
+        provider: "openai",
+        model: "gpt-4o-mini",
+        threadId: THREAD_A,
+        userMessage: "hi",
+      },
+    });
+    const res = await h.endpoints.runHandler(req, CANVAS_ID, fakeSession(USER_A));
+    const events = await readSseEvents(res);
+    const done = events.find((e) => e.type === "done");
+    expect(done).toBeDefined();
+    expect(done && "usage" in done ? done.usage : undefined).toEqual({
+      input: 1500,
+      output: 800,
+      provider: "openai",
+      model: "gpt-4o-mini",
+    });
+  });
+
+  it("emits done event with usage: null when provider omits the usage event", async () => {
+    const provider = makeProvider([
+      [
+        { type: "text-delta", delta: "ok" },
+        { type: "step-finish", finishReason: "stop" },
+      ],
+    ]);
+    const h = makeHarness({ provider });
+    const req = makeRequest({
+      body: {
+        runId: VALID_RUN_ID,
+        provider: "openai",
+        model: "gpt-4o-mini",
+        threadId: THREAD_A,
+        userMessage: "hi",
+      },
+    });
+    const res = await h.endpoints.runHandler(req, CANVAS_ID, fakeSession(USER_A));
+    const events = await readSseEvents(res);
+    const done = events.find((e) => e.type === "done");
+    expect(done).toBeDefined();
+    expect(done && "usage" in done ? done.usage : undefined).toBeNull();
+  });
+
   it("returns 401 when the session is null", async () => {
     const h = makeHarness();
     const req = makeRequest({
@@ -252,8 +408,8 @@ describe("Run endpoint — body validation + headers", () => {
         runId: VALID_RUN_ID,
         provider: "openai",
         model: "gpt-4o-mini",
-        messages: [{ role: "user", content: "hi" }],
-        sessionId: SESSION_ID,
+        userMessage: "hi",
+        threadId: THREAD_A,
       },
     });
     const res = await h.endpoints.runHandler(req, CANVAS_ID, null);
@@ -274,8 +430,8 @@ describe("Run endpoint — run id lifecycle", () => {
       runId: VALID_RUN_ID,
       provider: "openai" as const,
       model: "gpt-4o-mini",
-      messages: [{ role: "user", content: "hi" }],
-      sessionId: SESSION_ID,
+      userMessage: "hi",
+      threadId: THREAD_A,
     };
     const r1 = await h.endpoints.runHandler(makeRequest({ body }), CANVAS_ID, fakeSession(USER_A));
     expect(r1.status).toBe(200);
@@ -300,8 +456,8 @@ describe("Cancel endpoint", () => {
         runId: VALID_RUN_ID,
         provider: "openai",
         model: "gpt-4o-mini",
-        messages: [{ role: "user", content: "hi" }],
-        sessionId: SESSION_ID,
+        userMessage: "hi",
+        threadId: THREAD_A,
       },
     });
     const runRes = await h.endpoints.runHandler(runReq, CANVAS_ID, fakeSession(USER_A));
@@ -325,8 +481,8 @@ describe("Cancel endpoint", () => {
         runId: VALID_RUN_ID,
         provider: "openai",
         model: "gpt-4o-mini",
-        messages: [{ role: "user", content: "hi" }],
-        sessionId: SESSION_ID,
+        userMessage: "hi",
+        threadId: THREAD_A,
       },
     });
     const runRes = await h.endpoints.runHandler(runReq, CANVAS_ID, fakeSession(USER_A));
@@ -354,8 +510,8 @@ describe("AGENT_RUN_RULE rate limit", () => {
       runId: `${"1".repeat(8)}-${"1".repeat(4)}-4${"1".repeat(3)}-8${"1".repeat(3)}-${String(i).padStart(12, "0")}`,
       provider: "openai" as const,
       model: "gpt-4o-mini",
-      messages: [{ role: "user", content: "hi" }],
-      sessionId: SESSION_ID,
+      userMessage: "hi",
+      threadId: THREAD_A,
     });
     for (let i = 1; i <= 5; i++) {
       const res = await h.endpoints.runHandler(
@@ -391,5 +547,5 @@ beforeEach(() => {
 });
 
 // Ensure RunOutcome import is used (lint avoidance)
-const _dummyOutcome: RunOutcome = { state: "done" };
+const _dummyOutcome: RunOutcome = { state: "done", usage: null };
 void _dummyOutcome;

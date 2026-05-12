@@ -221,3 +221,87 @@ export const canvasShareLinks = pgTable(
 
 export type CanvasShareLink = typeof canvasShareLinks.$inferSelect;
 export type NewCanvasShareLink = typeof canvasShareLinks.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// ai_threads — per-user × per-canvas AI conversation threads (M14)
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-user × per-canvas AI conversation threads. Multi-thread is allowed
+ * (no unique constraint on (user_id, canvas_id)) so users can reset
+ * context with "New chat" without losing prior conversations.
+ *
+ * Cascade chain: users / canvases → ai_threads → ai_messages.
+ *
+ * `title` defaults to empty string and is filled at thread creation with
+ * a 30-char fallback derived from the first user message; the first
+ * `done` event later replaces it with a small-model-generated summary.
+ */
+export const aiThreads = pgTable(
+  "ai_threads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    canvasId: uuid("canvas_id")
+      .notNull()
+      .references(() => canvases.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    /**
+     * Latest-first thread list per (user, canvas). The DESC sort lives at
+     * query time (Postgres can scan the index in either direction); naming
+     * preserves intent for grep-ability.
+     */
+    index("ai_threads_user_canvas_updated_idx").on(table.userId, table.canvasId, table.updatedAt),
+  ],
+);
+
+export type AiThread = typeof aiThreads.$inferSelect;
+export type NewAiThread = typeof aiThreads.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// ai_messages — ordered messages within an ai_thread (M14)
+// ---------------------------------------------------------------------------
+
+/**
+ * One row per message within a thread. Role discriminates content shape:
+ *   user      → { kind: "text", text: string }
+ *   assistant → { kind: "text", text: string }
+ *   tool      → { kind: "call", name, args } | { kind: "result", result }
+ *
+ * Only `role=assistant` rows populate `provider` / `model` / `run_id` /
+ * `token_usage`; only `role=tool` rows populate `tool_name` / `tool_call_id`.
+ */
+export const aiMessages = pgTable(
+  "ai_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => aiThreads.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant", "tool"] }).notNull(),
+    content: jsonb("content").notNull(),
+    toolName: text("tool_name"),
+    toolCallId: text("tool_call_id"),
+    /** { input: number, output: number } — only on the final assistant row of a run */
+    tokenUsage: jsonb("token_usage"),
+    /** Only on assistant rows — which provider/model produced this message */
+    provider: text("provider"),
+    model: text("model"),
+    /** SSE runId that emitted this message — for replay correlation */
+    runId: text("run_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    /** Ordered playback within a thread. */
+    index("ai_messages_thread_created_idx").on(table.threadId, table.createdAt),
+  ],
+);
+
+export type AiMessage = typeof aiMessages.$inferSelect;
+export type NewAiMessage = typeof aiMessages.$inferInsert;

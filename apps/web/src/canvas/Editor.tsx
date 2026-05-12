@@ -28,6 +28,8 @@ import { useSyncStore } from "./use-sync-store";
 import { ShareDialog } from "./ShareDialog";
 import { exportCanvas, type ExportFormat, type ExportScale } from "./export/export-canvas";
 import { slugify } from "./export/slugify";
+import { AiSidePanel } from "../agent/AiSidePanel";
+import { useAiPanelStore } from "../agent/store";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -84,6 +86,8 @@ export function Editor({
   const sync = useSyncStore(canvasId, { shareToken });
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [editorInstance, setEditorInstance] = useState<TldrawEditor | null>(null);
+  const aiPanelOpen = useAiPanelStore((s) => s.panelOpen);
+  const togglePanel = useAiPanelStore((s) => s.togglePanel);
 
   const isOwner = currentUser?.id === ownerId;
   // Prefer server-provided effectiveRole (correct for all paths); fall
@@ -112,6 +116,11 @@ export function Editor({
       onSignOut,
       isOwner,
       isReadOnly,
+      // M14: AI Side Panel toggle. Hidden when role=viewer (the toggle
+      // and panel both gate on !isReadOnly so the chrome never invites
+      // a viewer to click a button that would 401 server-side).
+      aiPanelOpen: !isReadOnly && aiPanelOpen,
+      onAiPanelToggle: !isReadOnly ? togglePanel : undefined,
     },
     mainMenu: {
       onRename: () => {},
@@ -135,10 +144,15 @@ export function Editor({
     },
   };
 
+  // Show AI panel only for editor/owner (viewer never sees it). When the
+  // panel is open the layout switches to flex-row: canvas on the left
+  // (flex-1, min-w-0 so the canvas can shrink), panel pinned right.
+  const showAiPanel = !isReadOnly && aiPanelOpen;
+
   return (
     <VellumChromeContext.Provider value={chromeContext}>
-      <div className="relative h-full w-full">
-        <div className="absolute inset-0">
+      <div className={showAiPanel ? "flex h-full w-full flex-row" : "relative h-full w-full"}>
+        <div className={showAiPanel ? "relative min-w-0 flex-1" : "absolute inset-0"}>
           {sync.status === "ready" && sync.store ? (
             <Tldraw
               store={sync.store}
@@ -210,6 +224,23 @@ export function Editor({
             </div>
           )}
         </div>
+        {showAiPanel && (
+          <div className="h-full w-[384px] shrink-0 border-l border-warm-sepia/30 bg-white">
+            {/* `AiBadgeEditor` exposes the narrow subset of the tldraw
+                Editor (`updateInstanceState`) that the cursor badge hook
+                needs. Cross-tab broadcast of `aiActive` via
+                TLInstancePresence is deferred — see cursor-ai-badge.ts
+                "Known limitation (M15+ follow-up)". */}
+            <AiSidePanel
+              canvasId={canvasId}
+              editor={
+                (editorInstance as unknown as
+                  | import("../agent/cursor-ai-badge").AiBadgeEditor
+                  | null) ?? null
+              }
+            />
+          </div>
+        )}
       </div>
       {isOwner && shareDialogOpen && (
         // Mount lazily so useShareState's query does not fire until the

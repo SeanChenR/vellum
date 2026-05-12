@@ -43,6 +43,13 @@
       "when": 1778168950000,
       "tag": "0005_per_provider_prefs",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778316320330,
+      "tag": "0006_ai_threads",
+      "breakpoints": true
     }
   ]
 }

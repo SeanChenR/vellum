@@ -51,19 +51,19 @@ export interface AgentEndpoints {
 
 const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const messageSchema = z.object({
-  role: z.enum(["system", "user", "assistant", "tool"]),
-  content: z.union([z.string(), z.record(z.string(), z.unknown())]),
-  toolCallId: z.string().optional(),
-});
-
+/**
+ * M14 thread-driven run body. The legacy `messages` field is intentionally
+ * absent from this schema; `.strict()` guarantees any client still sending
+ * the old shape gets a 400 with `agent.error.invalidRequest` so divergent
+ * clients fail loudly instead of silently dropping conversation context.
+ */
 const runBodySchema = z
   .object({
     runId: z.string().regex(uuidV4Regex).optional(),
     provider: z.enum(["openai", "anthropic", "google"]),
     model: z.string().min(1),
-    messages: z.array(messageSchema).min(1),
-    sessionId: z.string().min(1),
+    threadId: z.string().min(1),
+    userMessage: z.string().min(1),
   })
   .strict();
 
@@ -154,22 +154,41 @@ export function buildAgentEndpoints(deps: AgentEndpointDeps): AgentEndpoints {
       });
     }
 
+    // Thread ownership: 400 + invalidRequest on missing OR cross-user (the
+    // shape MUST match so the response does not leak whether the thread
+    // exists at all). Per streaming-channel spec MODIFIED M14 scenario
+    // "Thread ownership rejected".
+    const thread = await deps.threadRepo.getThread(body.threadId);
+    if (!thread || thread.userId !== session.userId) {
+      return jsonError(400, "agent.error.invalidRequest");
+    }
+
     ownership.set(runId, { userId: session.userId, ended: false });
     deps.onRunStart?.(runId, session.userId);
 
     const runRequest: RunRequest = {
       runId,
       canvasId,
-      sessionId: body.sessionId,
+      // sessionId remains useful for log correlation; reuse runId so callers
+      // that tail logs by sessionId still find the run.
+      sessionId: runId,
       userId: session.userId,
       provider: body.provider,
       model: body.model,
-      messages: body.messages,
+      threadId: body.threadId,
+      userMessage: body.userMessage,
     };
 
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         const writer = new SseWriter(controller);
+        // Activate heartbeat: writer emits `:hb` after 15 s of write
+        // silence. The ticker drives the timing check; without it the
+        // writer never re-evaluates whether a heartbeat is due. Required
+        // so Bun.serve's idle timeout (255 s on this route) never trips
+        // during long model deliberations.
+        writer.startHeartbeat();
+        const heartbeatTicker = setInterval(() => writer.tickHeartbeat(), 5_000);
         let outcome: RunOutcome | null = null;
         try {
           outcome = await runAgent(deps, runRequest, writer);
@@ -186,6 +205,7 @@ export function buildAgentEndpoints(deps: AgentEndpointDeps): AgentEndpoints {
             });
           }
         } finally {
+          clearInterval(heartbeatTicker);
           recordEnd(runId);
           writer.close();
         }

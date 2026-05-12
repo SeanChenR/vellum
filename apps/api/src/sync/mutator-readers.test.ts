@@ -10,6 +10,7 @@ import type { RoomRegistry, SyncRoomLike } from "./room";
 import {
   listShapesInViewport,
   listShapesInSelection,
+  listAllShapes,
   getShape,
   getCanvasBounds,
   getViewport,
@@ -172,6 +173,43 @@ describe("listShapesInViewport", () => {
       h: 100,
     });
     expect(r).toEqual({ ok: false, errorKey: "errors.fullToolSurface.invalidViewport" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listAllShapes
+// ---------------------------------------------------------------------------
+
+describe("listAllShapes", () => {
+  test("rejects when the room is not active", async () => {
+    const d = depsWith(null);
+    const r = await listAllShapes(d, CANVAS_ID);
+    expect(r).toEqual({ ok: false, errorKey: "errors.devMutate.canvasNotInActiveRoom" });
+  });
+
+  test("returns empty array when the room has no shapes", async () => {
+    const r = await listAllShapes(deps, CANVAS_ID);
+    expect(r).toEqual({ ok: true, data: [] });
+  });
+
+  test("returns one ShapeSummary per shape record", async () => {
+    room = makeRoomStub({
+      shapes: [
+        shape("shape:a", 10, 20, 30, 40),
+        shape("shape:b", 100, 100, 50, 50),
+        shape("shape:c", 200, 0, 80, 60),
+      ],
+    });
+    deps = depsWith(room);
+
+    const r = await listAllShapes(deps, CANVAS_ID);
+
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data).toHaveLength(3);
+      expect(r.data.map((s) => s.id)).toEqual(["shape:a", "shape:b", "shape:c"]);
+      expect(r.data[0]).toMatchObject({ x: 10, y: 20, w: 30, h: 40 });
+    }
   });
 });
 

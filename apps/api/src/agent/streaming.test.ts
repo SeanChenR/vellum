@@ -96,7 +96,7 @@ describe("SseWriter — event encoding", () => {
     const fake = makeFakeController();
     const writer = new SseWriter(fake.controller);
 
-    writer.writeEvent({ type: "done", runId: RUN_ID });
+    writer.writeEvent({ type: "done", runId: RUN_ID, usage: null });
     expect(fake.frames[0]!.text).toContain("event: done\n");
 
     writer.writeEvent({
@@ -163,7 +163,7 @@ describe("SseWriter — close lifecycle", () => {
     const fake = makeFakeController();
     const writer = new SseWriter(fake.controller);
     writer.close();
-    writer.writeEvent({ type: "done", runId: RUN_ID });
+    writer.writeEvent({ type: "done", runId: RUN_ID, usage: null });
     expect(fake.frames).toHaveLength(0);
   });
 

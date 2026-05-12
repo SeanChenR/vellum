@@ -69,6 +69,13 @@ const server = Bun.serve<ProxyWsData>({
       url.pathname.startsWith("/agent/") ||
       url.pathname === "/health"
     ) {
+      // SSE: stretch idle timeout to Bun's 255 s ceiling so long agent
+      // runs (model thinking + tool calls) aren't killed at the default
+      // 10 s. Matches the upstream API's per-request override on the
+      // same path.
+      if (/^\/api\/agent\/canvas\/[^/]+\/run$/.test(url.pathname)) {
+        srv.timeout(req, 255);
+      }
       const fwd = "http://localhost:3000" + url.pathname + url.search;
       const init: RequestInit = {
         method: req.method,

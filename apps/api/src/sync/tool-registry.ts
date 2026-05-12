@@ -142,8 +142,19 @@ const CREATE_SHAPE_DESCRIPTION = [
   "  - type='code':     props={ source: string, language: 'javascript'|'typescript'|'python'|'go'|'swift'|'rust'|'html'|'css'|'sql'|'bash'|'markdown'|'json', w: number>0, h: number>0 }",
   "  - type='callout':  props={ variant: 'info'|'warning'|'danger', body: string, w: number>0, h: number>0 }",
   "  - type='link-card': props={ url: string, state: 'pending'|'success'|'error', metadata: object|null, fetchedAt: string|null, w: number>0, h: number>0 }",
+  "  - type='geo':      a coloured geometric shape (tldraw built-in). All props are OPTIONAL except w / h; the server fills sensible defaults for omitted keys.",
+  "      props={",
+  "        geo?: 'rectangle'|'ellipse'|'triangle'|'diamond'|'pentagon'|'hexagon'|'octagon'|'star'|'rhombus'|'rhombus-2'|'oval'|'trapezoid'|'arrow-right'|'arrow-left'|'arrow-up'|'arrow-down'|'x-box'|'check-box'|'heart'|'cloud',   // default 'rectangle'",
+  "        color?: 'black'|'grey'|'light-violet'|'violet'|'blue'|'light-blue'|'yellow'|'orange'|'green'|'light-green'|'light-red'|'red',                                                                                                  // default 'black'",
+  "        fill?: 'none'|'semi'|'solid'|'pattern',                                                                                                                                                                                       // default 'none'",
+  "        dash?: 'draw'|'solid'|'dashed'|'dotted',                                                                                                                                                                                      // default 'draw'",
+  "        size?: 's'|'m'|'l'|'xl',                                                                                                                                                                                                       // default 'm'",
+  "        text?: string,                                                                                                                                                                                                                 // optional plain-text label rendered inside the shape",
+  "        w?: number>0,                                                                                                                                                                                                                   // default 200",
+  "        h?: number>0                                                                                                                                                                                                                    // default 200",
+  "      }",
   "",
-  "Sensible defaults: w=320, h=180 for markdown / code / callout; w=320, h=120 for link-card. Place new shapes at x=100, y=100 unless context suggests otherwise.",
+  "Sensible defaults: w=320, h=180 for markdown / code / callout; w=320, h=120 for link-card; w=200, h=200 for geo. Place new shapes at x=100, y=100 unless context suggests otherwise.",
 ].join("\n");
 
 export const toolRegistry: Record<ToolName, ToolEntry> = {
@@ -157,8 +168,18 @@ export const toolRegistry: Record<ToolName, ToolEntry> = {
   updateShape: {
     name: "updateShape",
     kind: "write",
-    description:
+    description: [
       "Update properties of an existing shape by id. Provide only the keys you want to change inside `patch`; unspecified keys keep their current value. The shape's `type` cannot change. Use `getShape` first if unsure of current props.",
+      "",
+      "Writable `patch.props` keys per shape type:",
+      "  - markdown:  patch.props = { content?: string, w?: number, h?: number }",
+      "  - code:      patch.props = { source?: string, language?: 'javascript'|'typescript'|'python'|'go'|'swift'|'rust'|'html'|'css'|'sql'|'bash'|'markdown'|'json', w?: number, h?: number }",
+      "  - callout:   patch.props = { variant?: 'info'|'warning'|'danger', body?: string, w?: number, h?: number }",
+      "  - link-card: patch.props = { url?: string, state?: 'pending'|'success'|'error', metadata?: object|null, fetchedAt?: string|null, w?: number, h?: number }",
+      "  - geo:       patch.props = { geo?: <variant>, color?: <color>, fill?: <fill>, dash?: <dash>, size?: 's'|'m'|'l'|'xl', text?: string, w?: number, h?: number } — see createShape geo for the enum values.",
+      "",
+      "patch.x / patch.y / patch.rotation also accepted. Other top-level keys (id, type) are NOT writable.",
+    ].join("\n"),
     schema: updateShapePayloadSchema,
     execute: writeExec<"updateShape", UpdateShapePayload>("updateShape"),
   },
@@ -173,8 +194,16 @@ export const toolRegistry: Record<ToolName, ToolEntry> = {
   groupShapes: {
     name: "groupShapes",
     kind: "write",
-    description:
-      "Group two or more existing shapes so the user can move/scale them together. Provide the array of shape ids to group; all ids must exist on the canvas.",
+    description: [
+      "Group two or more existing shapes into a single tldraw group so the user can move/scale them together.",
+      "",
+      "REQUIRED arguments: shapeIds (array of >=2 existing shape ids on the canvas).",
+      "",
+      "Behavior:",
+      "  - Children retain their absolute positions on the canvas (group does not re-center them).",
+      "  - The group itself has no editable props — you cannot updateShape against the group id to change appearance.",
+      "  - Use ungroupShape with the resulting group id to reverse this operation.",
+    ].join("\n"),
     schema: groupShapesPayloadSchema,
     execute: writeExec<"groupShapes", GroupShapesPayload>("groupShapes"),
   },
@@ -189,8 +218,16 @@ export const toolRegistry: Record<ToolName, ToolEntry> = {
   connectShapes: {
     name: "connectShapes",
     kind: "write",
-    description:
-      "Draw a tldraw arrow shape connecting two existing shapes. Both `fromId` and `toId` must already exist on the canvas. Use to express relationships between markdown / code / callout shapes.",
+    description: [
+      "Draw a tldraw arrow shape connecting two existing shapes. Use to express relationships between markdown / code / callout / link-card shapes.",
+      "",
+      "REQUIRED arguments: fromId (start shape id), toId (end shape id). Both must already exist on the canvas.",
+      "",
+      "Optional arrow style props on `props`:",
+      "  - color: 'black'|'grey'|'light-violet'|'violet'|'blue'|'light-blue'|'yellow'|'orange'|'green'|'light-green'|'light-red'|'red' (default: 'black')",
+      "  - dash:  'draw'|'solid'|'dashed'|'dotted' (default: 'draw')",
+      "  - bend:  number (line curvature; default: 0)",
+    ].join("\n"),
     schema: connectShapesPayloadSchema,
     execute: writeExec<"connectShapes", ConnectShapesPayload>("connectShapes"),
   },

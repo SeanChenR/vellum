@@ -134,3 +134,37 @@ describe("presence updates reflect on the next render", () => {
     expect(screen.queryAllByTestId("collaborator-avatar")).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// M14 — Cursor AI Badge (aiActive overlay)
+// ---------------------------------------------------------------------------
+
+describe("aiActive presence flag — sparkle overlay", () => {
+  test("only avatars with aiActive=true render the badge overlay", () => {
+    renderWith([
+      { ...makePresence("u-1"), aiActive: true },
+      { ...makePresence("u-2"), aiActive: false },
+    ]);
+    const badges = screen.queryAllByTestId("collaborator-ai-badge");
+    expect(badges).toHaveLength(1);
+  });
+
+  test("aiActive omitted (default false) renders no overlay", () => {
+    renderWith([makePresence("u-1")]);
+    expect(screen.queryByTestId("collaborator-ai-badge")).toBeNull();
+  });
+
+  test("flipping aiActive on a presence row updates the overlay rendering", () => {
+    const { rerender } = renderWith([{ ...makePresence("u-1"), aiActive: true }]);
+    expect(screen.queryByTestId("collaborator-ai-badge")).not.toBeNull();
+    rerender(
+      <I18nextProvider i18n={i18n}>
+        <CollaboratorAvatars
+          localUserId={LOCAL_USER_ID}
+          collaborators={[{ ...makePresence("u-1"), aiActive: false }]}
+        />
+      </I18nextProvider>,
+    );
+    expect(screen.queryByTestId("collaborator-ai-badge")).toBeNull();
+  });
+});

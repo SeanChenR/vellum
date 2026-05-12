@@ -26,6 +26,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { TLSocketRoom } from "@tldraw/sync-core";
 import { CancellationRegistry } from "./cancel";
+import { buildInMemoryThreadRepo } from "./threads/repo";
 import { applyMutation } from "../sync/mutator";
 import { vellumStoreSchema } from "../sync/shape-schemas";
 import { RoomRegistry, type SyncRoomLike } from "../sync/room";
@@ -126,6 +127,7 @@ function buildDeps(registry: RoomRegistry<SyncRoomLike>): AgentEndpointDeps {
     logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
     rateLimiter: new RateLimiter(),
     rateLimitRule: AGENT_RUN_RULE,
+    threadRepo: buildInMemoryThreadRepo(),
   };
 }
 
@@ -163,6 +165,12 @@ describe("agent endpoint → tool registry → mutator → sync room", () => {
     await registry.acquire(CANVAS_ID);
 
     const deps = buildDeps(registry);
+    // Seed a thread the run endpoint will resolve as owned by USER_ID.
+    deps.threadRepo._test_seedThread!({
+      id: "thr_int_a",
+      userId: USER_ID,
+      canvasId: CANVAS_ID,
+    });
     const endpoints = buildAgentEndpoints(deps);
 
     const req = new Request(`http://localhost/agent/canvas/${CANVAS_ID}/run`, {
@@ -172,8 +180,8 @@ describe("agent endpoint → tool registry → mutator → sync room", () => {
         runId: RUN_ID,
         provider: "openai",
         model: "gpt-4o-mini",
-        messages: [{ role: "user", content: "create a markdown shape" }],
-        sessionId: SESSION_ID,
+        userMessage: "create a markdown shape",
+        threadId: "thr_int_a",
       }),
     });
 

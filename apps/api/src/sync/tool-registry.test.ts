@@ -66,6 +66,59 @@ describe("toolRegistry — composition", () => {
     expect(desc).toContain("url");
   });
 
+  test("createShape description teaches the LLM about type='geo' with variant/color/text", () => {
+    const desc = toolRegistry.createShape.description;
+    expect(desc).toContain("geo");
+    // At least one geo variant — rectangle is the canonical default.
+    expect(desc).toContain("rectangle");
+    // At least one other variant so the model knows the list is not just rect.
+    expect(desc).toMatch(/ellipse|triangle|diamond|star|arrow-right/);
+    // Color palette hint.
+    expect(desc).toMatch(/color/);
+    expect(desc).toMatch(/red|blue|green|violet/);
+    // Fill mode hint.
+    expect(desc).toMatch(/fill/);
+    expect(desc).toMatch(/solid|semi|none/);
+    // Optional text label hint.
+    expect(desc).toMatch(/text/);
+  });
+
+  test("updateShape description enumerates per-shape-type patch keys (M14)", () => {
+    const desc = toolRegistry.updateShape.description;
+    for (const shapeType of ["markdown", "code", "callout", "link-card"]) {
+      expect(desc).toContain(shapeType);
+    }
+    // At least one writable patch key per custom shape type must be named.
+    expect(desc).toMatch(/content/); // markdown
+    expect(desc).toMatch(/source|language/); // code
+    expect(desc).toMatch(/variant|body/); // callout
+    expect(desc).toMatch(/url|metadata/); // link-card
+  });
+
+  test("updateShape description teaches the LLM how to update a geo shape", () => {
+    const desc = toolRegistry.updateShape.description;
+    expect(desc).toContain("geo");
+    // At least one writable geo prop must be named so the model knows what
+    // it is allowed to change on a geometric shape.
+    expect(desc).toMatch(/color|fill|text/);
+  });
+
+  test("connectShapes description names start/end ids and at least one arrow style prop (M14)", () => {
+    const desc = toolRegistry.connectShapes.description;
+    expect(desc).toContain("fromId");
+    expect(desc).toContain("toId");
+    // Must mention at least one of color / dash / bend.
+    expect(desc).toMatch(/color|dash|bend/);
+  });
+
+  test("groupShapes description explains group behavior (M14)", () => {
+    const desc = toolRegistry.groupShapes.description;
+    // Children retain their absolute positions on the canvas.
+    expect(desc).toMatch(/absolute position/i);
+    // Group itself has no editable props.
+    expect(desc).toMatch(/no editable props|cannot updateShape against the group/i);
+  });
+
   test("all eleven expected tool names are present", () => {
     const expected = [
       "createShape",

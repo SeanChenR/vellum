@@ -16,11 +16,13 @@ import {
   type RunRequest,
 } from "./runtime";
 import { SseWriter } from "./streaming";
+import { buildInMemoryThreadRepo, type ThreadRepo } from "./threads/repo";
 
 const RUN_A = "11111111-1111-4111-8111-111111111111";
 const CANVAS_ID = "cnv_a";
 const USER_ID = "user_a";
 const SESSION_ID = "sess_a";
+const DEFAULT_THREAD_ID = "thr_a";
 
 // ---------------------------------------------------------------------------
 // Test fakes
@@ -107,7 +109,13 @@ function makeDeps(opts: {
   retryDelaysMs?: number[];
   appliedMutations?: Array<{ canvasId: string; mutations: unknown[] }>;
   registry?: CancellationRegistry;
-}): { deps: AgentRuntimeDeps; logs: Array<{ level: string; obj: unknown; msg: string }> } {
+  threadRepo?: ThreadRepo;
+  titleGen?: AgentRuntimeDeps["titleGen"];
+}): {
+  deps: AgentRuntimeDeps;
+  logs: Array<{ level: string; obj: unknown; msg: string }>;
+  repo: ThreadRepo;
+} {
   const logs: Array<{ level: string; obj: unknown; msg: string }> = [];
   const role = opts.role === undefined ? "editor" : opts.role;
   const canvasExists = opts.canvasExists ?? true;
@@ -121,6 +129,7 @@ function makeDeps(opts: {
       return { ok: true as const, appliedCount: mutations.length };
     });
 
+  const repo = opts.threadRepo ?? buildInMemoryThreadRepo();
   const deps: AgentRuntimeDeps = {
     cancellation: opts.registry ?? new CancellationRegistry(),
     permission: {
@@ -166,8 +175,10 @@ function makeDeps(opts: {
     wallTimeoutMs: opts.wallTimeoutMs,
     maxToolCalls: opts.maxToolCalls,
     retryDelaysMs: opts.retryDelaysMs,
+    threadRepo: repo,
+    titleGen: opts.titleGen,
   };
-  return { deps, logs };
+  return { deps, logs, repo };
 }
 
 function makeRequest(overrides: Partial<RunRequest> = {}): RunRequest {
@@ -178,10 +189,68 @@ function makeRequest(overrides: Partial<RunRequest> = {}): RunRequest {
     userId: USER_ID,
     provider: "openai",
     model: "gpt-4o-mini",
-    messages: [{ role: "user", content: "hi" }],
+    threadId: DEFAULT_THREAD_ID,
+    userMessage: "hi",
     ...overrides,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Group A0 — System prompt injection (M14 spatial-awareness fix)
+// ---------------------------------------------------------------------------
+
+describe("Group A0: System prompt prepended to conversation", () => {
+  it("prepends a role=system message as conversation[0] for every provider call", async () => {
+    const captured: Array<{ role: string; content: unknown }[]> = [];
+    const adapter: ProviderAdapter = {
+      async run(input) {
+        captured.push(input.messages.map((m) => ({ role: m.role, content: m.content })));
+        async function* gen(): AsyncGenerator<ProviderEvent> {
+          yield { type: "text-delta", delta: "ok" };
+          yield { type: "step-finish", finishReason: "stop" };
+        }
+        return { events: gen() };
+      },
+    };
+    const w = makeWriter();
+    const { deps } = makeDeps({ provider: adapter });
+
+    await runAgent(deps, makeRequest(), w.writer);
+
+    expect(captured.length).toBeGreaterThan(0);
+    const first = captured[0];
+    if (!first) throw new Error("expected captured messages");
+    expect(first[0]?.role).toBe("system");
+    const sysContent = first[0]?.content;
+    expect(typeof sysContent).toBe("string");
+    expect((sysContent as string).toLowerCase()).toContain("vellum");
+  });
+
+  it("system prompt notes state is unavailable when room registry has no room", async () => {
+    let capturedSystem: string | null = null;
+    const adapter: ProviderAdapter = {
+      async run(input) {
+        if (capturedSystem === null && input.messages[0]?.role === "system") {
+          capturedSystem = input.messages[0].content as string;
+        }
+        async function* gen(): AsyncGenerator<ProviderEvent> {
+          yield { type: "step-finish", finishReason: "stop" };
+        }
+        return { events: gen() };
+      },
+    };
+    const w = makeWriter();
+    // makeDeps's default toolRegistryDeps.registry.getRoom returns undefined,
+    // so listAllShapes / getCanvasBounds both fail. The runtime should still
+    // produce a coherent system prompt — flagging state as unavailable.
+    const { deps } = makeDeps({ provider: adapter });
+
+    await runAgent(deps, makeRequest(), w.writer);
+
+    expect(capturedSystem).not.toBeNull();
+    expect(capturedSystem!.toLowerCase()).toMatch(/unavailable|not available/);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Group A — Run lifecycle states

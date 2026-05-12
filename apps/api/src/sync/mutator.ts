@@ -17,6 +17,7 @@
 
 import { mutationsSchema, type Mutation } from "@vellum/shared/mutation-types";
 import type { RoomRegistry, SyncRoomLike } from "./room";
+import { transformGeoPartialProps, withGeoCreateDefaults } from "./geo-defaults";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -177,6 +178,15 @@ async function commitBatch(room: MutatorRoom, ops: Mutation[]): Promise<void> {
 function applyOne(store: MutatorStore, op: Mutation): void {
   switch (op.type) {
     case "createShape": {
+      // tldraw's `geo` shape needs a full prop set to pass record validation;
+      // the LLM agent surface only ships a slim subset (geo / color / fill /
+      // dash / size / text / w / h), so we backfill the rest here. Non-geo
+      // shape types (markdown / code / callout / link-card) are validated by
+      // vellumStoreSchema directly and pass through untouched.
+      const props =
+        op.payload.type === "geo"
+          ? withGeoCreateDefaults(op.payload.props ?? {})
+          : (op.payload.props ?? {});
       const record: ShapeRecord = {
         id: op.payload.id,
         typeName: "shape",
@@ -189,7 +199,7 @@ function applyOne(store: MutatorStore, op: Mutation): void {
         parentId: "page:page",
         index: "a1",
         meta: {},
-        props: op.payload.props ?? {},
+        props,
       };
       store.put(record);
       return;
@@ -199,6 +209,12 @@ function applyOne(store: MutatorStore, op: Mutation): void {
       const existing = store.get(op.payload.id);
       if (!existing) throw new Error("errors.fullToolSurface.shapeNotFound");
       const partial = op.payload.partial;
+      // For geo updates, convert plain `text` to richText before merge —
+      // we never overwrite other props that the existing record already has.
+      const normalisedPartialProps =
+        partial.props && existing.type === "geo"
+          ? transformGeoPartialProps(partial.props)
+          : partial.props;
       const merged: ShapeRecord = {
         ...existing,
         ...(partial.x !== undefined ? { x: partial.x } : {}),
@@ -206,7 +222,9 @@ function applyOne(store: MutatorStore, op: Mutation): void {
         ...(partial.rotation !== undefined ? { rotation: partial.rotation } : {}),
         ...(partial.parentId !== undefined ? { parentId: partial.parentId } : {}),
         meta: partial.meta ? { ...existing.meta, ...partial.meta } : existing.meta,
-        props: partial.props ? { ...existing.props, ...partial.props } : existing.props,
+        props: normalisedPartialProps
+          ? { ...existing.props, ...normalisedPartialProps }
+          : existing.props,
       };
       store.put(merged);
       return;

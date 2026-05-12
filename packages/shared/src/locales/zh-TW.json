@@ -482,7 +482,39 @@
       "internal": "AI 服務內部錯誤，請稍後再試。",
       "invalidRequest": "請求參數有誤，請檢查格式。",
       "runIdReused": "此 run id 已使用過，請重新開啟新的對話。",
-      "rateLimited": "短時間內 AI 請求次數過多，請稍候再試。"
+      "rateLimited": "短時間內 AI 請求次數過多，請稍候再試。",
+      "threadNotFound": "找不到對應的 AI 對話，可能已被刪除。"
+    },
+    "panel": {
+      "toggleOpen": "開啟 AI 助手",
+      "toggleClose": "收起 AI 助手",
+      "placeholder": "請 AI 幫你修改 canvas（Cmd+Enter 送出）",
+      "send": "送出",
+      "cancel": "取消",
+      "newChat": "新對話",
+      "clearThread": "清空訊息",
+      "deleteThread": "刪除對話",
+      "noProvider": "尚未設定 BYOK，請至設定頁新增 API Key",
+      "noApiKeyHint": "尚未設定任何 BYOK 金鑰。請到「設定 → API Keys」加入金鑰後才能與 AI 對話。",
+      "providerLabel": "供應商",
+      "modelLabel": "模型",
+      "untitled": "新對話",
+      "thinking": "AI 正在思考…"
+    },
+    "usage": {
+      "thisRun": "本輪：",
+      "threadTotal": "對話累計：",
+      "inputTokens": "{{count}} input",
+      "outputTokens": "{{count}} output",
+      "cost": "${{cost}}",
+      "costSubCent": "<$0.0001",
+      "noUsage": "—"
+    },
+    "badge": {
+      "aiEditingTooltip": "{{name}} 正在用 AI 編輯"
+    },
+    "thread": {
+      "fallbackTitleEmpty": "新對話"
     }
   }
 }

@@ -61,6 +61,13 @@ export interface TopBarProps {
    * Adds a "View only" badge to the TopBar. Defaults to false.
    */
   isReadOnly?: boolean;
+  /**
+   * AI Side Panel toggle (M14). When the local role is editor/owner, the
+   * TopBar renders a sparkle button that flips `aiPanelOpen`. Viewers see
+   * neither the button nor the panel.
+   */
+  aiPanelOpen?: boolean;
+  onAiPanelToggle?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,6 +195,8 @@ export function TopBar({
   collaborators = [],
   isOwner = true,
   isReadOnly = false,
+  aiPanelOpen = false,
+  onAiPanelToggle,
 }: TopBarProps) {
   const { t } = useTranslation();
   const [renameOpen, setRenameOpen] = useState(false);
@@ -241,6 +250,24 @@ export function TopBar({
             <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
               {t("canvas.chrome.topbar.viewOnlyBadge")}
             </span>
+          )}
+
+          {/* AI panel toggle — editor/owner only (viewer never sees this) */}
+          {!isReadOnly && onAiPanelToggle && (
+            <button
+              type="button"
+              data-testid="topbar-ai-panel-toggle"
+              aria-label={t(aiPanelOpen ? "agent.panel.toggleClose" : "agent.panel.toggleOpen")}
+              aria-pressed={aiPanelOpen}
+              onClick={onAiPanelToggle}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                aiPanelOpen
+                  ? "border-ink-navy bg-ink-navy text-white"
+                  : "border-ink-navy/20 text-ink-navy hover:bg-parchment-cream"
+              }`}
+            >
+              ✨
+            </button>
           )}
 
           {/* Share button — owner-only */}

@@ -142,3 +142,23 @@ export const BYOK_PREFERENCE_RULE: RateLimitRule = { windowMs: s(60), max: 60 };
  * permitted.
  */
 export const AGENT_RUN_RULE: RateLimitRule = { windowMs: s(60), max: 5 };
+
+// ---------------------------------------------------------------------------
+// AI Threads CRUD (Phase 2, M14) — /api/agent/threads/*
+// Bucket key format: `api:agent.threads.<action>:user:<userId>`.
+// ---------------------------------------------------------------------------
+
+/** GET /api/agent/threads/canvas/:canvasId — list threads (auto-creates if empty). */
+export const AGENT_THREAD_LIST_RULE: RateLimitRule = { windowMs: s(60), max: 60 };
+
+/** GET /api/agent/threads/:threadId — read single thread + messages. */
+export const AGENT_THREAD_READ_RULE: RateLimitRule = { windowMs: s(60), max: 120 };
+
+/** POST /api/agent/threads/canvas/:canvasId — create new empty thread. */
+export const AGENT_THREAD_CREATE_RULE: RateLimitRule = { windowMs: s(60), max: 10 };
+
+/** POST /api/agent/threads/:threadId/clear — clear messages, keep row. */
+export const AGENT_THREAD_CLEAR_RULE: RateLimitRule = { windowMs: s(60), max: 10 };
+
+/** DELETE /api/agent/threads/:threadId — delete thread row + cascade. */
+export const AGENT_THREAD_DELETE_RULE: RateLimitRule = { windowMs: s(60), max: 10 };

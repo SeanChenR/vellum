@@ -141,14 +141,55 @@ describe("agentEventSchema — error variant", () => {
 });
 
 describe("agentEventSchema — done variant", () => {
-  it("round-trips a done event", () => {
-    const event = { type: "done" as const, runId: RUN_ID };
+  it("round-trips a done event with usage payload", () => {
+    const event = {
+      type: "done" as const,
+      runId: RUN_ID,
+      usage: {
+        input: 1500,
+        output: 800,
+        provider: "openai" as const,
+        model: "gpt-4o-mini",
+      },
+    };
     const parsed = agentEventSchema.parse(event);
     expect(parsed).toEqual(event);
   });
 
+  it("round-trips a done event with usage explicitly null (provider returned no usage)", () => {
+    const event = { type: "done" as const, runId: RUN_ID, usage: null };
+    const parsed = agentEventSchema.parse(event);
+    expect(parsed).toEqual(event);
+  });
+
+  it("rejects a done event missing the usage field (M14 contract)", () => {
+    expect(() => agentEventSchema.parse({ type: "done", runId: RUN_ID })).toThrow();
+  });
+
+  it("rejects a done event whose usage.provider is unknown", () => {
+    expect(() =>
+      agentEventSchema.parse({
+        type: "done",
+        runId: RUN_ID,
+        usage: { input: 1, output: 1, provider: "huggingface", model: "x" },
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a done event whose usage.input is not a number", () => {
+    expect(() =>
+      agentEventSchema.parse({
+        type: "done",
+        runId: RUN_ID,
+        usage: { input: "lots", output: 0, provider: "openai", model: "gpt-4o-mini" },
+      }),
+    ).toThrow();
+  });
+
   it("rejects a done event with extra unknown field", () => {
-    expect(() => agentEventSchema.parse({ type: "done", runId: RUN_ID, foo: "bar" })).toThrow();
+    expect(() =>
+      agentEventSchema.parse({ type: "done", runId: RUN_ID, usage: null, foo: "bar" }),
+    ).toThrow();
   });
 });
 

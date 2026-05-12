@@ -95,10 +95,30 @@ const errorEventSchema = z
   })
   .strict();
 
+/**
+ * Per-run aggregated token totals from the provider, summed across every
+ * turn of the multi-turn tool loop. `usage: null` is allowed only when
+ * the provider's response did not include usage information (rare).
+ *
+ * The `provider` literal mirrors the BYOK provider enum elsewhere in the
+ * codebase (apps/api/src/byok/providers/*); adding a fourth provider
+ * requires extending this list AND the title-gen economy table AND the
+ * BYOK pricing table.
+ */
+const usageSchema = z
+  .object({
+    input: z.number().int().nonnegative(),
+    output: z.number().int().nonnegative(),
+    provider: z.enum(["openai", "anthropic", "google"]),
+    model: z.string().min(1),
+  })
+  .strict();
+
 const doneEventSchema = z
   .object({
     type: z.literal("done"),
     runId: uuidV4,
+    usage: usageSchema.nullable(),
   })
   .strict();
 
@@ -116,3 +136,4 @@ export type AgentToolCallEvent = z.infer<typeof toolCallEventSchema>;
 export type AgentToolResultEvent = z.infer<typeof toolResultEventSchema>;
 export type AgentErrorEvent = z.infer<typeof errorEventSchema>;
 export type AgentDoneEvent = z.infer<typeof doneEventSchema>;
+export type AgentRunUsage = z.infer<typeof usageSchema>;

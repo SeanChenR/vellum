@@ -53,6 +53,10 @@ import { DEV_MUTATE_RULE } from "./lib/rate-limit-rules";
 import { initVault } from "./byok/vault";
 import { createProviderAdapters } from "./byok/providers/index";
 import { buildProductionAgentEndpoints } from "./agent/wiring";
+import { buildThreadHandlers } from "./agent/threads/handlers";
+import { buildThreadRepo } from "./agent/threads/repo";
+import { generateTitleInBackground } from "./agent/title-gen";
+import * as schema from "./db/schema";
 import { createDrizzleByokRepo } from "./byok/byok-repo";
 import { handleByokRequest, type ByokDeps } from "./byok/routes";
 
@@ -204,6 +208,13 @@ const permissionGuardDeps: PermissionGuardDeps = {
 // with redaction) over the same singletons the dev mutate endpoint uses.
 // Spec: openspec/specs/{agent-runtime,canvas-digest,streaming-channel}/spec.md.
 // ---------------------------------------------------------------------------
+// Thread CRUD handlers (Phase 2, M14) — backed by drizzle ThreadRepo over
+// the shared rate limiter. Agent runtime + SSE endpoint also consume the
+// repo via wiring.ts; keep one shared instance so in-memory caches (none
+// today, but possible) remain consistent.
+const threadRepo = buildThreadRepo({ db: getDb() });
+const threadHandlers = buildThreadHandlers({ repo: threadRepo, rateLimiter });
+
 const { endpoints: agentEndpoints } = buildProductionAgentEndpoints({
   vault: byokVault,
   permissionGuard: permissionGuardDeps,
@@ -211,6 +222,45 @@ const { endpoints: agentEndpoints } = buildProductionAgentEndpoints({
   toolRegistryDeps: { registry: syncRegistry, applyMutation },
   digestDeps: { registry: syncRegistry },
   logger,
+  threadRepo,
+  titleGen: {
+    async triggerIfFirstRun({ threadId, userId, provider, firstUserMessage }) {
+      // Reuse the AI SDK provider stack via a single-turn generateText call.
+      // Errors are silent inside title-gen; we deliberately never await.
+      const { generateText } = await import("ai");
+      await generateTitleInBackground(
+        {
+          repo: threadRepo,
+          vault: byokVault,
+          async fetchEncryptedKey(uid, p) {
+            const db = getDb();
+            const [row] = await db
+              .select({ encryptedKey: schema.apiKeys.encryptedKey })
+              .from(schema.apiKeys)
+              .where(and(eq(schema.apiKeys.userId, uid), eq(schema.apiKeys.provider, p)));
+            return row?.encryptedKey ?? null;
+          },
+          async callLlm({ provider: p, model, apiKey, prompt }) {
+            const ai = await import("ai");
+            const { createOpenAI } = await import("@ai-sdk/openai");
+            const { createAnthropic } = await import("@ai-sdk/anthropic");
+            const { createGoogleGenerativeAI } = await import("@ai-sdk/google");
+            const m =
+              p === "openai"
+                ? createOpenAI({ apiKey })(model)
+                : p === "anthropic"
+                  ? createAnthropic({ apiKey })(model)
+                  : createGoogleGenerativeAI({ apiKey })(model);
+            const result = await ai.generateText({ model: m, prompt });
+            return result.text;
+          },
+          logger,
+        },
+        { threadId, userId, provider, firstUserMessage },
+      );
+      void generateText; // satisfy import for tree-shaker; not used directly
+    },
+  },
 });
 
 const syncDeps: SyncServerDeps = {
@@ -655,10 +705,17 @@ const server = Bun.serve<SyncSocketData>({
     }
 
     // Agent endpoints (Phase 2, M13) — per-user SSE streaming run + cancel.
-    // Spec: openspec/specs/streaming-channel/spec.md.
+    // Spec: openspec/specs/streaming-channel/spec.md. M14 normalised the
+    // prefix to `/api/agent/...` to match the threads CRUD routes and the
+    // overall RESTful convention.
     if (req.method === "POST") {
-      const runMatch = url.pathname.match(/^\/agent\/canvas\/([^/]+)\/run$/);
+      const runMatch = url.pathname.match(/^\/api\/agent\/canvas\/([^/]+)\/run$/);
       if (runMatch && runMatch[1]) {
+        // SSE: stretch idle timeout to Bun's 255 s ceiling so gaps between
+        // events (e.g. while the model deliberates a tool call) don't kill
+        // the stream. The default 10 s is fine for normal HTTP but lethal
+        // for SSE.
+        srv.timeout(req, 255);
         const session = await getSession(req);
         return respond(
           await agentEndpoints.runHandler(
@@ -668,7 +725,7 @@ const server = Bun.serve<SyncSocketData>({
           ),
         );
       }
-      const cancelMatch = url.pathname.match(/^\/agent\/run\/([^/]+)\/cancel$/);
+      const cancelMatch = url.pathname.match(/^\/api\/agent\/run\/([^/]+)\/cancel$/);
       if (cancelMatch && cancelMatch[1]) {
         const session = await getSession(req);
         return respond(
@@ -677,6 +734,41 @@ const server = Bun.serve<SyncSocketData>({
             session ? { userId: session.userId } : null,
           ),
         );
+      }
+    }
+
+    // Thread CRUD routes (Phase 2, M14) — protected, per-user.
+    // Spec: openspec/specs/ai-thread/spec.md.
+    if (url.pathname.startsWith("/api/agent/threads")) {
+      const session = await getSession(req);
+      const sessionLike = session ? { userId: session.userId } : null;
+
+      // GET /api/agent/threads/canvas/:canvasId
+      const listMatch = url.pathname.match(/^\/api\/agent\/threads\/canvas\/([^/]+)$/);
+      if (listMatch && listMatch[1]) {
+        if (req.method === "GET") {
+          return respond(await threadHandlers.handleListByCanvas(req, listMatch[1], sessionLike));
+        }
+        if (req.method === "POST") {
+          return respond(await threadHandlers.handleCreate(req, listMatch[1], sessionLike));
+        }
+      }
+
+      // POST /api/agent/threads/:threadId/clear
+      const clearMatch = url.pathname.match(/^\/api\/agent\/threads\/([^/]+)\/clear$/);
+      if (clearMatch && clearMatch[1] && req.method === "POST") {
+        return respond(await threadHandlers.handleClear(clearMatch[1], sessionLike));
+      }
+
+      // GET /api/agent/threads/:threadId  + DELETE /api/agent/threads/:threadId
+      const idMatch = url.pathname.match(/^\/api\/agent\/threads\/([^/]+)$/);
+      if (idMatch && idMatch[1]) {
+        if (req.method === "GET") {
+          return respond(await threadHandlers.handleRead(idMatch[1], sessionLike));
+        }
+        if (req.method === "DELETE") {
+          return respond(await threadHandlers.handleDelete(idMatch[1], sessionLike));
+        }
       }
     }
 

@@ -18,9 +18,11 @@
 import type { AgentEvent, AgentErrorKey } from "@vellum/shared/agent-events";
 import type { CancellationRegistryDeps } from "./cancel";
 import type { SseWriter } from "./streaming";
+import type { ThreadRepo } from "./threads/repo";
 import { toolRegistry, type ToolEntry, type ToolRegistryDeps } from "../sync/tool-registry";
 import { requireRole, type PermissionGuardDeps } from "../lib/permission-guard";
-import type { MutatorReadersDeps } from "../sync/mutator-readers";
+import { getCanvasBounds, listAllShapes, type MutatorReadersDeps } from "../sync/mutator-readers";
+import { buildSystemPrompt } from "./system-prompt";
 import type { ToolName } from "@vellum/shared/tool-types";
 
 // ---------------------------------------------------------------------------
@@ -54,11 +56,29 @@ export interface RunRequest {
   userId: string;
   provider: ProviderId;
   model: string;
-  messages: AgentMessage[];
+  /**
+   * The thread to run against. The runtime SHALL load the existing
+   * `ai_messages` rows ordered by `created_at` and use them as the
+   * conversation context for the provider call. The legacy `messages`
+   * field has been removed — see streaming-channel spec MODIFIED
+   * "Run endpoint accepts POST with model selection" (M14).
+   */
+  threadId: string;
+  /**
+   * The new user prompt to append to the thread before the run starts.
+   * Persisted as a role=user `ai_messages` row before the first provider
+   * request is issued.
+   */
+  userMessage: string;
+}
+
+export interface RunUsageTotals {
+  input: number;
+  output: number;
 }
 
 export type RunOutcome =
-  | { state: "done" }
+  | { state: "done"; usage: RunUsageTotals | null }
   | { state: "error"; errorKey: AgentErrorKey; detail?: string }
   | { state: "cancelled" }
   | { state: "timeout"; errorKey: AgentErrorKey };
@@ -66,7 +86,13 @@ export type RunOutcome =
 export type ProviderEvent =
   | { type: "text-delta"; delta: string }
   | { type: "tool-call"; callId: string; name: string; args: unknown }
-  | { type: "step-finish"; finishReason: "stop" | "tool-calls" | "length" | "error" };
+  | { type: "step-finish"; finishReason: "stop" | "tool-calls" | "length" | "error" }
+  /**
+   * Per-step usage report, emitted at most once per step by the adapter.
+   * The runtime sums these across all turns of the multi-turn tool loop
+   * and forwards the total on the SSE `done` event.
+   */
+  | { type: "usage"; usage: RunUsageTotals };
 
 export interface ProviderToolDef {
   name: string;
@@ -143,6 +169,32 @@ export interface AgentRuntimeDeps {
   wallTimeoutMs?: number;
   maxToolCalls?: number;
   retryDelaysMs?: number[];
+  /**
+   * Thread persistence layer. The runtime owns the contract:
+   *   - load thread history at run start
+   *   - append the supplied userMessage as the first row of this run
+   *   - append assistant text segments / tool_calls / tool_results
+   *     as they are emitted
+   *   - setUsageOnLastAssistant on terminal `done`
+   * See agent-runtime spec ADDED "Runtime loads conversation history
+   * from thread storage" + "Runtime persists every emitted message to
+   * the thread" (M14).
+   */
+  threadRepo: ThreadRepo;
+  /**
+   * Background title-generation hook fired once after the first run
+   * completes successfully. Implementations SHALL be fire-and-forget
+   * (no await on the SSE done event); see ai-thread spec
+   * "Background title generation after first run".
+   */
+  titleGen?: {
+    triggerIfFirstRun(args: {
+      threadId: string;
+      userId: string;
+      provider: ProviderId;
+      firstUserMessage: string;
+    }): Promise<void>;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -351,8 +403,41 @@ export async function runAgent(
     cancelled: false,
   };
 
-  let conversation: AgentMessage[] = [...request.messages];
+  // Load thread history + append the supplied userMessage. The thread is
+  // the only source of truth for conversation context; the inbound HTTP
+  // body never carries a messages array (M14 contract).
+  const history = await deps.threadRepo.loadMessages(request.threadId);
+  await deps.threadRepo.appendMessage(request.threadId, {
+    role: "user",
+    content: { text: request.userMessage },
+  });
+  const wasFirstRunOfThread = history.length === 0;
+
+  // Build the system prompt from the live canvas snapshot. The system
+  // message is prepended fresh per run and NOT persisted to the thread —
+  // canvas state moves, the persisted prompt would go stale.
+  const shapesRes = await listAllShapes(deps.digestDeps, request.canvasId);
+  const boundsRes = await getCanvasBounds(deps.digestDeps, request.canvasId);
+  const stateAvailable = shapesRes.ok;
+  const systemPrompt = buildSystemPrompt({
+    shapes: shapesRes.ok ? shapesRes.data : [],
+    canvasBounds: boundsRes.ok ? boundsRes.data : null,
+    stateAvailable,
+  });
+
+  let conversation: AgentMessage[] = [
+    { role: "system" as const, content: systemPrompt },
+    ...history.map(persistedToAgentMessage),
+    { role: "user" as const, content: request.userMessage },
+  ];
   let outcome: RunOutcome | null = null;
+  /** Accumulator for assistant text within a single step — flushed to the
+   * thread as one row when the step ends with at least one delta. */
+  let pendingAssistantText = "";
+  // Per-run usage accumulator; null means the provider never emitted a usage
+  // event for this run (forwarded as `usage: null` on the SSE done event so
+  // the client can surface "—" in the footer).
+  let usageTotals: RunUsageTotals | null = null;
 
   try {
     while (true) {
@@ -381,24 +466,46 @@ export async function runAgent(
       let stepFinishReason: Extract<ProviderEvent, { type: "step-finish" }>["finishReason"] | null =
         null;
 
-      for await (const ev of providerResult.result.events) {
+      for await (const evRaw of providerResult.result.events) {
         if (signal.aborted) break;
-        switch (ev.type) {
-          case "text-delta":
-            writer.writeEvent({ type: "text", runId: request.runId, delta: ev.delta });
-            break;
-          case "tool-call":
-            queuedToolCalls.push({ callId: ev.callId, name: ev.name, args: ev.args });
-            break;
-          case "step-finish":
-            stepFinishReason = ev.finishReason;
-            break;
+        const ev: ProviderEvent = evRaw;
+        if (ev.type === "text-delta") {
+          writer.writeEvent({ type: "text", runId: request.runId, delta: ev.delta });
+          pendingAssistantText += ev.delta;
+        } else if (ev.type === "tool-call") {
+          queuedToolCalls.push({ callId: ev.callId, name: ev.name, args: ev.args });
+        } else if (ev.type === "step-finish") {
+          stepFinishReason = ev.finishReason;
+        } else if (ev.type === "usage") {
+          const inc: RunUsageTotals = ev.usage;
+          if (usageTotals === null) {
+            usageTotals = { input: inc.input, output: inc.output };
+          } else {
+            usageTotals = {
+              input: usageTotals.input + inc.input,
+              output: usageTotals.output + inc.output,
+            };
+          }
         }
       }
 
       if (signal.aborted) {
         outcome = { state: "cancelled" };
         break;
+      }
+
+      // Flush this step's accumulated assistant text as one persisted row.
+      // Persisting per-delta would create token-noise in the thread; per-step
+      // matches how the LLM logically segments its turn.
+      if (pendingAssistantText.length > 0) {
+        await deps.threadRepo.appendMessage(request.threadId, {
+          role: "assistant",
+          content: { text: pendingAssistantText },
+          provider: request.provider,
+          model: request.model,
+          runId: request.runId,
+        });
+        pendingAssistantText = "";
       }
 
       // Dispatch queued tool calls serially
@@ -420,6 +527,17 @@ export async function runAgent(
           name: call.name,
           args: (call.args ?? {}) as Record<string, unknown>,
         });
+        await deps.threadRepo.appendMessage(request.threadId, {
+          role: "tool",
+          content: {
+            kind: "call",
+            name: call.name,
+            args: (call.args ?? {}) as Record<string, unknown>,
+          },
+          toolName: call.name,
+          toolCallId: call.callId,
+          runId: request.runId,
+        });
         const exec = await executeTool(deps, request, call.callId, call.name, call.args);
         const resultPayload = exec.ok
           ? (exec.result as Record<string, unknown>)
@@ -429,6 +547,13 @@ export async function runAgent(
           runId: request.runId,
           callId: call.callId,
           result: resultPayload,
+        });
+        await deps.threadRepo.appendMessage(request.threadId, {
+          role: "tool",
+          content: { kind: "result", result: resultPayload },
+          toolName: call.name,
+          toolCallId: call.callId,
+          runId: request.runId,
         });
         // Append synthetic assistant + tool messages to drive the next step.
         conversation = [
@@ -448,7 +573,7 @@ export async function runAgent(
       if (outcome) break;
 
       if (stepFinishReason === "stop" || stepFinishReason === "length") {
-        outcome = { state: "done" };
+        outcome = { state: "done", usage: usageTotals };
         break;
       }
       if (stepFinishReason === "error") {
@@ -474,7 +599,56 @@ export async function runAgent(
 
   // Emit terminal event
   if (outcome.state === "done") {
-    writer.writeEvent({ type: "done", runId: request.runId });
+    if (outcome.usage) {
+      // Best-effort write to the most recent assistant row of this run.
+      // If the run produced only tool calls (no assistant text), there's
+      // no row to attach usage to — that's a noop in the repo.
+      try {
+        await deps.threadRepo.setUsageOnLastAssistant(
+          request.threadId,
+          request.runId,
+          outcome.usage,
+        );
+      } catch (err) {
+        deps.logger.warn(
+          { runId: request.runId, err: scrubErr(err) },
+          "setUsageOnLastAssistant failed; SSE done usage still emitted",
+        );
+      }
+    }
+    writer.writeEvent({
+      type: "done",
+      runId: request.runId,
+      usage: outcome.usage
+        ? {
+            input: outcome.usage.input,
+            output: outcome.usage.output,
+            provider: request.provider,
+            model: request.model,
+          }
+        : null,
+    });
+    if (!outcome.usage) {
+      deps.logger.warn(
+        { event: "ai_provider_missing_usage", runId: request.runId, provider: request.provider },
+        "provider returned no usage information",
+      );
+    }
+    // Fire-and-forget: only when this run was the thread's first one.
+    // We do NOT await — title-gen MUST NOT block the caller's done event.
+    if (wasFirstRunOfThread && deps.titleGen) {
+      const tg = deps.titleGen;
+      void tg
+        .triggerIfFirstRun({
+          threadId: request.threadId,
+          userId: request.userId,
+          provider: request.provider,
+          firstUserMessage: request.userMessage,
+        })
+        .catch(() => {
+          /* errors are already Pino-logged inside title-gen; swallow here */
+        });
+    }
   } else if (outcome.state === "cancelled") {
     writeError("agent.error.cancelled");
   } else if (outcome.state === "timeout") {
@@ -485,4 +659,64 @@ export async function runAgent(
 
   cleanup();
   return outcome;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers — persisted message ↔ AgentMessage conversion
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert a persisted `ai_messages` row to the AgentMessage shape the
+ * runtime/provider adapter expects. Tool rows carry a structured content
+ * envelope (kind="call" or kind="result"); we map both back to the same
+ * `assistant`/`tool` synthetic messages the runtime would have generated
+ * if those events had just been emitted.
+ *
+ * Persisted user/assistant text rows use `{text: string}` content.
+ */
+function persistedToAgentMessage(row: {
+  role: "user" | "assistant" | "tool";
+  content: unknown;
+  toolName: string | null;
+  toolCallId: string | null;
+}): AgentMessage {
+  const content = row.content as Record<string, unknown> | undefined;
+  if (row.role === "user") {
+    const text = (content?.["text"] as string | undefined) ?? "";
+    return { role: "user", content: text };
+  }
+  if (row.role === "assistant") {
+    // Tool-call assistant turn (structured content) — preserve toolCall envelope.
+    if (content && "toolCall" in content) {
+      return {
+        role: "assistant",
+        content: content as Record<string, unknown>,
+      };
+    }
+    // Tool-call assistant turn that was persisted as the `tool` kind=call row?
+    // Persisted assistants are always plain text in M14 — fall through.
+    const text = (content?.["text"] as string | undefined) ?? "";
+    return { role: "assistant", content: text };
+  }
+  // role === "tool"
+  if (content && content["kind"] === "call") {
+    return {
+      role: "assistant",
+      content: {
+        toolCall: {
+          callId: row.toolCallId ?? "",
+          name: row.toolName ?? content["name"] ?? "",
+          args: content["args"] ?? {},
+        },
+      },
+    };
+  }
+  // kind = "result"
+  const result = (content?.["result"] as Record<string, unknown> | undefined) ?? {};
+  return {
+    role: "tool",
+    toolCallId: row.toolCallId ?? "",
+    toolName: row.toolName ?? "",
+    content: result,
+  };
 }

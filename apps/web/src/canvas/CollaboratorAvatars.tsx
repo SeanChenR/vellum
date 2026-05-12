@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 /**
  * CollaboratorAvatars — TopBar list of remote-presence avatars.
  *
@@ -14,6 +16,13 @@ export interface CollaboratorPresence {
   userId: string;
   name: string;
   image: string | null;
+  /**
+   * True when this collaborator is currently running an AI agent against
+   * this canvas. Surfaced via tldraw `instancePresence.userMeta.aiActive`
+   * so all tabs of all participants see a sparkle overlay. Spec ref:
+   * ai-side-panel "Cursor AI Badge surfaces aiActive presence flag" (M14).
+   */
+  aiActive?: boolean;
 }
 
 export interface CollaboratorAvatarsProps {
@@ -50,25 +59,41 @@ export function CollaboratorAvatars({ localUserId, collaborators }: Collaborator
 }
 
 function Avatar({ presence }: { presence: CollaboratorPresence }) {
+  const { t } = useTranslation();
   const initial = presence.name.charAt(0).toUpperCase() || "?";
-  const baseClass =
-    "flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-ink-navy text-[11px] font-bold text-white";
-  if (presence.image) {
-    return (
-      <img
-        data-testid="collaborator-avatar"
-        aria-label={presence.name}
-        src={presence.image}
-        alt=""
-        referrerPolicy="no-referrer"
-        className={`${baseClass} object-cover`}
-        draggable={false}
-      />
-    );
-  }
-  return (
+  // When aiActive, the border becomes a gradient golden ring + a sparkle
+  // overlay sits at the bottom-right corner. The container wraps so the
+  // overlay can be absolutely positioned without affecting the underlying
+  // avatar rendering or the hover/click hit area.
+  const aiActive = presence.aiActive === true;
+  const borderClass = aiActive ? "border-amber-400 ring-2 ring-amber-300" : "border-white";
+  const baseClass = `flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 ${borderClass} bg-ink-navy text-[11px] font-bold text-white`;
+  const inner = presence.image ? (
+    <img
+      data-testid="collaborator-avatar"
+      aria-label={presence.name}
+      src={presence.image}
+      alt=""
+      referrerPolicy="no-referrer"
+      className={`${baseClass} object-cover`}
+      draggable={false}
+    />
+  ) : (
     <span data-testid="collaborator-avatar" aria-label={presence.name} className={baseClass}>
       {initial}
+    </span>
+  );
+  if (!aiActive) return inner;
+  return (
+    <span className="relative inline-block">
+      {inner}
+      <span
+        data-testid="collaborator-ai-badge"
+        aria-label={t("agent.badge.aiEditingTooltip", { name: presence.name })}
+        className="pointer-events-none absolute -bottom-0.5 -right-0.5 text-[10px] leading-none"
+      >
+        ✨
+      </span>
     </span>
   );
 }
