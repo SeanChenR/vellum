@@ -20,6 +20,16 @@ Phase 2 加入 AI co-pilot — 讓使用者用自然語言請 server-side agent
 
 ---
 
+## Post-Phase-2 polish
+
+Phase 1 + Phase 2 完工後的視覺 / UX 重構。
+
+| 重構 | 範圍 | 驗收 | 狀態 |
+|---|---|---|---|
+| **Aura UI Redesign** | 統一 `max-w-6xl` 容器寬 · NavBar 三欄 grid · 深 / 淺主題（`system` / `light` / `dark`，CSS custom properties + `data-theme`） · LocaleToggle 進 NavBar 取代 ProfilePage 內 locale field · 抽出 Card / Button / Input / Badge 4 個 primitive · 9 個 route × 2 主題視覺對齊 Claude Design `docs/design/aura-redesign/` · _Ingest 補強：Dashboard 兩欄 greeting + sidebar + canvas grid（無訂閱 callout）· Account 三條 route 合併到 `/account` tab page（profile / sessions / api-keys / pricing）· BYOK 定價從表格改 provider-grouped tier cards · API & MCP rows 改 row-based + cyan dot saved badge · PAT row 排版 + lucide Key icon_ | 切深淺主題無 flicker；NavBar 中央 nav + 右側 locale/theme/auth；每 route 在 light + dark 各跑一次無視覺破版；Dashboard 含 greeting / sidebar / grid 三區塊且無「升級」字串；`/account` 預設 profile tab，舊 path redirect 到 `?tab=...` | ✅ v0.7.0 |
+
+---
+
 ## 切法理由
 
 1. **M11 先做最容易、最 user-visible 的** — Settings 頁能存 key 是看得見的進度，無架構風險

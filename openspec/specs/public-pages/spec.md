@@ -67,115 +67,344 @@ tests:
 ---
 ### Requirement: Navbar exposes product identity and primary navigation
 
-The Navbar SHALL render the product logo on the left, an About navigation link, and an auth-aware action area on the right. The Navbar MUST be the same instance reused across Homepage, About, Login, Dashboard, Profile, Sessions, and any future authenticated route. The logo MUST link to `/` regardless of authentication state. The Navbar MUST include a navigation link to `/about`. The right-side action area MUST consult the authentication state and render exactly one of three states: a fixed-width loading placeholder while the auth state is resolving, a Sign-in CTA linking to `/login` when the visitor is anonymous, or the user-avatar menu when the visitor is authenticated. The placeholder dimensions MUST match the Sign-in CTA dimensions to prevent layout shift between states. All Navbar text strings MUST come from the i18n namespace `nav.*`.
+The NavBar SHALL render as a CSS grid with three regions arranged as `[1fr][auto][1fr]`. The left region SHALL hold the brand mark (logo + wordmark in Newsreader). The center region SHALL hold the primary navigation links (`Home`, `About`) centered horizontally. The right region SHALL hold, in this order: `<LocaleToggle />`, `<ThemeToggle />`, and the auth action (avatar menu when signed in, "Sign in" CTA when signed out, fixed-width placeholder while auth is loading). All right-region controls SHALL be 36 px tall and visually align on the same baseline. The auth-state placeholder SHALL have the same rendered width as the signed-in avatar menu so layout does not shift when auth resolves.
 
-#### Scenario: Anonymous visitor sees logo, About link, and Sign-in CTA
+#### Scenario: NavBar regions render in the correct order
 
-- **WHEN** the Navbar is rendered for an anonymous visitor
-- **THEN** the Navbar MUST contain the product logo wrapped in a link to `/`
-- **AND** the Navbar MUST contain a navigation link with the localized label `nav.about` pointing to `/about`
-- **AND** the Navbar MUST contain a primary action with the localized label `nav.login` pointing to `/login`
-- **AND** the Navbar MUST NOT render any user-avatar menu
+- **GIVEN** an authenticated user visits the homepage
+- **THEN** the NavBar children in DOM order MUST be: brand, primary nav, locale toggle, theme toggle, avatar menu
+- **AND** primary nav MUST be centered within its grid cell
 
-#### Scenario: Authenticated visitor sees logo, About link, and avatar menu
+#### Scenario: Loading state does not shift layout
 
-- **WHEN** the Navbar is rendered for an authenticated visitor
-- **THEN** the Navbar MUST contain the product logo wrapped in a link to `/`
-- **AND** the Navbar MUST contain a navigation link with the localized label `nav.about` pointing to `/about`
-- **AND** the Navbar MUST render the user-avatar menu component
-- **AND** the Navbar MUST NOT render any Sign-in CTA
+- **GIVEN** the auth status is still loading
+- **THEN** the auth action SHALL render a placeholder with the same width as the signed-in avatar menu
+- **AND** the navbar layout MUST NOT shift when auth resolves
 
-#### Scenario: Auth state still loading shows fixed-width placeholder
+#### Scenario: Active route link is visually distinguished
 
-- **WHEN** the Navbar is rendered while the authentication state is resolving (`isLoading` is true)
-- **THEN** the right-side action area MUST contain a placeholder element occupying the same width and height as the Sign-in CTA
-- **AND** the Navbar MUST NOT render either the Sign-in CTA or the user-avatar menu until the auth state resolves
-
-#### Scenario: Logo click returns to Homepage
-
-- **WHEN** a visitor on the About page, the Login page, the Dashboard, or any authenticated route clicks the Navbar logo
-- **THEN** the system MUST navigate the visitor to `/` regardless of their authentication state
+- **GIVEN** the user is currently on `/about`
+- **THEN** the "About" link MUST display the active-route style (filled text color plus a 2 px accent-purple underline)
+- **AND** all other links MUST display the muted style
 
 
 <!-- @trace
-source: unify-navbar
-updated: 2026-05-05
+source: redesign-ui-aura-theme
+updated: 2026-05-13
 code:
-  - apps/web/src/dashboard/DashboardPage.tsx
-  - packages/shared/src/locales/en.json
-  - apps/web/src/auth/LoginPage.tsx
-  - apps/web/src/account/ProfilePage.tsx
-  - apps/web/src/components/FolderTree.tsx
-  - apps/web/src/router.tsx
-  - apps/web/src/components/UserAvatarMenu.tsx
-  - packages/shared/src/locales/zh-TW.json
-  - apps/web/src/landing/Navbar.tsx
-  - apps/web/src/landing/AppLayout.tsx
-  - apps/web/src/landing/HomePage.tsx
+  - apps/web/src/account/SessionsTab.tsx
+  - apps/web/src/components/ui/Card.tsx
+  - apps/web/src/agent/TokenUsageFooter.tsx
+  - docs/design/aura-redesign/project/auth-frames.jsx
+  - packages/shared/src/index.ts
+  - apps/web/src/components/CanvasDeleteDialog.tsx
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/web/src/canvas/shapes/shape-utils.tsx
   - apps/web/src/account/SessionsPage.tsx
-  - apps/web/src/components/AppHeader.tsx
+  - apps/web/src/components/FolderRenameDialog.tsx
+  - apps/web/src/agent/AiSidePanel.tsx
+  - docs/design/aura-redesign/project/tokens.css
+  - apps/web/src/auth/OAuthCallbackPage.tsx
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/components/ui/Badge.tsx
+  - apps/web/src/dashboard/CanvasGrid.tsx
+  - apps/web/src/auth/MagicLinkVerifyPage.tsx
+  - apps/web/src/canvas/CollaboratorCursorWithBadge.tsx
+  - apps/web/src/chrome/MainMenu.tsx
+  - asset/claude.png
+  - apps/web/src/assets/providers/chatgpt.png
+  - apps/web/src/components/CanvasRenameDialog.tsx
+  - apps/web/src/account/ApiKeyRow.tsx
+  - apps/web/src/canvas/shapes/link-card-shape.tsx
+  - asset/anthropic.png
+  - apps/web/src/agent/ThreadSwitcher.tsx
+  - docs/design/aura-redesign/project/public-frames.jsx
+  - apps/web/src/dashboard/DashboardGreeting.tsx
+  - apps/web/src/account/legacy-redirects.tsx
+  - apps/web/src/agent/ChatList.tsx
+  - apps/web/src/components/CanvasMoveDialog.tsx
+  - apps/web/src/assets/providers/claude.png
+  - apps/web/src/canvas/ConnectionStatus.tsx
+  - apps/web/src/dashboard/SortToggle.tsx
+  - apps/web/src/theme/useTheme.ts
+  - apps/web/src/components/ui/Input.tsx
+  - apps/web/src/main.tsx
+  - apps/web/src/account/ProfileTab.tsx
+  - apps/web/src/dashboard/DashboardPage.tsx
+  - apps/web/src/components/CanvasCreateDialog.tsx
+  - apps/web/src/account/PatTokensSection.tsx
+  - apps/web/src/theme/ThemeToggle.tsx
+  - apps/web/src/canvas/ShapeToolbar.tsx
+  - apps/web/package.json
+  - apps/web/src/account/DeleteAccountDialog.tsx
+  - apps/web/src/canvas/shapes/callout-shape.tsx
+  - apps/web/src/canvas/shapes/code-shape.tsx
+  - apps/web/src/components/FolderCreateDialog.tsx
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/web/src/landing/Footer.tsx
+  - apps/web/src/account/AccountPage.tsx
+  - apps/web/src/components/UserAvatarMenu.tsx
+  - apps/web/src/account/ApiKeysPage.tsx
+  - apps/web/src/landing/HomePage.tsx
+  - apps/api/package.json
+  - docs/design/aura-redesign/project/spec-frames.jsx
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/landing/AppLayout.tsx
+  - apps/web/src/account/Tabs.tsx
+  - apps/web/src/store/uiStore.ts
+  - asset/gemini.png
+  - apps/web/src/canvas/VellumToolbar.tsx
+  - docs/design/aura-redesign/project/design-canvas.jsx
+  - apps/web/src/account/ApiKeysTab.tsx
+  - apps/web/src/auth/RouteGuard.tsx
+  - apps/web/src/router.tsx
+  - apps/web/src/canvas/shapes/markdown-shape.tsx
+  - apps/web/src/account/ProfilePage.tsx
+  - apps/web/src/i18n/LocaleToggle.tsx
+  - docs/design/aura-redesign/project/Vellum Redesign.html
+  - packages/shared/src/locales/en.json
+  - package.json
+  - apps/web/src/canvas/Editor.tsx
+  - apps/web/src/styles.css
+  - docs/design/aura-redesign/project/components.jsx
+  - apps/web/src/dashboard/DashboardSidebar.tsx
+  - asset/openai.png
+  - bun.lock
+  - docs/design/aura-redesign/README.md
+  - apps/web/src/components/CanvasCard.tsx
+  - apps/web/src/assets/providers/anthropic.png
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/dashboard/useSortOrder.ts
+  - apps/web/src/agent/ChatComposer.tsx
+  - asset/google.png
+  - apps/web/src/assets/providers/google.png
+  - docs/design/aura-redesign/chats/chat1.md
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/web/src/landing/PublicLayout.tsx
+  - apps/web/src/theme/bootstrap-theme.ts
+  - apps/web/src/components/ui/Button.tsx
   - apps/web/src/landing/AboutPage.tsx
+  - apps/web/src/account/PricingTab.tsx
+  - apps/web/src/theme/theme-provider.tsx
+  - apps/web/src/landing/Navbar.tsx
+  - docs/design/aura-redesign/project/icons.jsx
+  - docs/PHASE2_MILESTONES.md
+  - apps/web/src/assets/providers/gemini.png
+  - packages/shared/package.json
+  - apps/web/src/assets/providers/openai.png
+  - packages/shared/src/locales/zh-TW.json
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/components/UserAvatar.tsx
+  - apps/web/src/components/FolderDeleteDialog.tsx
+  - apps/web/src/account/ApiKeysPricingTable.tsx
 tests:
-  - apps/web/src/components/UserAvatarMenu.test.tsx
-  - apps/web/src/landing/AboutPage.test.tsx
+  - apps/web/src/dashboard/DashboardGreeting.test.tsx
+  - apps/web/src/store/uiStore.test.ts
+  - apps/web/src/theme/useTheme.test.ts
+  - apps/web/src/account/SessionsPage.test.tsx
+  - apps/web/src/dashboard/useSortOrder.test.ts
+  - apps/web/src/main.test.ts
+  - apps/web/src/theme/ThemeToggle.test.tsx
+  - apps/web/src/account/legacy-redirects.test.tsx
+  - apps/web/src/components/ui/Card.motion.test.tsx
+  - apps/web/src/account/ApiKeyRow.test.tsx
+  - apps/web/src/account/SessionsTab.test.tsx
   - apps/web/src/landing/AppLayout.test.tsx
-  - apps/web/src/landing/HomePage.test.tsx
-  - apps/web/src/landing/AppLayout.forbidden.test.ts
-  - apps/web/src/landing/Navbar.test.tsx
+  - apps/web/src/__audits__/no-legacy-tokens.test.ts
+  - apps/web/src/components/UserAvatarMenu.test.tsx
+  - apps/web/src/i18n/LocaleToggle.test.tsx
+  - apps/web/src/account/Tabs.test.tsx
+  - apps/web/src/account/PatTokensSection.test.tsx
+  - apps/web/src/components/ui/Badge.test.tsx
+  - apps/web/src/account/ApiKeysPage.test.tsx
+  - apps/web/src/dashboard/DashboardSidebar.test.tsx
+  - apps/web/src/account/ProfileTab.test.tsx
+  - apps/web/src/components/ui/Card.test.tsx
+  - apps/web/src/styles.test.ts
+  - apps/web/src/account/ProfilePage.test.tsx
+  - apps/web/src/dashboard/SortToggle.test.tsx
+  - apps/web/src/dashboard/DashboardPage.dialog.test.tsx
   - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/web/src/components/ui/Button.test.tsx
+  - apps/web/src/landing/HomePage.test.tsx
+  - apps/web/src/account/AccountPage.test.tsx
+  - apps/web/src/landing/PublicLayout.test.tsx
+  - apps/web/src/theme/bootstrap-theme.test.ts
+  - apps/web/src/theme/theme-provider.test.tsx
+  - apps/web/src/account/ApiKeysTab.test.tsx
+  - apps/web/src/dashboard/CanvasGrid.test.tsx
+  - apps/web/src/landing/Navbar.test.tsx
+  - apps/web/src/account/PricingTab.test.tsx
+  - apps/web/src/components/ui/Input.test.tsx
 -->
 
 ---
 ### Requirement: Footer surfaces version and a single attribution row
 
-The Footer SHALL render at the bottom of every PublicLayout page. The Footer MUST display the product name and the build version (sourced from `VELLUM_VERSION` exported by `@vellum/shared`) in a single row. The Footer MUST NOT contain external links to social media, blog, pricing, or other Phase 2 surfaces. All Footer text strings MUST come from the i18n namespace `footer.*`.
+The Footer SHALL render inside a container with the same `max-width` as the NavBar (1152 px / `max-w-6xl`) and matching horizontal padding. The footer SHALL display the build version sourced from `VELLUM_VERSION` together with the brand attribution on a single row at `md` and above; below `md` the row wraps as needed. Footer text and links SHALL consume `--text-muted` for body color and `--accent-purple` on hover. Footer SHALL NOT hard-code colors.
 
-#### Scenario: Visitor sees product name and version
+#### Scenario: Footer dark theme
 
-- **WHEN** the Footer is rendered on any PublicLayout page
-- **THEN** the Footer MUST contain a row displaying the product name from `nav.brand`
-- **AND** the Footer MUST contain a row displaying a label and value from `footer.versionLabel` parameterized with the imported `VELLUM_VERSION` constant
+- **GIVEN** `data-theme="dark"` is active
+- **THEN** Footer text MUST resolve to the dark-theme `--text-muted` token value
+- **AND** Footer hover MUST resolve to the dark-theme `--accent-purple` token value
 
-#### Scenario: Footer omits Phase 2 surfaces
+#### Scenario: Footer container matches Navbar width
 
-- **WHEN** the Footer is rendered
-- **THEN** the rendered output MUST NOT contain anchor tags pointing to URLs containing the substrings `/pricing`, `/blog`, `/changelog`, `twitter.com`, `linkedin.com`, or `discord.com`
+- **GIVEN** the same browser viewport at 1280 px
+- **THEN** the Footer container measured from page edge MUST equal the NavBar container width (±0 px)
 
 
 <!-- @trace
-source: add-landing-and-branding
-updated: 2026-05-05
+source: redesign-ui-aura-theme
+updated: 2026-05-13
 code:
-  - packages/shared/src/locales/zh-TW.json
-  - packages/shared/src/locales/en.json
-  - apps/web/src/assets/vellum-favicon.png
-  - apps/web/src/landing/PublicLayout.tsx
-  - apps/web/src/components/FolderDeleteDialog.tsx
-  - apps/web/src/dashboard/DashboardPage.tsx
-  - apps/web/src/landing/HomePage.tsx
-  - apps/web/src/motion/dialog.tsx
-  - apps/web/src/assets/vellum-logo-removebg.png
-  - apps/web/src/landing/Navbar.tsx
+  - apps/web/src/account/SessionsTab.tsx
+  - apps/web/src/components/ui/Card.tsx
+  - apps/web/src/agent/TokenUsageFooter.tsx
+  - docs/design/aura-redesign/project/auth-frames.jsx
+  - packages/shared/src/index.ts
+  - apps/web/src/components/CanvasDeleteDialog.tsx
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/web/src/canvas/shapes/shape-utils.tsx
+  - apps/web/src/account/SessionsPage.tsx
+  - apps/web/src/components/FolderRenameDialog.tsx
+  - apps/web/src/agent/AiSidePanel.tsx
+  - docs/design/aura-redesign/project/tokens.css
+  - apps/web/src/auth/OAuthCallbackPage.tsx
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/components/ui/Badge.tsx
+  - apps/web/src/dashboard/CanvasGrid.tsx
+  - apps/web/src/auth/MagicLinkVerifyPage.tsx
+  - apps/web/src/canvas/CollaboratorCursorWithBadge.tsx
   - apps/web/src/chrome/MainMenu.tsx
-  - apps/web/src/landing/Footer.tsx
-  - apps/web/src/canvas/ShareDialog.tsx
-  - apps/web/src/motion/primitives.tsx
-  - apps/web/src/router.tsx
-  - asset/vellum-favicon.png
-  - apps/web/src/landing/AboutPage.tsx
+  - asset/claude.png
+  - apps/web/src/assets/providers/chatgpt.png
   - apps/web/src/components/CanvasRenameDialog.tsx
+  - apps/web/src/account/ApiKeyRow.tsx
+  - apps/web/src/canvas/shapes/link-card-shape.tsx
+  - asset/anthropic.png
+  - apps/web/src/agent/ThreadSwitcher.tsx
+  - docs/design/aura-redesign/project/public-frames.jsx
+  - apps/web/src/dashboard/DashboardGreeting.tsx
+  - apps/web/src/account/legacy-redirects.tsx
+  - apps/web/src/agent/ChatList.tsx
+  - apps/web/src/components/CanvasMoveDialog.tsx
+  - apps/web/src/assets/providers/claude.png
+  - apps/web/src/canvas/ConnectionStatus.tsx
+  - apps/web/src/dashboard/SortToggle.tsx
+  - apps/web/src/theme/useTheme.ts
+  - apps/web/src/components/ui/Input.tsx
+  - apps/web/src/main.tsx
+  - apps/web/src/account/ProfileTab.tsx
+  - apps/web/src/dashboard/DashboardPage.tsx
+  - apps/web/src/components/CanvasCreateDialog.tsx
+  - apps/web/src/account/PatTokensSection.tsx
+  - apps/web/src/theme/ThemeToggle.tsx
+  - apps/web/src/canvas/ShapeToolbar.tsx
+  - apps/web/package.json
+  - apps/web/src/account/DeleteAccountDialog.tsx
+  - apps/web/src/canvas/shapes/callout-shape.tsx
+  - apps/web/src/canvas/shapes/code-shape.tsx
+  - apps/web/src/components/FolderCreateDialog.tsx
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/web/src/landing/Footer.tsx
+  - apps/web/src/account/AccountPage.tsx
+  - apps/web/src/components/UserAvatarMenu.tsx
+  - apps/web/src/account/ApiKeysPage.tsx
+  - apps/web/src/landing/HomePage.tsx
+  - apps/api/package.json
+  - docs/design/aura-redesign/project/spec-frames.jsx
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/landing/AppLayout.tsx
+  - apps/web/src/account/Tabs.tsx
+  - apps/web/src/store/uiStore.ts
+  - asset/gemini.png
+  - apps/web/src/canvas/VellumToolbar.tsx
+  - docs/design/aura-redesign/project/design-canvas.jsx
+  - apps/web/src/account/ApiKeysTab.tsx
+  - apps/web/src/auth/RouteGuard.tsx
+  - apps/web/src/router.tsx
+  - apps/web/src/canvas/shapes/markdown-shape.tsx
+  - apps/web/src/account/ProfilePage.tsx
+  - apps/web/src/i18n/LocaleToggle.tsx
+  - docs/design/aura-redesign/project/Vellum Redesign.html
+  - packages/shared/src/locales/en.json
+  - package.json
+  - apps/web/src/canvas/Editor.tsx
+  - apps/web/src/styles.css
+  - docs/design/aura-redesign/project/components.jsx
+  - apps/web/src/dashboard/DashboardSidebar.tsx
+  - asset/openai.png
+  - bun.lock
+  - docs/design/aura-redesign/README.md
+  - apps/web/src/components/CanvasCard.tsx
+  - apps/web/src/assets/providers/anthropic.png
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/dashboard/useSortOrder.ts
+  - apps/web/src/agent/ChatComposer.tsx
+  - asset/google.png
+  - apps/web/src/assets/providers/google.png
+  - docs/design/aura-redesign/chats/chat1.md
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/web/src/landing/PublicLayout.tsx
+  - apps/web/src/theme/bootstrap-theme.ts
+  - apps/web/src/components/ui/Button.tsx
+  - apps/web/src/landing/AboutPage.tsx
+  - apps/web/src/account/PricingTab.tsx
+  - apps/web/src/theme/theme-provider.tsx
+  - apps/web/src/landing/Navbar.tsx
+  - docs/design/aura-redesign/project/icons.jsx
+  - docs/PHASE2_MILESTONES.md
+  - apps/web/src/assets/providers/gemini.png
+  - packages/shared/package.json
+  - apps/web/src/assets/providers/openai.png
+  - packages/shared/src/locales/zh-TW.json
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/components/UserAvatar.tsx
+  - apps/web/src/components/FolderDeleteDialog.tsx
+  - apps/web/src/account/ApiKeysPricingTable.tsx
 tests:
-  - apps/web/src/router.test.tsx
-  - apps/web/src/App.test.tsx
-  - apps/web/src/landing/Footer.test.tsx
-  - apps/web/src/landing/PublicLayout.test.tsx
-  - apps/web/src/landing/AboutPage.test.tsx
+  - apps/web/src/dashboard/DashboardGreeting.test.tsx
+  - apps/web/src/store/uiStore.test.ts
+  - apps/web/src/theme/useTheme.test.ts
+  - apps/web/src/account/SessionsPage.test.tsx
+  - apps/web/src/dashboard/useSortOrder.test.ts
+  - apps/web/src/main.test.ts
+  - apps/web/src/theme/ThemeToggle.test.tsx
+  - apps/web/src/account/legacy-redirects.test.tsx
+  - apps/web/src/components/ui/Card.motion.test.tsx
+  - apps/web/src/account/ApiKeyRow.test.tsx
+  - apps/web/src/account/SessionsTab.test.tsx
+  - apps/web/src/landing/AppLayout.test.tsx
+  - apps/web/src/__audits__/no-legacy-tokens.test.ts
+  - apps/web/src/components/UserAvatarMenu.test.tsx
+  - apps/web/src/i18n/LocaleToggle.test.tsx
+  - apps/web/src/account/Tabs.test.tsx
+  - apps/web/src/account/PatTokensSection.test.tsx
+  - apps/web/src/components/ui/Badge.test.tsx
+  - apps/web/src/account/ApiKeysPage.test.tsx
+  - apps/web/src/dashboard/DashboardSidebar.test.tsx
+  - apps/web/src/account/ProfileTab.test.tsx
+  - apps/web/src/components/ui/Card.test.tsx
+  - apps/web/src/styles.test.ts
+  - apps/web/src/account/ProfilePage.test.tsx
+  - apps/web/src/dashboard/SortToggle.test.tsx
+  - apps/web/src/dashboard/DashboardPage.dialog.test.tsx
+  - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/web/src/components/ui/Button.test.tsx
   - apps/web/src/landing/HomePage.test.tsx
-  - apps/web/src/chrome/MainMenu.test.tsx
+  - apps/web/src/account/AccountPage.test.tsx
+  - apps/web/src/landing/PublicLayout.test.tsx
+  - apps/web/src/theme/bootstrap-theme.test.ts
+  - apps/web/src/theme/theme-provider.test.tsx
+  - apps/web/src/account/ApiKeysTab.test.tsx
+  - apps/web/src/dashboard/CanvasGrid.test.tsx
   - apps/web/src/landing/Navbar.test.tsx
-  - apps/web/src/motion/dialog.test.tsx
-  - apps/web/src/motion/forbidden-imports.test.ts
-  - apps/web/src/motion/primitives.test.tsx
+  - apps/web/src/account/PricingTab.test.tsx
+  - apps/web/src/components/ui/Input.test.tsx
 -->
 
 ---
@@ -426,4 +655,694 @@ tests:
   - apps/web/src/landing/AppLayout.forbidden.test.ts
   - apps/web/src/landing/Navbar.test.tsx
   - apps/web/src/dashboard/DashboardPage.test.tsx
+-->
+
+---
+### Requirement: All non-canvas pages share the same outer container width
+
+Every page rendered under `PublicLayout` or `AppLayout` SHALL place its content inside a container with `max-width: var(--container-max)` (1152 px / `max-w-6xl`) and horizontal padding of `var(--container-px-md)` (32 px) on screens at or above the `md` breakpoint and `var(--container-px-sm)` (24 px) below. Long-form prose (e.g., `/about` body copy) MAY apply a narrower inner `max-width` for readability, but the outer container width SHALL remain consistent across routes.
+
+#### Scenario: HomePage, AboutPage, DashboardPage share container width
+
+- **GIVEN** the same browser viewport at 1280 px wide
+- **WHEN** the user navigates between `/`, `/about`, and `/dashboard`
+- **THEN** the outer container measured from page edge to first content gutter MUST be identical on all three routes (±0 px)
+
+#### Scenario: AboutPage body prose remains narrow within wide container
+
+- **GIVEN** the `/about` route is rendered in a 1280 px viewport
+- **THEN** the outer container MUST be 1152 px wide
+- **AND** the body paragraph MUST clamp its own width to approximately 640 px for reading comfort
+- **AND** that prose block MUST sit centered inside the outer container
+
+
+<!-- @trace
+source: redesign-ui-aura-theme
+updated: 2026-05-13
+code:
+  - apps/web/src/account/SessionsTab.tsx
+  - apps/web/src/components/ui/Card.tsx
+  - apps/web/src/agent/TokenUsageFooter.tsx
+  - docs/design/aura-redesign/project/auth-frames.jsx
+  - packages/shared/src/index.ts
+  - apps/web/src/components/CanvasDeleteDialog.tsx
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/web/src/canvas/shapes/shape-utils.tsx
+  - apps/web/src/account/SessionsPage.tsx
+  - apps/web/src/components/FolderRenameDialog.tsx
+  - apps/web/src/agent/AiSidePanel.tsx
+  - docs/design/aura-redesign/project/tokens.css
+  - apps/web/src/auth/OAuthCallbackPage.tsx
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/components/ui/Badge.tsx
+  - apps/web/src/dashboard/CanvasGrid.tsx
+  - apps/web/src/auth/MagicLinkVerifyPage.tsx
+  - apps/web/src/canvas/CollaboratorCursorWithBadge.tsx
+  - apps/web/src/chrome/MainMenu.tsx
+  - asset/claude.png
+  - apps/web/src/assets/providers/chatgpt.png
+  - apps/web/src/components/CanvasRenameDialog.tsx
+  - apps/web/src/account/ApiKeyRow.tsx
+  - apps/web/src/canvas/shapes/link-card-shape.tsx
+  - asset/anthropic.png
+  - apps/web/src/agent/ThreadSwitcher.tsx
+  - docs/design/aura-redesign/project/public-frames.jsx
+  - apps/web/src/dashboard/DashboardGreeting.tsx
+  - apps/web/src/account/legacy-redirects.tsx
+  - apps/web/src/agent/ChatList.tsx
+  - apps/web/src/components/CanvasMoveDialog.tsx
+  - apps/web/src/assets/providers/claude.png
+  - apps/web/src/canvas/ConnectionStatus.tsx
+  - apps/web/src/dashboard/SortToggle.tsx
+  - apps/web/src/theme/useTheme.ts
+  - apps/web/src/components/ui/Input.tsx
+  - apps/web/src/main.tsx
+  - apps/web/src/account/ProfileTab.tsx
+  - apps/web/src/dashboard/DashboardPage.tsx
+  - apps/web/src/components/CanvasCreateDialog.tsx
+  - apps/web/src/account/PatTokensSection.tsx
+  - apps/web/src/theme/ThemeToggle.tsx
+  - apps/web/src/canvas/ShapeToolbar.tsx
+  - apps/web/package.json
+  - apps/web/src/account/DeleteAccountDialog.tsx
+  - apps/web/src/canvas/shapes/callout-shape.tsx
+  - apps/web/src/canvas/shapes/code-shape.tsx
+  - apps/web/src/components/FolderCreateDialog.tsx
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/web/src/landing/Footer.tsx
+  - apps/web/src/account/AccountPage.tsx
+  - apps/web/src/components/UserAvatarMenu.tsx
+  - apps/web/src/account/ApiKeysPage.tsx
+  - apps/web/src/landing/HomePage.tsx
+  - apps/api/package.json
+  - docs/design/aura-redesign/project/spec-frames.jsx
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/landing/AppLayout.tsx
+  - apps/web/src/account/Tabs.tsx
+  - apps/web/src/store/uiStore.ts
+  - asset/gemini.png
+  - apps/web/src/canvas/VellumToolbar.tsx
+  - docs/design/aura-redesign/project/design-canvas.jsx
+  - apps/web/src/account/ApiKeysTab.tsx
+  - apps/web/src/auth/RouteGuard.tsx
+  - apps/web/src/router.tsx
+  - apps/web/src/canvas/shapes/markdown-shape.tsx
+  - apps/web/src/account/ProfilePage.tsx
+  - apps/web/src/i18n/LocaleToggle.tsx
+  - docs/design/aura-redesign/project/Vellum Redesign.html
+  - packages/shared/src/locales/en.json
+  - package.json
+  - apps/web/src/canvas/Editor.tsx
+  - apps/web/src/styles.css
+  - docs/design/aura-redesign/project/components.jsx
+  - apps/web/src/dashboard/DashboardSidebar.tsx
+  - asset/openai.png
+  - bun.lock
+  - docs/design/aura-redesign/README.md
+  - apps/web/src/components/CanvasCard.tsx
+  - apps/web/src/assets/providers/anthropic.png
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/dashboard/useSortOrder.ts
+  - apps/web/src/agent/ChatComposer.tsx
+  - asset/google.png
+  - apps/web/src/assets/providers/google.png
+  - docs/design/aura-redesign/chats/chat1.md
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/web/src/landing/PublicLayout.tsx
+  - apps/web/src/theme/bootstrap-theme.ts
+  - apps/web/src/components/ui/Button.tsx
+  - apps/web/src/landing/AboutPage.tsx
+  - apps/web/src/account/PricingTab.tsx
+  - apps/web/src/theme/theme-provider.tsx
+  - apps/web/src/landing/Navbar.tsx
+  - docs/design/aura-redesign/project/icons.jsx
+  - docs/PHASE2_MILESTONES.md
+  - apps/web/src/assets/providers/gemini.png
+  - packages/shared/package.json
+  - apps/web/src/assets/providers/openai.png
+  - packages/shared/src/locales/zh-TW.json
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/components/UserAvatar.tsx
+  - apps/web/src/components/FolderDeleteDialog.tsx
+  - apps/web/src/account/ApiKeysPricingTable.tsx
+tests:
+  - apps/web/src/dashboard/DashboardGreeting.test.tsx
+  - apps/web/src/store/uiStore.test.ts
+  - apps/web/src/theme/useTheme.test.ts
+  - apps/web/src/account/SessionsPage.test.tsx
+  - apps/web/src/dashboard/useSortOrder.test.ts
+  - apps/web/src/main.test.ts
+  - apps/web/src/theme/ThemeToggle.test.tsx
+  - apps/web/src/account/legacy-redirects.test.tsx
+  - apps/web/src/components/ui/Card.motion.test.tsx
+  - apps/web/src/account/ApiKeyRow.test.tsx
+  - apps/web/src/account/SessionsTab.test.tsx
+  - apps/web/src/landing/AppLayout.test.tsx
+  - apps/web/src/__audits__/no-legacy-tokens.test.ts
+  - apps/web/src/components/UserAvatarMenu.test.tsx
+  - apps/web/src/i18n/LocaleToggle.test.tsx
+  - apps/web/src/account/Tabs.test.tsx
+  - apps/web/src/account/PatTokensSection.test.tsx
+  - apps/web/src/components/ui/Badge.test.tsx
+  - apps/web/src/account/ApiKeysPage.test.tsx
+  - apps/web/src/dashboard/DashboardSidebar.test.tsx
+  - apps/web/src/account/ProfileTab.test.tsx
+  - apps/web/src/components/ui/Card.test.tsx
+  - apps/web/src/styles.test.ts
+  - apps/web/src/account/ProfilePage.test.tsx
+  - apps/web/src/dashboard/SortToggle.test.tsx
+  - apps/web/src/dashboard/DashboardPage.dialog.test.tsx
+  - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/web/src/components/ui/Button.test.tsx
+  - apps/web/src/landing/HomePage.test.tsx
+  - apps/web/src/account/AccountPage.test.tsx
+  - apps/web/src/landing/PublicLayout.test.tsx
+  - apps/web/src/theme/bootstrap-theme.test.ts
+  - apps/web/src/theme/theme-provider.test.tsx
+  - apps/web/src/account/ApiKeysTab.test.tsx
+  - apps/web/src/dashboard/CanvasGrid.test.tsx
+  - apps/web/src/landing/Navbar.test.tsx
+  - apps/web/src/account/PricingTab.test.tsx
+  - apps/web/src/components/ui/Input.test.tsx
+-->
+
+---
+### Requirement: HomePage feature cards use the elevated Card primitive
+
+The three feature cards on the homepage SHALL use the shared `<Card variant="elevated">` primitive. They SHALL display a hover ring in `--accent-purple` when the pointer enters, with a transition no longer than 200 ms. The card layout SHALL remain a three-column grid at `md` and above, collapsing to a single column below `md`.
+
+#### Scenario: Feature card hover ring
+
+- **GIVEN** the homepage rendered at 1280 px viewport
+- **WHEN** the pointer hovers a feature card
+- **THEN** the card MUST display a 2 px ring in the active theme's `--accent-purple`
+- **AND** the ring MUST disappear when the pointer leaves
+
+
+<!-- @trace
+source: redesign-ui-aura-theme
+updated: 2026-05-13
+code:
+  - apps/web/src/account/SessionsTab.tsx
+  - apps/web/src/components/ui/Card.tsx
+  - apps/web/src/agent/TokenUsageFooter.tsx
+  - docs/design/aura-redesign/project/auth-frames.jsx
+  - packages/shared/src/index.ts
+  - apps/web/src/components/CanvasDeleteDialog.tsx
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/web/src/canvas/shapes/shape-utils.tsx
+  - apps/web/src/account/SessionsPage.tsx
+  - apps/web/src/components/FolderRenameDialog.tsx
+  - apps/web/src/agent/AiSidePanel.tsx
+  - docs/design/aura-redesign/project/tokens.css
+  - apps/web/src/auth/OAuthCallbackPage.tsx
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/components/ui/Badge.tsx
+  - apps/web/src/dashboard/CanvasGrid.tsx
+  - apps/web/src/auth/MagicLinkVerifyPage.tsx
+  - apps/web/src/canvas/CollaboratorCursorWithBadge.tsx
+  - apps/web/src/chrome/MainMenu.tsx
+  - asset/claude.png
+  - apps/web/src/assets/providers/chatgpt.png
+  - apps/web/src/components/CanvasRenameDialog.tsx
+  - apps/web/src/account/ApiKeyRow.tsx
+  - apps/web/src/canvas/shapes/link-card-shape.tsx
+  - asset/anthropic.png
+  - apps/web/src/agent/ThreadSwitcher.tsx
+  - docs/design/aura-redesign/project/public-frames.jsx
+  - apps/web/src/dashboard/DashboardGreeting.tsx
+  - apps/web/src/account/legacy-redirects.tsx
+  - apps/web/src/agent/ChatList.tsx
+  - apps/web/src/components/CanvasMoveDialog.tsx
+  - apps/web/src/assets/providers/claude.png
+  - apps/web/src/canvas/ConnectionStatus.tsx
+  - apps/web/src/dashboard/SortToggle.tsx
+  - apps/web/src/theme/useTheme.ts
+  - apps/web/src/components/ui/Input.tsx
+  - apps/web/src/main.tsx
+  - apps/web/src/account/ProfileTab.tsx
+  - apps/web/src/dashboard/DashboardPage.tsx
+  - apps/web/src/components/CanvasCreateDialog.tsx
+  - apps/web/src/account/PatTokensSection.tsx
+  - apps/web/src/theme/ThemeToggle.tsx
+  - apps/web/src/canvas/ShapeToolbar.tsx
+  - apps/web/package.json
+  - apps/web/src/account/DeleteAccountDialog.tsx
+  - apps/web/src/canvas/shapes/callout-shape.tsx
+  - apps/web/src/canvas/shapes/code-shape.tsx
+  - apps/web/src/components/FolderCreateDialog.tsx
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/web/src/landing/Footer.tsx
+  - apps/web/src/account/AccountPage.tsx
+  - apps/web/src/components/UserAvatarMenu.tsx
+  - apps/web/src/account/ApiKeysPage.tsx
+  - apps/web/src/landing/HomePage.tsx
+  - apps/api/package.json
+  - docs/design/aura-redesign/project/spec-frames.jsx
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/landing/AppLayout.tsx
+  - apps/web/src/account/Tabs.tsx
+  - apps/web/src/store/uiStore.ts
+  - asset/gemini.png
+  - apps/web/src/canvas/VellumToolbar.tsx
+  - docs/design/aura-redesign/project/design-canvas.jsx
+  - apps/web/src/account/ApiKeysTab.tsx
+  - apps/web/src/auth/RouteGuard.tsx
+  - apps/web/src/router.tsx
+  - apps/web/src/canvas/shapes/markdown-shape.tsx
+  - apps/web/src/account/ProfilePage.tsx
+  - apps/web/src/i18n/LocaleToggle.tsx
+  - docs/design/aura-redesign/project/Vellum Redesign.html
+  - packages/shared/src/locales/en.json
+  - package.json
+  - apps/web/src/canvas/Editor.tsx
+  - apps/web/src/styles.css
+  - docs/design/aura-redesign/project/components.jsx
+  - apps/web/src/dashboard/DashboardSidebar.tsx
+  - asset/openai.png
+  - bun.lock
+  - docs/design/aura-redesign/README.md
+  - apps/web/src/components/CanvasCard.tsx
+  - apps/web/src/assets/providers/anthropic.png
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/dashboard/useSortOrder.ts
+  - apps/web/src/agent/ChatComposer.tsx
+  - asset/google.png
+  - apps/web/src/assets/providers/google.png
+  - docs/design/aura-redesign/chats/chat1.md
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/web/src/landing/PublicLayout.tsx
+  - apps/web/src/theme/bootstrap-theme.ts
+  - apps/web/src/components/ui/Button.tsx
+  - apps/web/src/landing/AboutPage.tsx
+  - apps/web/src/account/PricingTab.tsx
+  - apps/web/src/theme/theme-provider.tsx
+  - apps/web/src/landing/Navbar.tsx
+  - docs/design/aura-redesign/project/icons.jsx
+  - docs/PHASE2_MILESTONES.md
+  - apps/web/src/assets/providers/gemini.png
+  - packages/shared/package.json
+  - apps/web/src/assets/providers/openai.png
+  - packages/shared/src/locales/zh-TW.json
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/components/UserAvatar.tsx
+  - apps/web/src/components/FolderDeleteDialog.tsx
+  - apps/web/src/account/ApiKeysPricingTable.tsx
+tests:
+  - apps/web/src/dashboard/DashboardGreeting.test.tsx
+  - apps/web/src/store/uiStore.test.ts
+  - apps/web/src/theme/useTheme.test.ts
+  - apps/web/src/account/SessionsPage.test.tsx
+  - apps/web/src/dashboard/useSortOrder.test.ts
+  - apps/web/src/main.test.ts
+  - apps/web/src/theme/ThemeToggle.test.tsx
+  - apps/web/src/account/legacy-redirects.test.tsx
+  - apps/web/src/components/ui/Card.motion.test.tsx
+  - apps/web/src/account/ApiKeyRow.test.tsx
+  - apps/web/src/account/SessionsTab.test.tsx
+  - apps/web/src/landing/AppLayout.test.tsx
+  - apps/web/src/__audits__/no-legacy-tokens.test.ts
+  - apps/web/src/components/UserAvatarMenu.test.tsx
+  - apps/web/src/i18n/LocaleToggle.test.tsx
+  - apps/web/src/account/Tabs.test.tsx
+  - apps/web/src/account/PatTokensSection.test.tsx
+  - apps/web/src/components/ui/Badge.test.tsx
+  - apps/web/src/account/ApiKeysPage.test.tsx
+  - apps/web/src/dashboard/DashboardSidebar.test.tsx
+  - apps/web/src/account/ProfileTab.test.tsx
+  - apps/web/src/components/ui/Card.test.tsx
+  - apps/web/src/styles.test.ts
+  - apps/web/src/account/ProfilePage.test.tsx
+  - apps/web/src/dashboard/SortToggle.test.tsx
+  - apps/web/src/dashboard/DashboardPage.dialog.test.tsx
+  - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/web/src/components/ui/Button.test.tsx
+  - apps/web/src/landing/HomePage.test.tsx
+  - apps/web/src/account/AccountPage.test.tsx
+  - apps/web/src/landing/PublicLayout.test.tsx
+  - apps/web/src/theme/bootstrap-theme.test.ts
+  - apps/web/src/theme/theme-provider.test.tsx
+  - apps/web/src/account/ApiKeysTab.test.tsx
+  - apps/web/src/dashboard/CanvasGrid.test.tsx
+  - apps/web/src/landing/Navbar.test.tsx
+  - apps/web/src/account/PricingTab.test.tsx
+  - apps/web/src/components/ui/Input.test.tsx
+-->
+
+---
+### Requirement: Public pages consume the Aura token palette via CSS variables
+
+All public-page surfaces (HomePage, AboutPage, NavBar, Footer) SHALL consume background, text, border, and accent colors through the CSS custom properties declared in `apps/web/src/styles.css` (`--bg`, `--surface`, `--surface-elevated`, `--border`, `--text-primary`, `--text-muted`, `--accent-purple`, `--accent-cyan`, `--accent-pink`, `--accent-orange`, `--accent-red`). They SHALL NOT reference the legacy brand tokens (`--color-ink-navy`, `--color-warm-sepia`, `--color-parchment-cream`, `--color-off-white`) directly; transitional aliases MAY exist in `styles.css` only during the implementation window and MUST be removed before the change is archived.
+
+#### Scenario: Grep finds no legacy token usage in public-page components after archive
+
+- **GIVEN** the change is ready to archive
+- **WHEN** `apps/web/src/landing/**/*.tsx` is grepped for `ink-navy|warm-sepia|parchment-cream|off-white`
+- **THEN** zero matches MUST be returned
+
+
+<!-- @trace
+source: redesign-ui-aura-theme
+updated: 2026-05-13
+code:
+  - apps/web/src/account/SessionsTab.tsx
+  - apps/web/src/components/ui/Card.tsx
+  - apps/web/src/agent/TokenUsageFooter.tsx
+  - docs/design/aura-redesign/project/auth-frames.jsx
+  - packages/shared/src/index.ts
+  - apps/web/src/components/CanvasDeleteDialog.tsx
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/web/src/canvas/shapes/shape-utils.tsx
+  - apps/web/src/account/SessionsPage.tsx
+  - apps/web/src/components/FolderRenameDialog.tsx
+  - apps/web/src/agent/AiSidePanel.tsx
+  - docs/design/aura-redesign/project/tokens.css
+  - apps/web/src/auth/OAuthCallbackPage.tsx
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/components/ui/Badge.tsx
+  - apps/web/src/dashboard/CanvasGrid.tsx
+  - apps/web/src/auth/MagicLinkVerifyPage.tsx
+  - apps/web/src/canvas/CollaboratorCursorWithBadge.tsx
+  - apps/web/src/chrome/MainMenu.tsx
+  - asset/claude.png
+  - apps/web/src/assets/providers/chatgpt.png
+  - apps/web/src/components/CanvasRenameDialog.tsx
+  - apps/web/src/account/ApiKeyRow.tsx
+  - apps/web/src/canvas/shapes/link-card-shape.tsx
+  - asset/anthropic.png
+  - apps/web/src/agent/ThreadSwitcher.tsx
+  - docs/design/aura-redesign/project/public-frames.jsx
+  - apps/web/src/dashboard/DashboardGreeting.tsx
+  - apps/web/src/account/legacy-redirects.tsx
+  - apps/web/src/agent/ChatList.tsx
+  - apps/web/src/components/CanvasMoveDialog.tsx
+  - apps/web/src/assets/providers/claude.png
+  - apps/web/src/canvas/ConnectionStatus.tsx
+  - apps/web/src/dashboard/SortToggle.tsx
+  - apps/web/src/theme/useTheme.ts
+  - apps/web/src/components/ui/Input.tsx
+  - apps/web/src/main.tsx
+  - apps/web/src/account/ProfileTab.tsx
+  - apps/web/src/dashboard/DashboardPage.tsx
+  - apps/web/src/components/CanvasCreateDialog.tsx
+  - apps/web/src/account/PatTokensSection.tsx
+  - apps/web/src/theme/ThemeToggle.tsx
+  - apps/web/src/canvas/ShapeToolbar.tsx
+  - apps/web/package.json
+  - apps/web/src/account/DeleteAccountDialog.tsx
+  - apps/web/src/canvas/shapes/callout-shape.tsx
+  - apps/web/src/canvas/shapes/code-shape.tsx
+  - apps/web/src/components/FolderCreateDialog.tsx
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/web/src/landing/Footer.tsx
+  - apps/web/src/account/AccountPage.tsx
+  - apps/web/src/components/UserAvatarMenu.tsx
+  - apps/web/src/account/ApiKeysPage.tsx
+  - apps/web/src/landing/HomePage.tsx
+  - apps/api/package.json
+  - docs/design/aura-redesign/project/spec-frames.jsx
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/landing/AppLayout.tsx
+  - apps/web/src/account/Tabs.tsx
+  - apps/web/src/store/uiStore.ts
+  - asset/gemini.png
+  - apps/web/src/canvas/VellumToolbar.tsx
+  - docs/design/aura-redesign/project/design-canvas.jsx
+  - apps/web/src/account/ApiKeysTab.tsx
+  - apps/web/src/auth/RouteGuard.tsx
+  - apps/web/src/router.tsx
+  - apps/web/src/canvas/shapes/markdown-shape.tsx
+  - apps/web/src/account/ProfilePage.tsx
+  - apps/web/src/i18n/LocaleToggle.tsx
+  - docs/design/aura-redesign/project/Vellum Redesign.html
+  - packages/shared/src/locales/en.json
+  - package.json
+  - apps/web/src/canvas/Editor.tsx
+  - apps/web/src/styles.css
+  - docs/design/aura-redesign/project/components.jsx
+  - apps/web/src/dashboard/DashboardSidebar.tsx
+  - asset/openai.png
+  - bun.lock
+  - docs/design/aura-redesign/README.md
+  - apps/web/src/components/CanvasCard.tsx
+  - apps/web/src/assets/providers/anthropic.png
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/dashboard/useSortOrder.ts
+  - apps/web/src/agent/ChatComposer.tsx
+  - asset/google.png
+  - apps/web/src/assets/providers/google.png
+  - docs/design/aura-redesign/chats/chat1.md
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/web/src/landing/PublicLayout.tsx
+  - apps/web/src/theme/bootstrap-theme.ts
+  - apps/web/src/components/ui/Button.tsx
+  - apps/web/src/landing/AboutPage.tsx
+  - apps/web/src/account/PricingTab.tsx
+  - apps/web/src/theme/theme-provider.tsx
+  - apps/web/src/landing/Navbar.tsx
+  - docs/design/aura-redesign/project/icons.jsx
+  - docs/PHASE2_MILESTONES.md
+  - apps/web/src/assets/providers/gemini.png
+  - packages/shared/package.json
+  - apps/web/src/assets/providers/openai.png
+  - packages/shared/src/locales/zh-TW.json
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/components/UserAvatar.tsx
+  - apps/web/src/components/FolderDeleteDialog.tsx
+  - apps/web/src/account/ApiKeysPricingTable.tsx
+tests:
+  - apps/web/src/dashboard/DashboardGreeting.test.tsx
+  - apps/web/src/store/uiStore.test.ts
+  - apps/web/src/theme/useTheme.test.ts
+  - apps/web/src/account/SessionsPage.test.tsx
+  - apps/web/src/dashboard/useSortOrder.test.ts
+  - apps/web/src/main.test.ts
+  - apps/web/src/theme/ThemeToggle.test.tsx
+  - apps/web/src/account/legacy-redirects.test.tsx
+  - apps/web/src/components/ui/Card.motion.test.tsx
+  - apps/web/src/account/ApiKeyRow.test.tsx
+  - apps/web/src/account/SessionsTab.test.tsx
+  - apps/web/src/landing/AppLayout.test.tsx
+  - apps/web/src/__audits__/no-legacy-tokens.test.ts
+  - apps/web/src/components/UserAvatarMenu.test.tsx
+  - apps/web/src/i18n/LocaleToggle.test.tsx
+  - apps/web/src/account/Tabs.test.tsx
+  - apps/web/src/account/PatTokensSection.test.tsx
+  - apps/web/src/components/ui/Badge.test.tsx
+  - apps/web/src/account/ApiKeysPage.test.tsx
+  - apps/web/src/dashboard/DashboardSidebar.test.tsx
+  - apps/web/src/account/ProfileTab.test.tsx
+  - apps/web/src/components/ui/Card.test.tsx
+  - apps/web/src/styles.test.ts
+  - apps/web/src/account/ProfilePage.test.tsx
+  - apps/web/src/dashboard/SortToggle.test.tsx
+  - apps/web/src/dashboard/DashboardPage.dialog.test.tsx
+  - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/web/src/components/ui/Button.test.tsx
+  - apps/web/src/landing/HomePage.test.tsx
+  - apps/web/src/account/AccountPage.test.tsx
+  - apps/web/src/landing/PublicLayout.test.tsx
+  - apps/web/src/theme/bootstrap-theme.test.ts
+  - apps/web/src/theme/theme-provider.test.tsx
+  - apps/web/src/account/ApiKeysTab.test.tsx
+  - apps/web/src/dashboard/CanvasGrid.test.tsx
+  - apps/web/src/landing/Navbar.test.tsx
+  - apps/web/src/account/PricingTab.test.tsx
+  - apps/web/src/components/ui/Input.test.tsx
+-->
+
+---
+### Requirement: DashboardPage uses a two-column layout with greeting strip, sidebar, and canvas grid
+
+The `/dashboard` route SHALL render three regions inside the unified `max-w-6xl` container:
+
+1. **Greeting strip** at the top: localised date label, "歡迎/Welcome" headline with the user's display name, a search input (placeholder `搜尋畫布⋯` / `Search canvases…`, lucide `Search` icon prefix), and a primary "新畫布 / New canvas" CTA with a lucide `Plus` icon.
+2. **Left sidebar** (220 px fixed width at `md` and above; collapses above the grid below `md`): folder list (sentinel rows `全部畫布` / `共享` / `封存` plus user-created folders), optional tag chips, and a sort-order toggle exposing `最近編輯 / Recent` and `字母排序 / Alphabetical` ghost buttons.
+3. **Right canvas grid** rendering `<Card variant="hover-ring">` thumbnails in a responsive grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`). Each card MUST show a 16:10 thumbnail area, a role badge (`owner` purple / `editor` cyan / `viewer` muted), the canvas title, and a relative last-edited timestamp rendered in `font-mono`.
+
+The page SHALL NOT render any subscription / "Upgrade" CTA. Vellum does not offer a paid plan; that section of the design is intentionally left blank or replaced with a Phase milestone badge.
+
+#### Scenario: Greeting strip exposes search, primary CTA, and welcome line
+
+- **GIVEN** the `/dashboard` route is rendered for an authenticated user named "沛緹"
+- **THEN** the greeting region MUST contain (a) today's localised date, (b) a welcome line including the user's display name, (c) a search `<input>` with the lucide `Search` icon, (d) a primary button labelled `新畫布 / New canvas`
+
+#### Scenario: Sidebar folder active state uses accent-purple-soft
+
+- **GIVEN** the user selects a folder named `工作中`
+- **THEN** that folder row MUST render with `--accent-purple-soft` (or equivalent `bg-accent-purple/10`) background and `--accent-purple` text
+- **AND** other folder rows MUST render with the muted text-primary styling
+
+#### Scenario: Sort order persists across page reload
+
+- **WHEN** the user clicks the `字母排序 / Alphabetical` sort button
+- **THEN** the canvas grid MUST re-order alphabetically by title (case-insensitive)
+- **AND** `localStorage.getItem("vellum.dashboard.sortOrder")` MUST equal `"alphabetical"`
+- **AND** reloading the page MUST keep the alphabetical order without an additional click
+
+#### Scenario: Search filters the canvas grid in place
+
+- **GIVEN** the user has 8 canvases including one titled "電商訂單處理流程"
+- **WHEN** the user types `電商` into the search input
+- **THEN** the canvas grid MUST render only canvases whose title contains `電商` (case-insensitive)
+- **AND** clearing the input MUST restore the full grid without a network refetch
+
+#### Scenario: No subscription/upgrade callout is rendered
+
+- **GIVEN** the `/dashboard` route is rendered
+- **THEN** the DOM MUST NOT contain text matching `升級 / Upgrade / Studio / Pro`
+- **AND** the sidebar MUST NOT contain a paid-plan promotional card
+
+<!-- @trace
+source: redesign-ui-aura-theme
+updated: 2026-05-13
+code:
+  - apps/web/src/account/SessionsTab.tsx
+  - apps/web/src/components/ui/Card.tsx
+  - apps/web/src/agent/TokenUsageFooter.tsx
+  - docs/design/aura-redesign/project/auth-frames.jsx
+  - packages/shared/src/index.ts
+  - apps/web/src/components/CanvasDeleteDialog.tsx
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/web/src/canvas/shapes/shape-utils.tsx
+  - apps/web/src/account/SessionsPage.tsx
+  - apps/web/src/components/FolderRenameDialog.tsx
+  - apps/web/src/agent/AiSidePanel.tsx
+  - docs/design/aura-redesign/project/tokens.css
+  - apps/web/src/auth/OAuthCallbackPage.tsx
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/components/ui/Badge.tsx
+  - apps/web/src/dashboard/CanvasGrid.tsx
+  - apps/web/src/auth/MagicLinkVerifyPage.tsx
+  - apps/web/src/canvas/CollaboratorCursorWithBadge.tsx
+  - apps/web/src/chrome/MainMenu.tsx
+  - asset/claude.png
+  - apps/web/src/assets/providers/chatgpt.png
+  - apps/web/src/components/CanvasRenameDialog.tsx
+  - apps/web/src/account/ApiKeyRow.tsx
+  - apps/web/src/canvas/shapes/link-card-shape.tsx
+  - asset/anthropic.png
+  - apps/web/src/agent/ThreadSwitcher.tsx
+  - docs/design/aura-redesign/project/public-frames.jsx
+  - apps/web/src/dashboard/DashboardGreeting.tsx
+  - apps/web/src/account/legacy-redirects.tsx
+  - apps/web/src/agent/ChatList.tsx
+  - apps/web/src/components/CanvasMoveDialog.tsx
+  - apps/web/src/assets/providers/claude.png
+  - apps/web/src/canvas/ConnectionStatus.tsx
+  - apps/web/src/dashboard/SortToggle.tsx
+  - apps/web/src/theme/useTheme.ts
+  - apps/web/src/components/ui/Input.tsx
+  - apps/web/src/main.tsx
+  - apps/web/src/account/ProfileTab.tsx
+  - apps/web/src/dashboard/DashboardPage.tsx
+  - apps/web/src/components/CanvasCreateDialog.tsx
+  - apps/web/src/account/PatTokensSection.tsx
+  - apps/web/src/theme/ThemeToggle.tsx
+  - apps/web/src/canvas/ShapeToolbar.tsx
+  - apps/web/package.json
+  - apps/web/src/account/DeleteAccountDialog.tsx
+  - apps/web/src/canvas/shapes/callout-shape.tsx
+  - apps/web/src/canvas/shapes/code-shape.tsx
+  - apps/web/src/components/FolderCreateDialog.tsx
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/web/src/landing/Footer.tsx
+  - apps/web/src/account/AccountPage.tsx
+  - apps/web/src/components/UserAvatarMenu.tsx
+  - apps/web/src/account/ApiKeysPage.tsx
+  - apps/web/src/landing/HomePage.tsx
+  - apps/api/package.json
+  - docs/design/aura-redesign/project/spec-frames.jsx
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/landing/AppLayout.tsx
+  - apps/web/src/account/Tabs.tsx
+  - apps/web/src/store/uiStore.ts
+  - asset/gemini.png
+  - apps/web/src/canvas/VellumToolbar.tsx
+  - docs/design/aura-redesign/project/design-canvas.jsx
+  - apps/web/src/account/ApiKeysTab.tsx
+  - apps/web/src/auth/RouteGuard.tsx
+  - apps/web/src/router.tsx
+  - apps/web/src/canvas/shapes/markdown-shape.tsx
+  - apps/web/src/account/ProfilePage.tsx
+  - apps/web/src/i18n/LocaleToggle.tsx
+  - docs/design/aura-redesign/project/Vellum Redesign.html
+  - packages/shared/src/locales/en.json
+  - package.json
+  - apps/web/src/canvas/Editor.tsx
+  - apps/web/src/styles.css
+  - docs/design/aura-redesign/project/components.jsx
+  - apps/web/src/dashboard/DashboardSidebar.tsx
+  - asset/openai.png
+  - bun.lock
+  - docs/design/aura-redesign/README.md
+  - apps/web/src/components/CanvasCard.tsx
+  - apps/web/src/assets/providers/anthropic.png
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/dashboard/useSortOrder.ts
+  - apps/web/src/agent/ChatComposer.tsx
+  - asset/google.png
+  - apps/web/src/assets/providers/google.png
+  - docs/design/aura-redesign/chats/chat1.md
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/web/src/landing/PublicLayout.tsx
+  - apps/web/src/theme/bootstrap-theme.ts
+  - apps/web/src/components/ui/Button.tsx
+  - apps/web/src/landing/AboutPage.tsx
+  - apps/web/src/account/PricingTab.tsx
+  - apps/web/src/theme/theme-provider.tsx
+  - apps/web/src/landing/Navbar.tsx
+  - docs/design/aura-redesign/project/icons.jsx
+  - docs/PHASE2_MILESTONES.md
+  - apps/web/src/assets/providers/gemini.png
+  - packages/shared/package.json
+  - apps/web/src/assets/providers/openai.png
+  - packages/shared/src/locales/zh-TW.json
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/components/UserAvatar.tsx
+  - apps/web/src/components/FolderDeleteDialog.tsx
+  - apps/web/src/account/ApiKeysPricingTable.tsx
+tests:
+  - apps/web/src/dashboard/DashboardGreeting.test.tsx
+  - apps/web/src/store/uiStore.test.ts
+  - apps/web/src/theme/useTheme.test.ts
+  - apps/web/src/account/SessionsPage.test.tsx
+  - apps/web/src/dashboard/useSortOrder.test.ts
+  - apps/web/src/main.test.ts
+  - apps/web/src/theme/ThemeToggle.test.tsx
+  - apps/web/src/account/legacy-redirects.test.tsx
+  - apps/web/src/components/ui/Card.motion.test.tsx
+  - apps/web/src/account/ApiKeyRow.test.tsx
+  - apps/web/src/account/SessionsTab.test.tsx
+  - apps/web/src/landing/AppLayout.test.tsx
+  - apps/web/src/__audits__/no-legacy-tokens.test.ts
+  - apps/web/src/components/UserAvatarMenu.test.tsx
+  - apps/web/src/i18n/LocaleToggle.test.tsx
+  - apps/web/src/account/Tabs.test.tsx
+  - apps/web/src/account/PatTokensSection.test.tsx
+  - apps/web/src/components/ui/Badge.test.tsx
+  - apps/web/src/account/ApiKeysPage.test.tsx
+  - apps/web/src/dashboard/DashboardSidebar.test.tsx
+  - apps/web/src/account/ProfileTab.test.tsx
+  - apps/web/src/components/ui/Card.test.tsx
+  - apps/web/src/styles.test.ts
+  - apps/web/src/account/ProfilePage.test.tsx
+  - apps/web/src/dashboard/SortToggle.test.tsx
+  - apps/web/src/dashboard/DashboardPage.dialog.test.tsx
+  - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/web/src/components/ui/Button.test.tsx
+  - apps/web/src/landing/HomePage.test.tsx
+  - apps/web/src/account/AccountPage.test.tsx
+  - apps/web/src/landing/PublicLayout.test.tsx
+  - apps/web/src/theme/bootstrap-theme.test.ts
+  - apps/web/src/theme/theme-provider.test.tsx
+  - apps/web/src/account/ApiKeysTab.test.tsx
+  - apps/web/src/dashboard/CanvasGrid.test.tsx
+  - apps/web/src/landing/Navbar.test.tsx
+  - apps/web/src/account/PricingTab.test.tsx
+  - apps/web/src/components/ui/Input.test.tsx
 -->

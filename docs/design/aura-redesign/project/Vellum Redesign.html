@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<title>Vellum · UI 重新設計</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #f0eee9; }
+  body { font-family: "Inter", system-ui, sans-serif; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="public-frames.jsx"></script>
+<script type="text/babel" src="auth-frames.jsx"></script>
+<script type="text/babel" src="spec-frames.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+const W = 1280;
+const H = 900;
+const MW = 380;
+const MH = 760;
+
+function App() {
+  return (
+    <DesignCanvas>
+      {/* Cover */}
+      <DCSection id="cover" title="Vellum · UI 重新設計" subtitle="Aura 主題 / 繁中介面 / 深淺雙模式 · 為 React 19 + Tailwind v4 準備">
+        <DCArtboard id="cover" label="封面" width={840} height={520}>
+          <div style={{
+            background: "linear-gradient(160deg, #21202E 0%, #2C2A3A 60%, #3D3B4D 100%)",
+            color: "#EDECEE",
+            width: "100%", height: "100%",
+            padding: 56,
+            display: "flex", flexDirection: "column", justifyContent: "space-between",
+            fontFamily: "Inter, sans-serif"
+          }}>
+            <div style={{display: "flex", alignItems: "center", gap: 14}}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 12,
+                background: "linear-gradient(135deg, #A277FF, #FF6AD5)",
+                display: "grid", placeItems: "center",
+                fontFamily: "Newsreader, serif", fontSize: 24, fontWeight: 600
+              }}>V</div>
+              <div style={{fontFamily: "Newsreader, serif", fontSize: 28, fontWeight: 500}}>Vellum</div>
+              <div style={{
+                marginLeft: 12, padding: "4px 10px", borderRadius: 999,
+                background: "rgba(162,119,255,0.14)", color: "#A277FF",
+                fontSize: 11, fontWeight: 600
+              }}>UI 重新設計 · 2026.05</div>
+            </div>
+            <div>
+              <div style={{fontFamily: "Newsreader, serif", fontSize: 64, fontWeight: 500, lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 18}}>
+                一張畫布,<br />
+                <span style={{color: "#A277FF", fontStyle: "italic"}}>一致</span>的節奏。
+              </div>
+              <div style={{color: "#A7A6B0", fontSize: 16, maxWidth: 580, lineHeight: 1.6}}>
+                9 個路由 · 6 個共用元件 · 雙主題 token map · 行動版斷點 ──
+                所有非畫布頁面共用一套容器、間距與卡片律動。
+              </div>
+            </div>
+            <div style={{display: "flex", gap: 20, fontSize: 12, fontFamily: "JetBrains Mono, monospace", color: "#A7A6B0"}}>
+              <span><span style={{color: "#61FFCA"}}>●</span> 9 高擬真路由 × 2 主題</span>
+              <span><span style={{color: "#A277FF"}}>●</span> 6 元件規格</span>
+              <span><span style={{color: "#FF6AD5"}}>●</span> styles.css token map</span>
+              <span><span style={{color: "#FFCA85"}}>●</span> 行動版斷點</span>
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      {/* Public surfaces */}
+      <DCSection id="public" title="公開頁面" subtitle="未登入也能看到的路由 · 每個都做了深色與淺色">
+        <DCArtboard id="home-dark" label="/ · 深色" width={W} height={H}><HomeFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="home-light" label="/ · 淺色" width={W} height={H}><HomeFrame theme="light" /></DCArtboard>
+        <DCArtboard id="about-dark" label="/about · 深色" width={W} height={H}><AboutFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="about-light" label="/about · 淺色" width={W} height={H}><AboutFrame theme="light" /></DCArtboard>
+        <DCArtboard id="login-dark" label="/login · 深色" width={W} height={H}><LoginFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="login-light" label="/login · 淺色" width={W} height={H}><LoginFrame theme="light" /></DCArtboard>
+        <DCArtboard id="verify-dark" label="/auth/verify · 深色" width={W} height={H}><VerifyFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="verify-light" label="/auth/verify · 淺色" width={W} height={H}><VerifyFrame theme="light" /></DCArtboard>
+        <DCArtboard id="invite-dark" label="/invite-error · 深色" width={W} height={H}><InviteErrorFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="invite-light" label="/invite-error · 淺色" width={W} height={H}><InviteErrorFrame theme="light" /></DCArtboard>
+      </DCSection>
+
+      {/* Authenticated surfaces */}
+      <DCSection id="auth" title="登入後頁面" subtitle="儀表板 · 個人設定 · 工作階段 · API 金鑰">
+        <DCArtboard id="dash-dark" label="/dashboard · 深色" width={W} height={H}><DashboardFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="dash-light" label="/dashboard · 淺色" width={W} height={H}><DashboardFrame theme="light" /></DCArtboard>
+        <DCArtboard id="profile-dark" label="/account/profile · 深色" width={W} height={H}><ProfileFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="profile-light" label="/account/profile · 淺色" width={W} height={H}><ProfileFrame theme="light" /></DCArtboard>
+        <DCArtboard id="sessions-dark" label="/account/sessions · 深色" width={W} height={H}><SessionsFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="sessions-light" label="/account/sessions · 淺色" width={W} height={H}><SessionsFrame theme="light" /></DCArtboard>
+        <DCArtboard id="apikeys-dark" label="/account/api-keys · 深色" width={W} height={H}><ApiKeysFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="apikeys-light" label="/account/api-keys · 淺色" width={W} height={H}><ApiKeysFrame theme="light" /></DCArtboard>
+      </DCSection>
+
+      {/* Design system */}
+      <DCSection id="palette" title="調色盤 · 字型" subtitle="Aura 深色 / 自訂暖白淺色。所有顏色透過 CSS custom properties 取用">
+        <DCArtboard id="palette-dark" label="Aura 深色" width={W} height={H}><PaletteFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="palette-light" label="Aura 淺色" width={W} height={H}><PaletteFrame theme="light" /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="components" title="共用元件規格" subtitle="按鈕 · 卡片 · 輸入 · 導覽列 · 頁尾 · 對話框 · 標籤">
+        <DCArtboard id="spec-dark" label="元件規格 · 深色" width={W} height={H + 400}><ComponentSpecFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="spec-light" label="元件規格 · 淺色" width={W} height={H + 400}><ComponentSpecFrame theme="light" /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="tokens" title="Tailwind v4 token map" subtitle="直接貼進 apps/web/src/styles.css">
+        <DCArtboard id="tokens-dark" label="Tokens · 深色" width={W} height={H}><TokenMapFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="tokens-light" label="Tokens · 淺色" width={W} height={H}><TokenMapFrame theme="light" /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="mobile" title="行動版斷點" subtitle="<md 時的優雅退化:NavBar 摺成漢堡 · 儀表板側欄變抽屜">
+        <DCArtboard id="mobile-dark" label="行動版 · 深色" width={1080} height={700}><MobileNavFrame theme="dark" /></DCArtboard>
+        <DCArtboard id="mobile-light" label="行動版 · 淺色" width={1080} height={700}><MobileNavFrame theme="light" /></DCArtboard>
+      </DCSection>
+
+      <DCPostIt>
+        關鍵設計決定 · 1
+        ────
+        所有非畫布頁面共用 max-w-6xl (1152) 容器,
+        卡片與表單在其內各自設定窄寬。
+        About 頁的長文設 max-w 640 並靠左,右側留白。
+      </DCPostIt>
+
+      <DCPostIt x={400}>
+        關鍵設計決定 · 2
+        ────
+        NavBar 採三欄 grid:
+        [logo] [中央連結] [語言/主題/帳號]
+        右側控制項共用 h-9 + rounded-lg,
+        在淺色用 surface (白),在深色用 surface (#2C2A3A)。
+      </DCPostIt>
+
+      <DCPostIt x={800}>
+        關鍵設計決定 · 3
+        ────
+        強調色由「主紫色 + 4 個狀態色」組成。
+        紫 = 主動作 · 青 = 同步/成功
+        粉 = 強調 · 橘 = 警告 · 紅 = 破壞
+        在淺色版各自加深以保證對比。
+      </DCPostIt>
+
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

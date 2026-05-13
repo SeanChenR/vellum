@@ -348,3 +348,341 @@ tests:
   - apps/web/src/motion/forbidden-imports.test.ts
   - apps/web/src/motion/primitives.test.tsx
 -->
+
+---
+### Requirement: Card hover-ring transition is bounded and respects reduced-motion
+
+The `<Card>` primitive's `hover-ring` variant SHALL apply a 2 px ring in `--accent-purple` on pointer hover. The ring SHALL appear and disappear via a CSS transition no longer than 200 ms (`transition-shadow duration-150`). When `prefers-reduced-motion: reduce` is active, the transition duration SHALL collapse to `0ms` and the ring SHALL toggle instantly on hover.
+
+#### Scenario: Card hover ring transitions within 200 ms by default
+
+- **GIVEN** the user has no reduced-motion preference
+- **AND** the homepage feature card is hovered
+- **THEN** the ring MUST animate in over a duration ≤ 200 ms
+- **AND** removing the pointer MUST reverse the transition within ≤ 200 ms
+
+#### Scenario: Reduced-motion users see instant hover ring
+
+- **GIVEN** the user has `prefers-reduced-motion: reduce`
+- **WHEN** the user hovers a `hover-ring` card
+- **THEN** the ring MUST appear with no perceptible animation (computed transition-duration `0s`)
+
+
+<!-- @trace
+source: redesign-ui-aura-theme
+updated: 2026-05-13
+code:
+  - apps/web/src/account/SessionsTab.tsx
+  - apps/web/src/components/ui/Card.tsx
+  - apps/web/src/agent/TokenUsageFooter.tsx
+  - docs/design/aura-redesign/project/auth-frames.jsx
+  - packages/shared/src/index.ts
+  - apps/web/src/components/CanvasDeleteDialog.tsx
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/web/src/canvas/shapes/shape-utils.tsx
+  - apps/web/src/account/SessionsPage.tsx
+  - apps/web/src/components/FolderRenameDialog.tsx
+  - apps/web/src/agent/AiSidePanel.tsx
+  - docs/design/aura-redesign/project/tokens.css
+  - apps/web/src/auth/OAuthCallbackPage.tsx
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/components/ui/Badge.tsx
+  - apps/web/src/dashboard/CanvasGrid.tsx
+  - apps/web/src/auth/MagicLinkVerifyPage.tsx
+  - apps/web/src/canvas/CollaboratorCursorWithBadge.tsx
+  - apps/web/src/chrome/MainMenu.tsx
+  - asset/claude.png
+  - apps/web/src/assets/providers/chatgpt.png
+  - apps/web/src/components/CanvasRenameDialog.tsx
+  - apps/web/src/account/ApiKeyRow.tsx
+  - apps/web/src/canvas/shapes/link-card-shape.tsx
+  - asset/anthropic.png
+  - apps/web/src/agent/ThreadSwitcher.tsx
+  - docs/design/aura-redesign/project/public-frames.jsx
+  - apps/web/src/dashboard/DashboardGreeting.tsx
+  - apps/web/src/account/legacy-redirects.tsx
+  - apps/web/src/agent/ChatList.tsx
+  - apps/web/src/components/CanvasMoveDialog.tsx
+  - apps/web/src/assets/providers/claude.png
+  - apps/web/src/canvas/ConnectionStatus.tsx
+  - apps/web/src/dashboard/SortToggle.tsx
+  - apps/web/src/theme/useTheme.ts
+  - apps/web/src/components/ui/Input.tsx
+  - apps/web/src/main.tsx
+  - apps/web/src/account/ProfileTab.tsx
+  - apps/web/src/dashboard/DashboardPage.tsx
+  - apps/web/src/components/CanvasCreateDialog.tsx
+  - apps/web/src/account/PatTokensSection.tsx
+  - apps/web/src/theme/ThemeToggle.tsx
+  - apps/web/src/canvas/ShapeToolbar.tsx
+  - apps/web/package.json
+  - apps/web/src/account/DeleteAccountDialog.tsx
+  - apps/web/src/canvas/shapes/callout-shape.tsx
+  - apps/web/src/canvas/shapes/code-shape.tsx
+  - apps/web/src/components/FolderCreateDialog.tsx
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/web/src/landing/Footer.tsx
+  - apps/web/src/account/AccountPage.tsx
+  - apps/web/src/components/UserAvatarMenu.tsx
+  - apps/web/src/account/ApiKeysPage.tsx
+  - apps/web/src/landing/HomePage.tsx
+  - apps/api/package.json
+  - docs/design/aura-redesign/project/spec-frames.jsx
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/landing/AppLayout.tsx
+  - apps/web/src/account/Tabs.tsx
+  - apps/web/src/store/uiStore.ts
+  - asset/gemini.png
+  - apps/web/src/canvas/VellumToolbar.tsx
+  - docs/design/aura-redesign/project/design-canvas.jsx
+  - apps/web/src/account/ApiKeysTab.tsx
+  - apps/web/src/auth/RouteGuard.tsx
+  - apps/web/src/router.tsx
+  - apps/web/src/canvas/shapes/markdown-shape.tsx
+  - apps/web/src/account/ProfilePage.tsx
+  - apps/web/src/i18n/LocaleToggle.tsx
+  - docs/design/aura-redesign/project/Vellum Redesign.html
+  - packages/shared/src/locales/en.json
+  - package.json
+  - apps/web/src/canvas/Editor.tsx
+  - apps/web/src/styles.css
+  - docs/design/aura-redesign/project/components.jsx
+  - apps/web/src/dashboard/DashboardSidebar.tsx
+  - asset/openai.png
+  - bun.lock
+  - docs/design/aura-redesign/README.md
+  - apps/web/src/components/CanvasCard.tsx
+  - apps/web/src/assets/providers/anthropic.png
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/dashboard/useSortOrder.ts
+  - apps/web/src/agent/ChatComposer.tsx
+  - asset/google.png
+  - apps/web/src/assets/providers/google.png
+  - docs/design/aura-redesign/chats/chat1.md
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/web/src/landing/PublicLayout.tsx
+  - apps/web/src/theme/bootstrap-theme.ts
+  - apps/web/src/components/ui/Button.tsx
+  - apps/web/src/landing/AboutPage.tsx
+  - apps/web/src/account/PricingTab.tsx
+  - apps/web/src/theme/theme-provider.tsx
+  - apps/web/src/landing/Navbar.tsx
+  - docs/design/aura-redesign/project/icons.jsx
+  - docs/PHASE2_MILESTONES.md
+  - apps/web/src/assets/providers/gemini.png
+  - packages/shared/package.json
+  - apps/web/src/assets/providers/openai.png
+  - packages/shared/src/locales/zh-TW.json
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/components/UserAvatar.tsx
+  - apps/web/src/components/FolderDeleteDialog.tsx
+  - apps/web/src/account/ApiKeysPricingTable.tsx
+tests:
+  - apps/web/src/dashboard/DashboardGreeting.test.tsx
+  - apps/web/src/store/uiStore.test.ts
+  - apps/web/src/theme/useTheme.test.ts
+  - apps/web/src/account/SessionsPage.test.tsx
+  - apps/web/src/dashboard/useSortOrder.test.ts
+  - apps/web/src/main.test.ts
+  - apps/web/src/theme/ThemeToggle.test.tsx
+  - apps/web/src/account/legacy-redirects.test.tsx
+  - apps/web/src/components/ui/Card.motion.test.tsx
+  - apps/web/src/account/ApiKeyRow.test.tsx
+  - apps/web/src/account/SessionsTab.test.tsx
+  - apps/web/src/landing/AppLayout.test.tsx
+  - apps/web/src/__audits__/no-legacy-tokens.test.ts
+  - apps/web/src/components/UserAvatarMenu.test.tsx
+  - apps/web/src/i18n/LocaleToggle.test.tsx
+  - apps/web/src/account/Tabs.test.tsx
+  - apps/web/src/account/PatTokensSection.test.tsx
+  - apps/web/src/components/ui/Badge.test.tsx
+  - apps/web/src/account/ApiKeysPage.test.tsx
+  - apps/web/src/dashboard/DashboardSidebar.test.tsx
+  - apps/web/src/account/ProfileTab.test.tsx
+  - apps/web/src/components/ui/Card.test.tsx
+  - apps/web/src/styles.test.ts
+  - apps/web/src/account/ProfilePage.test.tsx
+  - apps/web/src/dashboard/SortToggle.test.tsx
+  - apps/web/src/dashboard/DashboardPage.dialog.test.tsx
+  - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/web/src/components/ui/Button.test.tsx
+  - apps/web/src/landing/HomePage.test.tsx
+  - apps/web/src/account/AccountPage.test.tsx
+  - apps/web/src/landing/PublicLayout.test.tsx
+  - apps/web/src/theme/bootstrap-theme.test.ts
+  - apps/web/src/theme/theme-provider.test.tsx
+  - apps/web/src/account/ApiKeysTab.test.tsx
+  - apps/web/src/dashboard/CanvasGrid.test.tsx
+  - apps/web/src/landing/Navbar.test.tsx
+  - apps/web/src/account/PricingTab.test.tsx
+  - apps/web/src/components/ui/Input.test.tsx
+-->
+
+---
+### Requirement: Theme switching is instant with no animation
+
+The system SHALL switch between light and dark themes without any CSS transition on background, text, or border properties at the document root. Theme switching is intentionally non-animated because partial-frame transitions look worse than an instant cut.
+
+#### Scenario: Toggling theme does not animate root colors
+
+- **GIVEN** the user clicks the theme toggle in the navbar
+- **THEN** the `<html>` element MUST NOT have any `transition` property that includes `background-color`, `color`, or `border-color`
+- **AND** the first frame after the toggle MUST already display the target theme's tokens
+
+#### Scenario: Component-level transitions still run on theme switch
+
+- **GIVEN** a button is currently hovered while the user toggles the theme
+- **THEN** the document MUST swap themes instantly
+- **AND** the button's own hover-state transition MUST continue running normally (button transitions are not suppressed by the root-level no-transition rule)
+
+<!-- @trace
+source: redesign-ui-aura-theme
+updated: 2026-05-13
+code:
+  - apps/web/src/account/SessionsTab.tsx
+  - apps/web/src/components/ui/Card.tsx
+  - apps/web/src/agent/TokenUsageFooter.tsx
+  - docs/design/aura-redesign/project/auth-frames.jsx
+  - packages/shared/src/index.ts
+  - apps/web/src/components/CanvasDeleteDialog.tsx
+  - apps/web/src/canvas/CanvasPage.tsx
+  - apps/web/src/auth/PostLoginPage.tsx
+  - apps/web/src/canvas/shapes/shape-utils.tsx
+  - apps/web/src/account/SessionsPage.tsx
+  - apps/web/src/components/FolderRenameDialog.tsx
+  - apps/web/src/agent/AiSidePanel.tsx
+  - docs/design/aura-redesign/project/tokens.css
+  - apps/web/src/auth/OAuthCallbackPage.tsx
+  - apps/web/src/components/FolderTree.tsx
+  - apps/web/src/components/ui/Badge.tsx
+  - apps/web/src/dashboard/CanvasGrid.tsx
+  - apps/web/src/auth/MagicLinkVerifyPage.tsx
+  - apps/web/src/canvas/CollaboratorCursorWithBadge.tsx
+  - apps/web/src/chrome/MainMenu.tsx
+  - asset/claude.png
+  - apps/web/src/assets/providers/chatgpt.png
+  - apps/web/src/components/CanvasRenameDialog.tsx
+  - apps/web/src/account/ApiKeyRow.tsx
+  - apps/web/src/canvas/shapes/link-card-shape.tsx
+  - asset/anthropic.png
+  - apps/web/src/agent/ThreadSwitcher.tsx
+  - docs/design/aura-redesign/project/public-frames.jsx
+  - apps/web/src/dashboard/DashboardGreeting.tsx
+  - apps/web/src/account/legacy-redirects.tsx
+  - apps/web/src/agent/ChatList.tsx
+  - apps/web/src/components/CanvasMoveDialog.tsx
+  - apps/web/src/assets/providers/claude.png
+  - apps/web/src/canvas/ConnectionStatus.tsx
+  - apps/web/src/dashboard/SortToggle.tsx
+  - apps/web/src/theme/useTheme.ts
+  - apps/web/src/components/ui/Input.tsx
+  - apps/web/src/main.tsx
+  - apps/web/src/account/ProfileTab.tsx
+  - apps/web/src/dashboard/DashboardPage.tsx
+  - apps/web/src/components/CanvasCreateDialog.tsx
+  - apps/web/src/account/PatTokensSection.tsx
+  - apps/web/src/theme/ThemeToggle.tsx
+  - apps/web/src/canvas/ShapeToolbar.tsx
+  - apps/web/package.json
+  - apps/web/src/account/DeleteAccountDialog.tsx
+  - apps/web/src/canvas/shapes/callout-shape.tsx
+  - apps/web/src/canvas/shapes/code-shape.tsx
+  - apps/web/src/components/FolderCreateDialog.tsx
+  - apps/web/src/auth/LoginPage.tsx
+  - apps/web/src/landing/Footer.tsx
+  - apps/web/src/account/AccountPage.tsx
+  - apps/web/src/components/UserAvatarMenu.tsx
+  - apps/web/src/account/ApiKeysPage.tsx
+  - apps/web/src/landing/HomePage.tsx
+  - apps/api/package.json
+  - docs/design/aura-redesign/project/spec-frames.jsx
+  - apps/web/src/auth/InviteErrorPage.tsx
+  - apps/web/src/landing/AppLayout.tsx
+  - apps/web/src/account/Tabs.tsx
+  - apps/web/src/store/uiStore.ts
+  - asset/gemini.png
+  - apps/web/src/canvas/VellumToolbar.tsx
+  - docs/design/aura-redesign/project/design-canvas.jsx
+  - apps/web/src/account/ApiKeysTab.tsx
+  - apps/web/src/auth/RouteGuard.tsx
+  - apps/web/src/router.tsx
+  - apps/web/src/canvas/shapes/markdown-shape.tsx
+  - apps/web/src/account/ProfilePage.tsx
+  - apps/web/src/i18n/LocaleToggle.tsx
+  - docs/design/aura-redesign/project/Vellum Redesign.html
+  - packages/shared/src/locales/en.json
+  - package.json
+  - apps/web/src/canvas/Editor.tsx
+  - apps/web/src/styles.css
+  - docs/design/aura-redesign/project/components.jsx
+  - apps/web/src/dashboard/DashboardSidebar.tsx
+  - asset/openai.png
+  - bun.lock
+  - docs/design/aura-redesign/README.md
+  - apps/web/src/components/CanvasCard.tsx
+  - apps/web/src/assets/providers/anthropic.png
+  - apps/web/src/canvas/ShareDialog.tsx
+  - apps/web/src/dashboard/useSortOrder.ts
+  - apps/web/src/agent/ChatComposer.tsx
+  - asset/google.png
+  - apps/web/src/assets/providers/google.png
+  - docs/design/aura-redesign/chats/chat1.md
+  - apps/web/src/chrome/TopBar.tsx
+  - apps/web/src/landing/PublicLayout.tsx
+  - apps/web/src/theme/bootstrap-theme.ts
+  - apps/web/src/components/ui/Button.tsx
+  - apps/web/src/landing/AboutPage.tsx
+  - apps/web/src/account/PricingTab.tsx
+  - apps/web/src/theme/theme-provider.tsx
+  - apps/web/src/landing/Navbar.tsx
+  - docs/design/aura-redesign/project/icons.jsx
+  - docs/PHASE2_MILESTONES.md
+  - apps/web/src/assets/providers/gemini.png
+  - packages/shared/package.json
+  - apps/web/src/assets/providers/openai.png
+  - packages/shared/src/locales/zh-TW.json
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/components/UserAvatar.tsx
+  - apps/web/src/components/FolderDeleteDialog.tsx
+  - apps/web/src/account/ApiKeysPricingTable.tsx
+tests:
+  - apps/web/src/dashboard/DashboardGreeting.test.tsx
+  - apps/web/src/store/uiStore.test.ts
+  - apps/web/src/theme/useTheme.test.ts
+  - apps/web/src/account/SessionsPage.test.tsx
+  - apps/web/src/dashboard/useSortOrder.test.ts
+  - apps/web/src/main.test.ts
+  - apps/web/src/theme/ThemeToggle.test.tsx
+  - apps/web/src/account/legacy-redirects.test.tsx
+  - apps/web/src/components/ui/Card.motion.test.tsx
+  - apps/web/src/account/ApiKeyRow.test.tsx
+  - apps/web/src/account/SessionsTab.test.tsx
+  - apps/web/src/landing/AppLayout.test.tsx
+  - apps/web/src/__audits__/no-legacy-tokens.test.ts
+  - apps/web/src/components/UserAvatarMenu.test.tsx
+  - apps/web/src/i18n/LocaleToggle.test.tsx
+  - apps/web/src/account/Tabs.test.tsx
+  - apps/web/src/account/PatTokensSection.test.tsx
+  - apps/web/src/components/ui/Badge.test.tsx
+  - apps/web/src/account/ApiKeysPage.test.tsx
+  - apps/web/src/dashboard/DashboardSidebar.test.tsx
+  - apps/web/src/account/ProfileTab.test.tsx
+  - apps/web/src/components/ui/Card.test.tsx
+  - apps/web/src/styles.test.ts
+  - apps/web/src/account/ProfilePage.test.tsx
+  - apps/web/src/dashboard/SortToggle.test.tsx
+  - apps/web/src/dashboard/DashboardPage.dialog.test.tsx
+  - apps/web/src/dashboard/DashboardPage.test.tsx
+  - apps/web/src/components/ui/Button.test.tsx
+  - apps/web/src/landing/HomePage.test.tsx
+  - apps/web/src/account/AccountPage.test.tsx
+  - apps/web/src/landing/PublicLayout.test.tsx
+  - apps/web/src/theme/bootstrap-theme.test.ts
+  - apps/web/src/theme/theme-provider.test.tsx
+  - apps/web/src/account/ApiKeysTab.test.tsx
+  - apps/web/src/dashboard/CanvasGrid.test.tsx
+  - apps/web/src/landing/Navbar.test.tsx
+  - apps/web/src/account/PricingTab.test.tsx
+  - apps/web/src/components/ui/Input.test.tsx
+-->
