@@ -6,19 +6,20 @@
  */
 
 import { describe, expect, mock, test } from "bun:test";
-import { toolRegistry } from "./tool-registry";
+import { toolRegistry, type ToolRegistryDeps } from "./tool-registry";
+import type { ListCanvasesResult } from "./list-canvases-reader";
 
 describe("toolRegistry — composition", () => {
-  test("contains exactly eleven entries", () => {
-    expect(Object.keys(toolRegistry).length).toBe(11);
+  test("contains exactly thirteen entries (M15 added listCanvases + listShapes)", () => {
+    expect(Object.keys(toolRegistry).length).toBe(13);
   });
 
-  test("has exactly six write entries and five read entries", () => {
+  test("has exactly six write entries and seven read entries", () => {
     const all = Object.values(toolRegistry);
     const writes = all.filter((e) => e.kind === "write");
     const reads = all.filter((e) => e.kind === "read");
     expect(writes).toHaveLength(6);
-    expect(reads).toHaveLength(5);
+    expect(reads).toHaveLength(7);
   });
 
   test("every entry has a non-empty name, a Zod schema, and a callable execute", () => {
@@ -119,7 +120,7 @@ describe("toolRegistry — composition", () => {
     expect(desc).toMatch(/no editable props|cannot updateShape against the group/i);
   });
 
-  test("all eleven expected tool names are present", () => {
+  test("all thirteen expected tool names are present (M15 added listCanvases + listShapes)", () => {
     const expected = [
       "createShape",
       "updateShape",
@@ -127,14 +128,75 @@ describe("toolRegistry — composition", () => {
       "groupShapes",
       "ungroupShape",
       "connectShapes",
+      "listShapes",
       "listShapesInViewport",
       "listShapesInSelection",
       "getShape",
       "getCanvasBounds",
       "getViewport",
+      "listCanvases",
     ].sort();
     const actual = Object.keys(toolRegistry).sort();
     expect(actual).toEqual(expected);
+  });
+
+  test("listCanvases description signals user-scoped discovery + accessible + role", () => {
+    const desc = toolRegistry.listCanvases.description;
+    expect(desc.toLowerCase()).toContain("list canvases");
+    expect(desc.toLowerCase()).toMatch(/access|accessible/);
+    expect(desc.toLowerCase()).toContain("role");
+  });
+
+  test("listCanvases execute routes through listCanvasesForUser ignoring canvasId", async () => {
+    const fakeListCanvasesDeps = {
+      queryOwnedCanvases: mock(async (uid: string) => {
+        return uid === "user-42"
+          ? [
+              { id: "c1", title: "A" },
+              { id: "c2", title: "B" },
+            ]
+          : [];
+      }),
+      querySharedCanvases: mock(async () => []),
+    };
+    const deps = {
+      registry: { getRoom: () => undefined },
+      sessionUserId: "user-42",
+      listCanvasesDeps: fakeListCanvasesDeps,
+    } as unknown as ToolRegistryDeps;
+
+    // Cast to a concrete signature — the polymorphic union in toolRegistry
+    // makes TS widen `input` to an intersection of every entry's input type.
+    const execute = toolRegistry.listCanvases.execute as (
+      d: ToolRegistryDeps,
+      canvasId: string,
+      input: Record<string, never>,
+    ) => Promise<ListCanvasesResult>;
+
+    const result = await execute(deps, "ignored-canvas-id", {});
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.map((c) => c.id)).toEqual(["c1", "c2"]);
+      expect(result.data.every((c) => c.role === "owner")).toBe(true);
+    }
+    // canvasId argument was ignored; reader called with userId only.
+    expect(fakeListCanvasesDeps.queryOwnedCanvases).toHaveBeenCalledWith("user-42");
+  });
+
+  test("listCanvases execute returns depsMissing errorKey when sessionUserId or listCanvasesDeps absent", async () => {
+    const deps = {
+      registry: { getRoom: () => undefined },
+    } as unknown as ToolRegistryDeps;
+    const execute = toolRegistry.listCanvases.execute as (
+      d: ToolRegistryDeps,
+      canvasId: string,
+      input: Record<string, never>,
+    ) => Promise<ListCanvasesResult>;
+    const result = await execute(deps, "any-canvas", {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errorKey).toBe("errors.listCanvases.depsMissing");
+    }
   });
 });
 

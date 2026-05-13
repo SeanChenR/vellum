@@ -1,66 +1,57 @@
 /**
- * cursor-ai-badge.test.ts — verifies the badge state-to-instance-meta mapping.
+ * cursor-ai-badge.test.ts — verifies that mounting the hook flips the
+ * shared `aiActiveAtom` and unmounting clears it.
  *
- * Spec ref: ai-side-panel "Cursor AI Badge surfaces aiActive presence flag"
+ * Spec ref: openspec/specs/ai-side-panel/spec.md
+ *   "Cursor AI Badge surfaces aiActive presence flag"
+ *
+ * Architecture note:
+ *   The atom is read inside `useSyncStore`'s `getUserPresence` override
+ *   so tldraw's presence derivation injects `meta.aiActive` into the
+ *   local presence record. Sync broadcasts the record. We DO NOT write
+ *   to the store directly — the previous attempt was overwritten on the
+ *   next reactive tick because `getDefaultUserPresence` hard-codes
+ *   `meta: {}`.
  */
 
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { renderHook, cleanup } from "@testing-library/react";
-import { shouldShowAiBadge, useCursorAiBadge, type AiBadgeEditor } from "./cursor-ai-badge";
+import { aiActiveAtom } from "../canvas/ai-active-signal";
+import { useCursorAiBadge } from "./cursor-ai-badge";
 
 afterEach(() => cleanup());
-
-function fakeEditor(): { editor: AiBadgeEditor; calls: Array<{ meta?: unknown }> } {
-  const calls: Array<{ meta?: unknown }> = [];
-  return {
-    calls,
-    editor: {
-      updateInstanceState: mock((partial: { meta?: unknown }) => {
-        calls.push(partial);
-      }) as AiBadgeEditor["updateInstanceState"],
-    },
-  };
-}
-
-describe("shouldShowAiBadge", () => {
-  test("running → true", () => {
-    expect(shouldShowAiBadge("running")).toBe(true);
-  });
-
-  test("idle / done / error / cancelled → false", () => {
-    expect(shouldShowAiBadge("idle")).toBe(false);
-    expect(shouldShowAiBadge("done")).toBe(false);
-    expect(shouldShowAiBadge("error")).toBe(false);
-    expect(shouldShowAiBadge("cancelled")).toBe(false);
-  });
+beforeEach(() => {
+  // Reset between tests so leakage from one test never reaches the next.
+  aiActiveAtom.set(false);
 });
 
 describe("useCursorAiBadge", () => {
-  test("calls updateInstanceState with aiActive=true on mount when state=running", () => {
-    const f = fakeEditor();
-    renderHook(() => useCursorAiBadge(f.editor, "running"));
-    expect(f.calls.length).toBe(1);
-    const firstCall = f.calls[0]!;
-    expect((firstCall.meta as { aiActive: boolean }).aiActive).toBe(true);
+  test("sets the atom to true on mount", () => {
+    expect(aiActiveAtom.get()).toBe(false);
+    renderHook(() => useCursorAiBadge());
+    expect(aiActiveAtom.get()).toBe(true);
   });
 
-  test("flips to aiActive=false when state moves to a terminal", () => {
-    const f = fakeEditor();
-    const { rerender } = renderHook(
-      (args: { state: import("./useAgentRun").AgentRunState }) =>
-        useCursorAiBadge(f.editor, args.state),
-      { initialProps: { state: "running" as import("./useAgentRun").AgentRunState } },
-    );
-
-    rerender({ state: "done" });
-    expect(f.calls.length).toBe(2);
-    const secondCall = f.calls[1]!;
-    expect((secondCall.meta as { aiActive: boolean }).aiActive).toBe(false);
+  test("clears the atom on unmount", () => {
+    const { unmount } = renderHook(() => useCursorAiBadge());
+    expect(aiActiveAtom.get()).toBe(true);
+    unmount();
+    expect(aiActiveAtom.get()).toBe(false);
   });
 
-  test("noop when editor is null", () => {
-    const f = fakeEditor();
-    renderHook(() => useCursorAiBadge(null, "running"));
-    expect(f.calls.length).toBe(0);
+  test("respects an explicit active=false (caller wants no flag while mounted)", () => {
+    renderHook(() => useCursorAiBadge(false));
+    expect(aiActiveAtom.get()).toBe(false);
+  });
+
+  test("toggling active prop updates the atom reactively", () => {
+    const { rerender } = renderHook((p: { active: boolean }) => useCursorAiBadge(p.active), {
+      initialProps: { active: true },
+    });
+    expect(aiActiveAtom.get()).toBe(true);
+    rerender({ active: false });
+    expect(aiActiveAtom.get()).toBe(false);
+    rerender({ active: true });
+    expect(aiActiveAtom.get()).toBe(true);
   });
 });

@@ -28,7 +28,7 @@ import { ThreadSwitcher } from "./ThreadSwitcher";
 import { TokenUsageFooter } from "./TokenUsageFooter";
 import { useAiPanelStore } from "./store";
 import { useAgentRun } from "./useAgentRun";
-import { useCursorAiBadge, type AiBadgeEditor } from "./cursor-ai-badge";
+import { useCursorAiBadge } from "./cursor-ai-badge";
 import {
   useAgentThread,
   useAgentThreadList,
@@ -42,15 +42,9 @@ export interface AiSidePanelProps {
   canvasId: string;
   /** Optional callback invoked after a successful run terminal `done`. */
   onRunDone?: () => void;
-  /**
-   * tldraw Editor instance. When provided, the panel writes the local
-   * `aiActive` flag into instancePresence so other tabs see a sparkle
-   * overlay on this user's avatar (Cursor AI Badge).
-   */
-  editor?: AiBadgeEditor | null;
 }
 
-export function AiSidePanel({ canvasId, onRunDone, editor }: AiSidePanelProps) {
+export function AiSidePanel({ canvasId, onRunDone }: AiSidePanelProps) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const list = useAgentThreadList(canvasId);
@@ -72,10 +66,12 @@ export function AiSidePanel({ canvasId, onRunDone, editor }: AiSidePanelProps) {
   // the run terminates (the thread refetch then carries the persisted
   // row from the server).
   const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
-  // Mirror run lifecycle onto tldraw instancePresence so other tabs see
-  // a ✨ overlay during a run (and remove it on terminal). Noop when
-  // editor is not yet mounted.
-  useCursorAiBadge(editor ?? null, run.state);
+  // Flip the shared `aiActiveAtom` to true while the panel is mounted.
+  // `useSyncStore`'s `getUserPresence` override reads the atom and
+  // injects `meta.aiActive` into the local presence record on every
+  // derivation; tldraw sync broadcasts presence to all collaborators.
+  // The hook cleans up (false) on unmount (panel closed).
+  useCursorAiBadge();
   const create = useCreateThread(canvasId);
   const clear = useClearThread(canvasId);
   const remove = useDeleteThread(canvasId);

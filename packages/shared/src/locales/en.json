@@ -467,6 +467,31 @@
         "subtitle": "Used when you open the AI panel.",
         "unset": "No default selected"
       }
+    },
+    "pat": {
+      "title": "MCP Tokens",
+      "subtitle": "Drive your Vellum canvases from external AI clients (Claude Desktop, Cursor, etc.) through MCP. Each token is shown only once at creation — copy it immediately.",
+      "createButton": "Create token",
+      "nameLabel": "Token name",
+      "namePlaceholder": "e.g. Claude Desktop",
+      "expiresLabel": "Expiration",
+      "expires30Days": "30 days",
+      "expires90Days": "90 days",
+      "expiresNever": "Never expires",
+      "submitButton": "Create",
+      "plaintextWarning": "Copy and store this token securely — it will not be shown again after you close this dialog.",
+      "copyButton": "Copy",
+      "copySuccess": "Copied to clipboard",
+      "doneButton": "Done",
+      "revokeButton": "Revoke",
+      "revokeConfirmTitle": "Revoke this token?",
+      "revokeConfirmBody": "Clients using this token will lose access immediately. This cannot be undone.",
+      "revokeConfirmButton": "Confirm revoke",
+      "lastUsedNever": "Never used",
+      "lastUsedAt": "Last used: {{when}}",
+      "expiresAt": "Expires: {{when}}",
+      "expiresNeverDisplay": "Never expires",
+      "emptyState": "No tokens yet."
     }
   },
   "agent": {

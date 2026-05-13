@@ -33,3 +33,17 @@
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warm-sepia focus-visible:ring-offset-2 focus-visible:ring-offset-off-white;
   }
 }
+
+/* Cursor AI Badge — soft pulse so the chip catches the eye without
+ * being seizure-inducing. Used by `CollaboratorCursorWithBadge`. */
+@keyframes vellum-ai-badge-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.88;
+  }
+}

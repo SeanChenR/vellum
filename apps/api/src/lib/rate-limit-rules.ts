@@ -144,6 +144,24 @@ export const BYOK_PREFERENCE_RULE: RateLimitRule = { windowMs: s(60), max: 60 };
 export const AGENT_RUN_RULE: RateLimitRule = { windowMs: s(60), max: 5 };
 
 // ---------------------------------------------------------------------------
+// MCP server (Phase 2, M15) — POST /api/mcp `tools/call`.
+// Bucket key format: `mcp:user:<userId>` — per-user (all PATs of one user
+// share one bucket). `initialize` / `ping` / `tools/list` do NOT consume.
+// Spec: openspec/specs/mcp-server/spec.md
+//   "MCP_TOOL_CALL_RULE rate-limits tools/call at 60 calls per 60 seconds per user".
+// ---------------------------------------------------------------------------
+
+/**
+ * 60 calls / 60s per user across all PATs.
+ *
+ * Higher than AGENT_RUN_RULE because MCP is background AI automation
+ * (e.g. Claude Desktop running a multi-tool task) that naturally
+ * bursts more than UI Send clicks. Per-user (not per-token) prevents
+ * users from multiplying capacity by creating extra tokens.
+ */
+export const MCP_TOOL_CALL_RULE: RateLimitRule = { windowMs: s(60), max: 60 };
+
+// ---------------------------------------------------------------------------
 // AI Threads CRUD (Phase 2, M14) — /api/agent/threads/*
 // Bucket key format: `api:agent.threads.<action>:user:<userId>`.
 // ---------------------------------------------------------------------------

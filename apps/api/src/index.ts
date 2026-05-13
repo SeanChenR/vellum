@@ -59,6 +59,9 @@ import { generateTitleInBackground } from "./agent/title-gen";
 import * as schema from "./db/schema";
 import { createDrizzleByokRepo } from "./byok/byok-repo";
 import { handleByokRequest, type ByokDeps } from "./byok/routes";
+import { handlePatRequest, type PatRoutesDeps } from "./pat/routes";
+import { buildPatRepo } from "./pat/repo";
+import { handleMcpRequest, type McpServerDeps } from "./mcp/index";
 
 const PORT = Number(Bun.env.PORT ?? 3000);
 
@@ -175,6 +178,14 @@ const byokDeps: ByokDeps = {
   rateLimiter,
 };
 
+// PAT (Personal Access Token) routes — used by external MCP clients
+// to authenticate to /api/mcp. Defined here so the deps are constructed
+// once at module load; the repo wraps drizzle and is stateless.
+// Spec: openspec/specs/personal-access-token/spec.md
+const patDeps: PatRoutesDeps = {
+  repo: buildPatRepo({ db: getDb() }),
+};
+
 // Permission Guard deps — single resolver shared between the sync handshake
 // and write-side AI surfaces (dev mutate today, M13/M14 production endpoints
 // later). Defined here so syncDeps and the dev mutate endpoint reuse the
@@ -199,6 +210,57 @@ async function resolveCanvasRoleForGuard(
 
 const permissionGuardDeps: PermissionGuardDeps = {
   resolveCanvasRole: resolveCanvasRoleForGuard,
+};
+
+// MCP server deps — wires PAT auth, rate limiter, dispatch, and the
+// listCanvases reader's drizzle queries together. Constructed once at
+// module load.
+// Spec: openspec/specs/mcp-server/spec.md
+const mcpServerDeps: McpServerDeps = {
+  serverVersion: VELLUM_VERSION,
+  patRepo: patDeps.repo,
+  rateLimiter,
+  logger,
+  lastUsedThrottle: new Map(),
+  toolsCallDeps: {
+    permission: permissionGuardDeps,
+    toolRegistryDeps: {
+      // Share the same room registry as the in-process agent so MCP-driven
+      // write tools (createShape etc.) hit the live tldraw room and
+      // converge with web-client edits in real time. Without this, the
+      // mutator returns `errors.devMutate.canvasNotInActiveRoom` for any
+      // canvas the user is not currently looking at.
+      registry: syncRegistry,
+      // applyMutation defaults to the real impl in tool-registry.
+      listCanvasesDeps: {
+        queryOwnedCanvases: async (userId: string) => {
+          const db = getDb();
+          const rows = await db
+            .select({ id: canvases.id, title: canvases.title })
+            .from(canvases)
+            .where(eq(canvases.ownerId, userId))
+            .limit(100);
+          return rows.map((r) => ({ id: r.id, title: r.title }));
+        },
+        querySharedCanvases: async (userId: string) => {
+          const db = getDb();
+          const rows = await db
+            .select({
+              id: canvases.id,
+              title: canvases.title,
+              role: canvasShares.role,
+            })
+            .from(canvasShares)
+            .innerJoin(canvases, eq(canvasShares.canvasId, canvases.id))
+            .where(eq(canvasShares.userId, userId))
+            .limit(100);
+          return rows;
+        },
+      },
+      // sessionUserId is injected per-request by handleMcpRequest;
+      // wiring layer leaves it undefined here.
+    } as never,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -778,6 +840,21 @@ const server = Bun.serve<SyncSocketData>({
       const session = await getSession(req);
       const byokResponse = await handleByokRequest(req, session, byokDeps);
       if (byokResponse) return respond(byokResponse);
+    }
+
+    // PAT routes — same prefix-before-generic ordering as BYOK.
+    if (url.pathname.startsWith("/api/account/pat")) {
+      const session = await getSession(req);
+      const patResponse = await handlePatRequest(req, session, patDeps);
+      if (patResponse) return respond(patResponse);
+    }
+
+    // MCP server endpoint — JSON-RPC 2.0 over HTTP POST, PAT-authenticated.
+    // Stateless: each request authenticates via Authorization: Bearer header
+    // and resolves the user from the PAT. No cookie session involvement.
+    // Spec: openspec/specs/mcp-server/spec.md
+    if (url.pathname === "/api/mcp" && req.method === "POST") {
+      return respond(await handleMcpRequest(req, mcpServerDeps));
     }
 
     // Account routes (protected)

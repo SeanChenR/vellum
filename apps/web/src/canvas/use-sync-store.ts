@@ -18,11 +18,19 @@
 
 import { useEffect, useMemo } from "react";
 import { useSync, type RemoteTLStoreWithStatus } from "@tldraw/sync";
-import { defaultBindingUtils, defaultShapeUtils, type TLAssetStore } from "tldraw";
+import {
+  defaultBindingUtils,
+  defaultShapeUtils,
+  getDefaultUserPresence,
+  type TLAssetStore,
+  type TLPresenceUserInfo,
+  type TLStore,
+} from "tldraw";
 import { create } from "zustand";
 import { useAuth } from "../auth/useAuth";
 import { customShapeUtilClasses } from "./shapes/shape-utils";
 import { inlineImageAsset } from "./asset-inline";
+import { aiActiveAtom } from "./ai-active-signal";
 
 // Module-level so the array reference is stable across re-renders.
 // Passing a fresh `[...defaultShapeUtils, ...customShapeUtilClasses]`
@@ -280,6 +288,20 @@ export function useSyncStore(canvasId: string, options?: UseSyncStoreOptions): U
     uri,
     assets: inlineAssetStore,
     userInfo,
+    // Custom presence derivation: tldraw's `getDefaultUserPresence`
+    // hard-codes `meta: {}` and is recomputed on every reactive tick,
+    // so any meta we wrote via `store.put` is wiped immediately. We
+    // override here to spread the default fields + inject the
+    // `aiActiveAtom` value. tldraw's reactive layer tracks the atom,
+    // so flipping it from `cursor-ai-badge.ts` re-runs this function
+    // and broadcasts the new meta over sync.
+    // Spec: openspec/specs/ai-side-panel/spec.md
+    //   "Cursor AI Badge surfaces aiActive presence flag"
+    getUserPresence: (store: TLStore, user: TLPresenceUserInfo) => {
+      const base = getDefaultUserPresence(store, user);
+      if (!base) return null;
+      return { ...base, meta: { ...base.meta, aiActive: aiActiveAtom.get() } };
+    },
     // Schema must match the server's: default shapes + bindings PLUS our
     // four custom shapes. Reference must be stable (module-level) — see
     // ALL_SHAPE_UTILS comment above.

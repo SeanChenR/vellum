@@ -467,6 +467,31 @@
         "subtitle": "開啟 AI panel 時的預設選擇。",
         "unset": "尚未選擇預設"
       }
+    },
+    "pat": {
+      "title": "MCP Tokens",
+      "subtitle": "從 Claude Desktop、Cursor 等外部 AI 客戶端透過 MCP 操作你的 Vellum canvas。每個 token 只在建立當下顯示一次，請立即複製保存。",
+      "createButton": "建立 Token",
+      "nameLabel": "Token 名稱",
+      "namePlaceholder": "例如：Claude Desktop",
+      "expiresLabel": "有效期限",
+      "expires30Days": "30 天",
+      "expires90Days": "90 天",
+      "expiresNever": "永不過期",
+      "submitButton": "建立",
+      "plaintextWarning": "請複製並安全保存此 token——關閉這個視窗後就無法再看到了。",
+      "copyButton": "複製",
+      "copySuccess": "已複製到剪貼簿",
+      "doneButton": "完成",
+      "revokeButton": "撤銷",
+      "revokeConfirmTitle": "撤銷此 Token？",
+      "revokeConfirmBody": "使用此 token 的客戶端會立即失去存取權，且無法復原。",
+      "revokeConfirmButton": "確認撤銷",
+      "lastUsedNever": "尚未使用",
+      "lastUsedAt": "最後使用：{{when}}",
+      "expiresAt": "到期：{{when}}",
+      "expiresNeverDisplay": "永不過期",
+      "emptyState": "尚未建立任何 token。"
     }
   },
   "agent": {

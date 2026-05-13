@@ -305,3 +305,69 @@ export const aiMessages = pgTable(
 
 export type AiMessage = typeof aiMessages.$inferSelect;
 export type NewAiMessage = typeof aiMessages.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// personal_access_tokens — long-lived API tokens for MCP server auth (M15)
+// ---------------------------------------------------------------------------
+
+/**
+ * Personal Access Tokens (PAT) authenticate third-party MCP clients
+ * (Claude Desktop, Cursor, ...) to Vellum's MCP server at /api/mcp.
+ *
+ * Storage: SHA-256 hash of the plaintext is stored; plaintext is
+ * returned to the user ONCE at creation time and never again.
+ *
+ * Format: `vlm_pat_<32 char base62>` (total 40 chars). The first 12
+ * chars are stored in `tokenPrefix` for UI display + secret-scanner
+ * detection.
+ *
+ * Permission model: tokens authenticate user only — per-canvas
+ * permission is enforced at request time via existing permission-guard
+ * against the user's role on the supplied canvasId.
+ *
+ * Lifecycle: soft delete via `revokedAt`; hard cleanup of revoked rows
+ * after 30 days is a future maintenance job (not part of M15).
+ *
+ * Spec: openspec/specs/personal-access-token/spec.md
+ */
+export const personalAccessTokens = pgTable(
+  "personal_access_tokens",
+  {
+    /** ulid (text PK) — time-sortable so created_at DESC is natural. */
+    id: text("id").primaryKey(),
+    /** FK → users.id; cascade-delete with user. */
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** User-supplied label, 1..64 chars (e.g. "Claude Desktop on Mac"). */
+    name: text("name").notNull(),
+    /** SHA-256 hex of the plaintext token. Never stores plaintext. */
+    tokenHash: text("token_hash").notNull(),
+    /** First 12 chars of plaintext (e.g. `"vlm_pat_a3f2"`) for UI + secret-scan. */
+    tokenPrefix: text("token_prefix").notNull(),
+    /** Reserved for future fine-grained scope; NULL = unrestricted in M15. */
+    scope: text("scope"),
+    /** NULL = never expires. */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    /** Throttled-write tracker; max one UPDATE per token per 60 s. */
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Soft delete marker; non-null = revoked. */
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [
+    /** Latest-first list per user for Settings UI. */
+    index("pat_user_idx").on(table.userId, table.createdAt),
+    /**
+     * Active-only unique index on token_hash. Permits a revoked hash to
+     * be reused by a new token (extremely unlikely but spec-required).
+     * Partial WHERE clause materializes only active rows.
+     */
+    uniqueIndex("pat_hash_active_idx")
+      .on(table.tokenHash)
+      .where(sql`${table.revokedAt} IS NULL`),
+  ],
+);
+
+export type PersonalAccessToken = typeof personalAccessTokens.$inferSelect;
+export type NewPersonalAccessToken = typeof personalAccessTokens.$inferInsert;

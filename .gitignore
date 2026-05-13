@@ -61,5 +61,7 @@ bun-debug.log*
 
 # Claude Code local settings (user-specific overrides)
 .claude/settings.local.json
+.claude/skills/
+.agents/
 .spectra/
 openspec/.vector-search.db*

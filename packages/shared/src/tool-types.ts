@@ -17,15 +17,22 @@ export type WriteToolName =
   | "ungroupShape"
   | "connectShapes";
 
-/** Read tools — derive plain results from `room.getCurrentSnapshot()` / `room.getPresenceRecords()`. */
+/**
+ * Read tools — derive plain results from `room.getCurrentSnapshot()` /
+ * `room.getPresenceRecords()`. The user-scoped `listCanvases` (M15) is
+ * also classified as `read`: it queries the user's accessible canvas
+ * list and does not touch tldraw room state.
+ */
 export type ReadToolName =
+  | "listShapes"
   | "listShapesInViewport"
   | "listShapesInSelection"
   | "getShape"
   | "getCanvasBounds"
-  | "getViewport";
+  | "getViewport"
+  | "listCanvases";
 
-/** Exhaustive union of all eleven tool names. */
+/** Exhaustive union of all thirteen tool names. */
 export type ToolName = WriteToolName | ReadToolName;
 
 export type ToolKind = "write" | "read";

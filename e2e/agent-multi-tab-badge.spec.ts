@@ -33,14 +33,9 @@ test.describe("Cursor AI Badge — multi-tab presence", () => {
     "Set E2E_TEST_USER_BYOK_OPENAI=<key> or E2E_TEST_USER_BYOK_GEMINI=<key> to run; the triggering tab hits the real provider API.",
   );
 
-  // BLOCKED on M15 (issue #16): cursor-ai-badge.ts currently writes
-  // `TLInstance.meta.aiActive`, which lives on the local instance record
-  // and is NOT broadcast through tldraw sync. Only TLInstancePresence
-  // records propagate to collaborators. The spec body below is ready
-  // and exercises the right testids — once M15 routes the flag through
-  // `editor.store.put` + `InstancePresenceRecordType.createId(userId)`,
-  // remove this skip line and the spec should pass.
-  test.skip(true, "M15 — cross-tab broadcast pending (#16). Spec body kept ready.");
+  // Unblocked in M15 (#16): cursor-ai-badge.ts now writes `meta.aiActive`
+  // onto the local `TLInstancePresence` record via `editor.store.put`, so
+  // tldraw sync broadcasts the flag to every other tab + collaborator.
 
   test("non-triggering tab sees ✨ overlay during a run", async ({ browser }) => {
     test.setTimeout(180_000);
@@ -110,14 +105,19 @@ test.describe("Cursor AI Badge — multi-tab presence", () => {
         .fill("Create one markdown shape with content 'ai badge probe'.");
       await u1.page.getByTestId("chat-composer-send").click();
 
-      // U2's tab should see the ✨ overlay within 1.5s of the run starting.
+      // U2's tab should see the ✨ overlay within 5s of the panel
+      // opening. The badge contract is "AI panel is open", NOT "a run
+      // is in flight" — we want a persistent affordance rather than a
+      // 2-second flash. See cursor-ai-badge.ts for rationale.
       await expect(u2Page.getByTestId("collaborator-ai-badge").first()).toBeVisible({
         timeout: 5_000,
       });
 
-      // After the run terminates (Send button visible again on U1), the
-      // badge must disappear from U2's view.
+      // Wait for the run to terminate (Send button returns) so we know
+      // sync has stabilised, then close U1's panel — the badge must
+      // disappear from U2's view.
       await expect(u1.page.getByTestId("chat-composer-send")).toBeVisible({ timeout: 60_000 });
+      await u1.page.getByTestId("topbar-ai-panel-toggle").click();
       await expect(u2Page.getByTestId("collaborator-ai-badge")).toHaveCount(0, {
         timeout: 5_000,
       });

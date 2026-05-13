@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import type { ProviderId } from "@vellum/shared";
 import { ApiKeyRow } from "./ApiKeyRow";
 import { ApiKeysPricingTable } from "./ApiKeysPricingTable";
+import { PatTokensSection } from "./PatTokensSection";
 
 const PROVIDERS: readonly ProviderId[] = ["anthropic", "openai", "google"] as const;
 
@@ -37,6 +38,10 @@ export function ApiKeysPage() {
       </div>
 
       <ApiKeysPricingTable />
+
+      <hr className="my-8 border-gray-200" />
+
+      <PatTokensSection />
     </div>
   );
 }

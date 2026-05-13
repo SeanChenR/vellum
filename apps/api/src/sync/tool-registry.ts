@@ -39,6 +39,7 @@ import {
   getCanvasBounds,
   getShape,
   getViewport,
+  listAllShapes,
   listShapesInSelection,
   listShapesInViewport,
   type Bounds,
@@ -47,6 +48,11 @@ import {
   type ShapeSummary,
   type Viewport,
 } from "./mutator-readers";
+import {
+  listCanvasesForUser,
+  type CanvasSummary,
+  type ListCanvasesDeps,
+} from "./list-canvases-reader";
 
 // ---------------------------------------------------------------------------
 // Public deps + entry types
@@ -63,6 +69,17 @@ import {
 export interface ToolRegistryDeps extends ApplyMutationDeps, MutatorReadersDeps {
   /** Optional override; production wiring uses the real `applyMutation`. */
   applyMutation?: typeof applyMutation;
+  /**
+   * Deps for the user-scoped `listCanvases` read tool (M15). Optional
+   * because callers that never invoke `listCanvases` (e.g. in-process
+   * agent runtime tied to a single canvas) don't need to supply it.
+   */
+  listCanvasesDeps?: ListCanvasesDeps;
+  /**
+   * Authenticated user id. Required when `listCanvases` is called
+   * (the tool ignores the `canvasId` parameter and queries by user).
+   */
+  sessionUserId?: string;
 }
 
 interface BaseEntry<Name extends ToolName, Kind extends ToolKind, Payload, Result> {
@@ -98,11 +115,13 @@ export type ToolEntry =
   | WriteEntry<"groupShapes", GroupShapesPayload>
   | WriteEntry<"ungroupShape", UngroupShapePayload>
   | WriteEntry<"connectShapes", ConnectShapesPayload>
+  | ReadEntry<"listShapes", Record<string, never>, ShapeSummary[]>
   | ReadEntry<"listShapesInViewport", Bounds, ShapeSummary[]>
   | ReadEntry<"listShapesInSelection", { sessionId: string }, ShapeSummary[]>
   | ReadEntry<"getShape", { shapeId: string }, ShapeSummary | null>
   | ReadEntry<"getCanvasBounds", Record<string, never>, Bounds | null>
-  | ReadEntry<"getViewport", { sessionId: string }, Viewport | null>;
+  | ReadEntry<"getViewport", { sessionId: string }, Viewport | null>
+  | ReadEntry<"listCanvases", Record<string, never>, CanvasSummary[]>;
 
 // ---------------------------------------------------------------------------
 // Registry
@@ -231,11 +250,26 @@ export const toolRegistry: Record<ToolName, ToolEntry> = {
     schema: connectShapesPayloadSchema,
     execute: writeExec<"connectShapes", ConnectShapesPayload>("connectShapes"),
   },
+  listShapes: {
+    name: "listShapes",
+    kind: "read",
+    description: [
+      "List EVERY shape on the canvas with its id, type, position, size, and key props (text, color, geometry).",
+      "",
+      "Call this FIRST before placing new shapes — the returned summaries tell you what already exists so you can avoid overlap, follow the established style (colors, sizes), and reference existing shapes by id in `connectShapes` / `updateShape`.",
+      "",
+      "REQUIRED: canvasId (the target canvas). Takes no other arguments — returns the full shape list in one call.",
+      "",
+      "Prefer this over `listShapesInViewport` unless the user explicitly asked about only what is on-screen.",
+    ].join("\n"),
+    schema: noPayloadSchema,
+    execute: async (deps, canvasId) => listAllShapes(deps, canvasId),
+  },
   listShapesInViewport: {
     name: "listShapesInViewport",
     kind: "read",
     description:
-      "List shapes intersecting a given viewport rectangle (world coordinates). Use this to discover what is currently visible to the user before deciding where to place new shapes.",
+      "List shapes intersecting a given viewport rectangle (world coordinates). Use this only when you specifically want what is visible to the user right now; for surveying the whole canvas use `listShapes` instead.",
     schema: viewportSchema,
     execute: async (deps, canvasId, viewport) => listShapesInViewport(deps, canvasId, viewport),
   },
@@ -271,5 +305,35 @@ export const toolRegistry: Record<ToolName, ToolEntry> = {
       "Get the user's current viewport rectangle (what they're looking at, in world coordinates). Use to place new shapes near where the user is focused.",
     schema: sessionIdSchema,
     execute: async (deps, canvasId, input) => getViewport(deps, canvasId, input.sessionId),
+  },
+  /**
+   * `listCanvases` (M15) — user-scoped discovery tool exposed primarily
+   * via the MCP server entry point. MCP clients call it before other
+   * tools when the user has not specified which canvas to operate on,
+   * since the in-process agent runtime already knows its canvas. The
+   * tool ignores `canvasId` entirely; it resolves the authenticated
+   * user from `deps.sessionUserId` and queries owned + shared canvases
+   * via `listCanvasesForUser`.
+   *
+   * Spec: openspec/specs/server-mutation-bridge/spec.md "Tool registry
+   * enumerates the full agent tool surface" — listCanvases entry; and
+   * openspec/specs/mcp-server/spec.md "tools/call dispatches to the
+   * existing tool-registry execute path with permission enforcement"
+   * listCanvases bypass scenario.
+   */
+  listCanvases: {
+    name: "listCanvases",
+    kind: "read",
+    description:
+      "List canvases the calling user can access. Returns each canvas as { id, title, role }, where role is one of owner / editor / viewer (the user's role on that canvas). Call this first when the user has not specified a target canvas — the returned ids feed the canvasId parameter on every other tool. The canvasId argument to this tool is ignored.",
+    schema: noPayloadSchema,
+    execute: async (deps) => {
+      const listDeps = deps.listCanvasesDeps;
+      const userId = deps.sessionUserId;
+      if (!listDeps || !userId) {
+        return { ok: false, errorKey: "errors.listCanvases.depsMissing" };
+      }
+      return listCanvasesForUser(listDeps, userId);
+    },
   },
 };

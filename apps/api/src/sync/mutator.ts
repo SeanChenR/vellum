@@ -38,7 +38,9 @@ export type MutationErrorKey =
   | "errors.fullToolSurface.shapeNotFound"
   | "errors.fullToolSurface.groupNotFound"
   | "errors.fullToolSurface.invalidViewport"
-  | "errors.fullToolSurface.sessionNotFound";
+  | "errors.fullToolSurface.sessionNotFound"
+  | "errors.listCanvases.queryFailed"
+  | "errors.listCanvases.depsMissing";
 
 /**
  * Subset of tldraw's `RoomStoreMethods` that the mutator needs. Real

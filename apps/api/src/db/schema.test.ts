@@ -11,7 +11,7 @@
 
 import { getTableColumns } from "drizzle-orm";
 import { describe, expect, test } from "bun:test";
-import { folders, canvases, aiThreads, aiMessages } from "./schema";
+import { folders, canvases, aiThreads, aiMessages, personalAccessTokens } from "./schema";
 
 describe("Schema: folders table (1-level depth)", () => {
   test("folders has no parentId column", () => {
@@ -129,5 +129,55 @@ describe("Schema: ai_messages (chronological, role enum)", () => {
     const toolCallIdCol = cols["toolCallId"] as { notNull: boolean } | undefined;
     expect(toolNameCol?.notNull ?? false).toBe(false);
     expect(toolCallIdCol?.notNull ?? false).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// personal_access_tokens — long-lived API tokens for MCP server auth (M15)
+// Spec ref: openspec/specs/personal-access-token/spec.md "Personal access
+//           tokens are persisted as opaque hashed entries per user"
+// ---------------------------------------------------------------------------
+
+describe("Schema: personal_access_tokens (PAT for MCP)", () => {
+  test("personal_access_tokens has required columns", () => {
+    const cols = getTableColumns(personalAccessTokens);
+    expect("id" in cols).toBe(true);
+    expect("userId" in cols).toBe(true);
+    expect("name" in cols).toBe(true);
+    expect("tokenHash" in cols).toBe(true);
+    expect("tokenPrefix" in cols).toBe(true);
+    expect("scope" in cols).toBe(true);
+    expect("expiresAt" in cols).toBe(true);
+    expect("lastUsedAt" in cols).toBe(true);
+    expect("createdAt" in cols).toBe(true);
+    expect("revokedAt" in cols).toBe(true);
+  });
+
+  test("personal_access_tokens required columns are NOT NULL", () => {
+    const cols = getTableColumns(personalAccessTokens);
+    expect((cols["id"] as { notNull: boolean }).notNull).toBe(true);
+    expect((cols["userId"] as { notNull: boolean }).notNull).toBe(true);
+    expect((cols["name"] as { notNull: boolean }).notNull).toBe(true);
+    expect((cols["tokenHash"] as { notNull: boolean }).notNull).toBe(true);
+    expect((cols["tokenPrefix"] as { notNull: boolean }).notNull).toBe(true);
+    expect((cols["createdAt"] as { notNull: boolean }).notNull).toBe(true);
+  });
+
+  test("personal_access_tokens optional columns are nullable", () => {
+    // scope reserved for future fine-grained scopes; M15 always NULL
+    // expires_at NULL = never expires
+    // last_used_at NULL until first successful auth
+    // revoked_at NULL = active; set = soft-deleted
+    const cols = getTableColumns(personalAccessTokens);
+    expect((cols["scope"] as { notNull: boolean }).notNull ?? false).toBe(false);
+    expect((cols["expiresAt"] as { notNull: boolean }).notNull ?? false).toBe(false);
+    expect((cols["lastUsedAt"] as { notNull: boolean }).notNull ?? false).toBe(false);
+    expect((cols["revokedAt"] as { notNull: boolean }).notNull ?? false).toBe(false);
+  });
+
+  test("personal_access_tokens.createdAt has default", () => {
+    const cols = getTableColumns(personalAccessTokens);
+    const createdAt = cols["createdAt"] as { hasDefault: boolean } | undefined;
+    expect(createdAt?.hasDefault).toBe(true);
   });
 });

@@ -1,59 +1,33 @@
 /**
- * cursor-ai-badge.ts — mirrors the local agent run lifecycle onto the
- * tldraw instance state's `meta.aiActive` flag.
+ * cursor-ai-badge.ts — sets the shared `aiActiveAtom` while mounted so
+ * tldraw's presence derivation injects `meta.aiActive=true` into the
+ * local presence record. Sync layer broadcasts it; remote tabs read it
+ * via `CollaboratorCursorWithBadge`.
  *
- * Spec ref:
- *   openspec/changes/add-ai-side-panel-and-threads/specs/ai-side-panel/spec.md
- *   - "Cursor AI Badge surfaces aiActive presence flag"
+ * Why this hook is now atom-only and no longer touches the store:
+ *   tldraw's `createPresenceStateDerivation` re-computes the presence
+ *   record on every reactive tick from `getDefaultUserPresence`, which
+ *   hard-codes `meta: {}`. Direct `store.put` writes are immediately
+ *   overwritten. The only durable path is to override the derivation
+ *   via `useSync`'s `getUserPresence`, which `use-sync-store.ts` does
+ *   by reading from `aiActiveAtom`.
  *
- * Why `updateInstanceState({ meta })` and NOT `user.updateUserPreferences({ meta })`:
- *   tldraw 4.5 `TLUserPreferences` has no `meta` field — the runtime
- *   schema validator rejects it with "At meta: Unexpected property".
- *   `TLInstance.meta: JsonObject` IS a real field, so it is the correct
- *   write target.
+ * Trigger model — mount/unmount:
+ *   The caller (`AiSidePanel`) is only mounted while the panel is open,
+ *   so mount lifecycle == panel-is-open.
  *
- * Known limitation (M15+ follow-up):
- *   `TLInstance` is NOT broadcast through tldraw sync — only
- *   `TLInstancePresence` is. So today this only writes the local flag;
- *   cross-tab cursor badge on remote avatars needs a direct
- *   `editor.store.put` on the local `TLInstancePresence` record with a
- *   merged `meta` object. Deferred so the panel ships unblocked.
+ * Spec ref: openspec/specs/ai-side-panel/spec.md
+ *   "Cursor AI Badge surfaces aiActive presence flag"
  */
 
 import { useEffect } from "react";
-import type { AgentRunState } from "./useAgentRun";
+import { aiActiveAtom } from "../canvas/ai-active-signal";
 
-/**
- * Minimal surface this file touches on the tldraw editor — keeps tests
- * free of full tldraw type wiring. The real `Editor` from "tldraw"
- * satisfies this shape via `editor.updateInstanceState`.
- */
-export interface AiBadgeEditor {
-  updateInstanceState(partial: { meta?: Record<string, unknown> }): void;
-}
-
-/**
- * Reflects the agent run's lifecycle into instance state:
- *   running       → meta.aiActive = true
- *   any terminal  → meta.aiActive = false
- *   no editor     → noop (Editor is still mounting)
- *
- * Idempotent — repeated calls with the same state do not spam updates
- * beyond what tldraw's diffing already handles.
- */
-export function useCursorAiBadge(editor: AiBadgeEditor | null, state: AgentRunState): void {
+export function useCursorAiBadge(active = true): void {
   useEffect(() => {
-    if (!editor) return;
-    const aiActive = state === "running";
-    editor.updateInstanceState({ meta: { aiActive } });
-  }, [editor, state]);
-}
-
-/**
- * Pure helper exposed for testing — given a run state, return whether the
- * cursor badge should be set true. Centralised so behavior is testable
- * without faking tldraw editor wiring.
- */
-export function shouldShowAiBadge(state: AgentRunState): boolean {
-  return state === "running";
+    aiActiveAtom.set(active);
+    return () => {
+      aiActiveAtom.set(false);
+    };
+  }, [active]);
 }

@@ -105,23 +105,12 @@ export function ChatComposer(props: ChatComposerProps) {
       model: selectedModel,
       userMessage: draft.trim(),
     });
-    // Draft is cleared by the useEffect below once the run reaches a
-    // success terminal (`done`). On `error` / `cancelled` we deliberately
-    // keep the typed text so the user can retry without retyping — see
-    // ai-side-panel spec "Rate limit response shows toast with errorKey
-    // translation": "the typed prompt SHALL still be present in the
-    // textarea".
+    // Clear immediately on send. The submitted text is already in the
+    // chat history (rendered by ChatList from the thread store), so the
+    // user can copy-paste from there if they need to retry after an
+    // error. Keeping it in the textarea while running just looks stale.
+    setDraft("");
   }
-
-  // Track the previous run state so the clear-on-done transition only
-  // fires once per terminal, even though React may re-render mid-update.
-  const prevStateRef = useRef<AgentRunState>(state);
-  useEffect(() => {
-    if (prevStateRef.current === "running" && state === "done") {
-      setDraft("");
-    }
-    prevStateRef.current = state;
-  }, [state, setDraft]);
 
   useEffect(() => {
     function onKey(ev: KeyboardEvent) {
@@ -152,8 +141,8 @@ export function ChatComposer(props: ChatComposerProps) {
       <textarea
         ref={taRef}
         data-testid="chat-composer-textarea"
-        className="w-full resize-none rounded-md border border-warm-sepia/40 bg-white px-3 py-2 text-sm text-ink-navy focus:outline-none disabled:cursor-not-allowed disabled:bg-paper-cream/60"
-        rows={3}
+        className="min-h-[10rem] w-full resize-y rounded-md border border-warm-sepia/40 bg-white px-3 py-2 text-sm leading-relaxed text-ink-navy focus:outline-none disabled:cursor-not-allowed disabled:bg-paper-cream/60"
+        rows={7}
         placeholder={t("agent.panel.placeholder")}
         value={draft}
         disabled={composerDisabled}

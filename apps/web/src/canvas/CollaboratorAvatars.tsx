@@ -18,9 +18,10 @@ export interface CollaboratorPresence {
   image: string | null;
   /**
    * True when this collaborator is currently running an AI agent against
-   * this canvas. Surfaced via tldraw `instancePresence.userMeta.aiActive`
-   * so all tabs of all participants see a sparkle overlay. Spec ref:
-   * ai-side-panel "Cursor AI Badge surfaces aiActive presence flag" (M14).
+   * this canvas. Read from `TLInstancePresence.meta.aiActive` (which
+   * tldraw sync DOES broadcast — unlike `TLInstance.meta` which is local-
+   * only). See `presence-collaborator.ts` for the extraction helper.
+   * Spec ref: ai-side-panel "Cursor AI Badge surfaces aiActive presence flag".
    */
   aiActive?: boolean;
 }

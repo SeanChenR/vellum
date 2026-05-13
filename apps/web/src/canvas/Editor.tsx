@@ -226,19 +226,12 @@ export function Editor({
         </div>
         {showAiPanel && (
           <div className="h-full w-[384px] shrink-0 border-l border-warm-sepia/30 bg-white">
-            {/* `AiBadgeEditor` exposes the narrow subset of the tldraw
-                Editor (`updateInstanceState`) that the cursor badge hook
-                needs. Cross-tab broadcast of `aiActive` via
-                TLInstancePresence is deferred — see cursor-ai-badge.ts
-                "Known limitation (M15+ follow-up)". */}
-            <AiSidePanel
-              canvasId={canvasId}
-              editor={
-                (editorInstance as unknown as
-                  | import("../agent/cursor-ai-badge").AiBadgeEditor
-                  | null) ?? null
-              }
-            />
+            {/* The panel's `useCursorAiBadge` hook flips a module-level
+                tldraw atom (`aiActiveAtom`) while mounted. `useSyncStore`
+                reads the atom inside its `getUserPresence` override so
+                `meta.aiActive` rides on the local presence record; tldraw
+                sync broadcasts it to every collaborator. */}
+            <AiSidePanel canvasId={canvasId} />
           </div>
         )}
       </div>

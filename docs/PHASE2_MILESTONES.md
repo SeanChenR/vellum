@@ -16,7 +16,7 @@ Phase 2 加入 AI co-pilot — 讓使用者用自然語言請 server-side agent
 | **M12** | **Server tldraw Mutator + Tool Surface** | Server tldraw Mutator (套 mutation 到 TLSocketRoom 並廣播) · Tool Surface (low-level shape primitives + Zod) · Permission Guard | Dev-only REST endpoint：給 mutation payload → canvas 上有 shape 出現、所有 client 看得到 | ✅ v0.3.0 |
 | **M13** | **Agent Runtime + Streaming** | Agent Runtime (Vercel AI SDK + tool loop + cancel + timeout) · Canvas Digest Builder · Streaming SSE Channel (per-user) | Headless test：CLI 送 prompt 給 server → 看到 streaming text + shape progressive 出現 | ✅ v0.4.0 |
 | **M14** | **AI Side Panel + 端到端 + M13 follow-ups** | AI Side Panel UI · AI Thread Store (per-user 對話) · Cursor AI Badge · E2E spec · M13 暴露的 follow-up（read tool quality / code+link-card live test / token-cost monitoring / cancel UI / multi-tab presence / tool description per-shape-type 持續精進） | 使用者開 panel → 送 prompt → 看 shape 一個個冒、Cmd+Z 整輪退、多人協作中其他人看到 ✨ badge | ✅ v0.5.0 |
-| **M15** | **Vellum MCP Server**（展示性工程，Phase 2 收尾後加做） | 把 M12.2 `tool-registry` 暴露成標準 MCP endpoint · API token auth + per-token rate limit · Permission scoping (per canvas role) | Claude Desktop / Cursor 連 vellum MCP server → 從外部編輯 canvas、所有 collaborator 看得到 mutation | ⏳ |
+| **M15** | **Vellum MCP Server**（展示性工程，Phase 2 收尾後加做） | 把 M12.2 `tool-registry` 暴露成標準 MCP endpoint · API token auth + per-token rate limit · Permission scoping (per canvas role) | Claude Desktop / Cursor 連 vellum MCP server → 從外部編輯 canvas、所有 collaborator 看得到 mutation | ✅ v0.6.0 |
 
 ---
 

@@ -14,6 +14,7 @@ import { useToasts } from "tldraw";
 import { TopBar } from "./TopBar";
 import { MainMenu } from "./MainMenu";
 import { VellumToolbar } from "../canvas/VellumToolbar";
+import { CollaboratorCursorWithBadge } from "../canvas/CollaboratorCursorWithBadge";
 import type { TopBarProps } from "./TopBar";
 import type { MainMenuProps } from "./MainMenu";
 import type { TLComponents } from "tldraw";
@@ -76,6 +77,10 @@ export const vellumChromeComponents: TLComponents = {
   // 4 custom shape buttons appended inline with tldraw's built-in tools
   // on the same horizontal toolbar.
   Toolbar: VellumToolbar,
+  // Override the collaborator cursor so it can show a ✨ overlay when
+  // the remote user is running an AI agent — tldraw's TLCursorProps
+  // doesn't carry `meta`, so we have to read presence meta ourselves.
+  CollaboratorCursor: CollaboratorCursorWithBadge,
   // Explicitly null to hide tldraw's default slots
   SharePanel: null,
   HelpMenu: null,
