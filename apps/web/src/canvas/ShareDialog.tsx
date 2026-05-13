@@ -44,8 +44,8 @@ export function ShareDialog({ open, canvasId, onClose }: ShareDialogProps) {
         className="absolute inset-0 cursor-default"
         tabIndex={-1}
       />
-      <DialogPanel className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
-        <h2 id="share-dialog-title" className="mb-4 text-lg font-semibold text-ink-navy">
+      <DialogPanel className="relative w-full max-w-lg rounded-xl bg-surface p-6 shadow-2xl">
+        <h2 id="share-dialog-title" className="mb-4 text-lg font-semibold text-text-primary">
           {t("canvas.share.title")}
         </h2>
 
@@ -75,7 +75,7 @@ function InviteSection({ state }: { state: ReturnType<typeof useShareState> }) {
 
   return (
     <section className="mb-6">
-      <h3 className="mb-2 text-sm font-semibold text-ink-navy">
+      <h3 className="mb-2 text-sm font-semibold text-text-primary">
         {t("canvas.share.inviteSection")}
       </h3>
       <form onSubmit={handleSubmit} className="flex gap-2">
@@ -87,14 +87,14 @@ function InviteSection({ state }: { state: ReturnType<typeof useShareState> }) {
             placeholder={t("canvas.share.emailPlaceholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-ink-navy/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink-navy"
+            className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-purple"
           />
         </label>
         <select
           aria-label={t("canvas.share.roleEditor") + " / " + t("canvas.share.roleViewer")}
           value={role}
           onChange={(e) => setRole(e.target.value as ShareRole)}
-          className="rounded-lg border border-ink-navy/20 px-2 py-2 text-sm"
+          className="rounded-lg border border-border bg-bg px-2 py-2 text-sm text-text-primary"
         >
           <option value="editor">{t("canvas.share.roleEditor")}</option>
           <option value="viewer">{t("canvas.share.roleViewer")}</option>
@@ -102,7 +102,7 @@ function InviteSection({ state }: { state: ReturnType<typeof useShareState> }) {
         <button
           type="submit"
           disabled={state.invite.isPending}
-          className="focus-visible-ring rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white hover:bg-ink-navy/90 disabled:opacity-50"
+          className="focus-visible-ring rounded-lg bg-accent-purple px-4 py-2 text-sm font-semibold text-white hover:bg-accent-purple/90 disabled:opacity-50"
         >
           {t("canvas.share.sendButton")}
         </button>
@@ -123,25 +123,25 @@ function MembersSection({ state }: { state: ReturnType<typeof useShareState> }) 
 
   return (
     <section className="mb-6">
-      <h3 className="mb-2 text-sm font-semibold text-ink-navy">
+      <h3 className="mb-2 text-sm font-semibold text-text-primary">
         {t("canvas.share.membersSection")}
       </h3>
       {members.length === 0 && invites.length === 0 && (
-        <p className="text-sm text-warm-sepia">{t("canvas.share.emptyMembers")}</p>
+        <p className="text-sm text-text-muted">{t("canvas.share.emptyMembers")}</p>
       )}
       <ul className="space-y-2">
         {members.map((m) => {
           const label = m.user?.name || m.user?.email || m.userId;
           return (
             <li key={m.userId} className="flex items-center gap-2 text-sm">
-              <span className="flex-1 text-ink-navy">{label}</span>
+              <span className="flex-1 text-text-primary">{label}</span>
               <select
                 aria-label={label}
                 value={m.role}
                 onChange={(e) =>
                   state.patchRole.mutate({ userId: m.userId, role: e.target.value as ShareRole })
                 }
-                className="rounded-lg border border-ink-navy/20 px-2 py-1 text-xs"
+                className="rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary"
               >
                 <option value="editor">{t("canvas.share.roleEditor")}</option>
                 <option value="viewer">{t("canvas.share.roleViewer")}</option>
@@ -150,7 +150,7 @@ function MembersSection({ state }: { state: ReturnType<typeof useShareState> }) 
                 type="button"
                 aria-label={`${t("canvas.share.removeButton")} ${label}`}
                 onClick={() => state.removeMember.mutate({ userId: m.userId })}
-                className="rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                className="rounded-md px-2 py-1 text-xs text-accent-red hover:bg-accent-red/10"
               >
                 {t("canvas.share.removeButton")}
               </button>
@@ -159,15 +159,15 @@ function MembersSection({ state }: { state: ReturnType<typeof useShareState> }) 
         })}
         {invites.map((inv) => (
           <li key={inv.id} className="flex items-center gap-2 text-sm">
-            <span className="flex-1 text-ink-navy">{inv.email}</span>
-            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+            <span className="flex-1 text-text-primary">{inv.email}</span>
+            <span className="rounded-md bg-accent-orange/15 px-2 py-0.5 text-xs text-accent-orange">
               {t("canvas.share.pendingBadge")}
             </span>
             <button
               type="button"
               aria-label={`${t("canvas.share.removeButton")} ${inv.email}`}
               onClick={() => state.revokeInvite.mutate({ inviteId: inv.id })}
-              className="rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+              className="rounded-md px-2 py-1 text-xs text-accent-red hover:bg-accent-red/10"
             >
               {t("canvas.share.removeButton")}
             </button>
@@ -211,7 +211,7 @@ function PublicLinkSection({ state }: { state: ReturnType<typeof useShareState> 
 
   return (
     <section>
-      <h3 className="mb-2 text-sm font-semibold text-ink-navy">
+      <h3 className="mb-2 text-sm font-semibold text-text-primary">
         {t("canvas.share.publicLinkSection")}
       </h3>
       <fieldset className="mb-3 space-y-1 text-sm">
@@ -234,7 +234,7 @@ function PublicLinkSection({ state }: { state: ReturnType<typeof useShareState> 
           type="button"
           onClick={handleCopy}
           disabled={!link || link.mode === "closed"}
-          className="rounded-lg border border-ink-navy/20 px-3 py-1.5 text-sm font-medium text-ink-navy hover:bg-parchment-cream disabled:opacity-50"
+          className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-text-primary hover:bg-surface-elevated disabled:opacity-50"
         >
           {copied ? t("canvas.share.copied") : t("canvas.share.copyLink")}
         </button>
@@ -242,7 +242,7 @@ function PublicLinkSection({ state }: { state: ReturnType<typeof useShareState> 
           type="button"
           onClick={() => state.rotateLink.mutate()}
           disabled={state.rotateLink.isPending}
-          className="rounded-lg border border-ink-navy/20 px-3 py-1.5 text-sm font-medium text-ink-navy hover:bg-parchment-cream disabled:opacity-50"
+          className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-text-primary hover:bg-surface-elevated disabled:opacity-50"
         >
           {t("canvas.share.rotateLink")}
         </button>

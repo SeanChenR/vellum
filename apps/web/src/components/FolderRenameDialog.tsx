@@ -49,8 +49,8 @@ export function FolderRenameDialog({
       aria-labelledby="folder-rename-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h2 id="folder-rename-title" className="mb-4 text-lg font-semibold">
+      <div className="w-full max-w-md rounded-xl bg-surface p-6 shadow-xl">
+        <h2 id="folder-rename-title" className="mb-4 text-lg font-semibold text-text-primary">
           {t("folder.rename")}
         </h2>
         <form
@@ -61,11 +61,11 @@ export function FolderRenameDialog({
         >
           <input
             type="text"
-            className="mb-1 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink-navy"
+            className="mb-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-purple"
             {...register("name")}
             autoFocus
           />
-          {errors.name && <p className="mb-3 text-xs text-red-600">{errors.name.message}</p>}
+          {errors.name && <p className="mb-3 text-xs text-accent-red">{errors.name.message}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <button
               type="button"
@@ -73,14 +73,14 @@ export function FolderRenameDialog({
                 reset();
                 onClose();
               }}
-              className="focus-visible-ring rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+              className="focus-visible-ring rounded-lg px-4 py-2 text-sm text-text-muted hover:bg-surface-elevated"
             >
               {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="focus-visible-ring rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="focus-visible-ring rounded-lg bg-accent-purple px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               {isPending ? "…" : "Rename"}
             </button>

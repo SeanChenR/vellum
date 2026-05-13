@@ -58,7 +58,7 @@ export function TokenUsageFooter({
   const totalModel = threadPriceModel?.model ?? thisRun?.model ?? null;
   return (
     <div
-      className="flex flex-col gap-1 border-t border-warm-sepia/30 px-3 py-2 text-[11px] text-warm-sepia"
+      className="flex flex-col gap-1 border-t border-border/30 px-3 py-2 text-[11px] text-text-muted"
       data-testid="token-usage-footer"
     >
       <div className="flex items-center justify-between" data-testid="usage-this-run">

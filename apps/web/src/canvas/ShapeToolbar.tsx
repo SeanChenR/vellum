@@ -39,7 +39,7 @@ export function ShapeToolbar({ onInsert }: ShapeToolbarProps) {
   return (
     <div
       data-testid="shape-toolbar"
-      className="flex items-center gap-1 rounded-md border border-warm-200 bg-white p-1 shadow-sm"
+      className="flex items-center gap-1 rounded-md border border-border bg-surface p-1 shadow-sm"
     >
       {ENTRIES.map(({ kind, tooltipKey, icon: Icon }) => {
         const tooltip = t(tooltipKey);
@@ -51,7 +51,7 @@ export function ShapeToolbar({ onInsert }: ShapeToolbarProps) {
             aria-label={tooltip}
             title={tooltip}
             onClick={() => onInsert(kind)}
-            className="rounded-md p-2 text-ink-navy hover:bg-warm-50"
+            className="rounded-md p-2 text-text-primary hover:bg-warm-50"
           >
             <Icon className="h-4 w-4" aria-hidden />
           </button>

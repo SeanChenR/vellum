@@ -108,7 +108,7 @@ export function VellumToolbar() {
               e.stopPropagation();
               handleInsert(entry);
             }}
-            className="inline-flex h-10 w-10 items-center justify-center rounded text-ink-navy hover:bg-warm-50"
+            className="inline-flex h-10 w-10 items-center justify-center rounded text-text-primary hover:bg-warm-50"
           >
             <Icon className="h-5 w-5" aria-hidden />
           </button>

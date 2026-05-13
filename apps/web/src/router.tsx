@@ -9,21 +9,27 @@ import { OAuthCallbackPage } from "./auth/OAuthCallbackPage";
 import { MagicLinkVerifyPage } from "./auth/MagicLinkVerifyPage";
 import { InviteErrorPage } from "./auth/InviteErrorPage";
 import { PostLoginPage } from "./auth/PostLoginPage";
-import { ProfilePage } from "./account/ProfilePage";
-import { SessionsPage } from "./account/SessionsPage";
-import { ApiKeysPage } from "./account/ApiKeysPage";
+import { AccountPage } from "./account/AccountPage";
+import {
+  ApiKeysRouteRedirect,
+  ProfileRouteRedirect,
+  SessionsRouteRedirect,
+} from "./account/legacy-redirects";
 import { DashboardPage } from "./dashboard/DashboardPage";
 import { CanvasPage } from "./canvas/CanvasPage";
 import { PublicLayout } from "./landing/PublicLayout";
 import { AppLayout } from "./landing/AppLayout";
 import { HomePage as LandingHomePage } from "./landing/HomePage";
 import { AboutPage } from "./landing/AboutPage";
+import { ThemeProvider } from "./theme/theme-provider";
 
 const rootRoute = createRootRoute({
   component: () => (
-    <div className="min-h-screen">
-      <Outlet />
-    </div>
+    <ThemeProvider>
+      <div className="min-h-screen">
+        <Outlet />
+      </div>
+    </ThemeProvider>
   ),
 });
 
@@ -95,40 +101,37 @@ const dashboardRoute = createRoute({
   ),
 });
 
-const profileRoute = createRoute({
+const accountRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/account/profile",
+  path: "/account",
+  validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
+    tab: typeof search["tab"] === "string" ? search["tab"] : undefined,
+  }),
   component: () => (
     <RouteGuard>
       <AppLayout>
-        <ProfilePage />
+        <AccountPage />
       </AppLayout>
     </RouteGuard>
   ),
+});
+
+const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/account/profile",
+  component: ProfileRouteRedirect,
 });
 
 const sessionsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/account/sessions",
-  component: () => (
-    <RouteGuard>
-      <AppLayout>
-        <SessionsPage />
-      </AppLayout>
-    </RouteGuard>
-  ),
+  component: SessionsRouteRedirect,
 });
 
 const apiKeysRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/account/api-keys",
-  component: () => (
-    <RouteGuard>
-      <AppLayout>
-        <ApiKeysPage />
-      </AppLayout>
-    </RouteGuard>
-  ),
+  component: ApiKeysRouteRedirect,
 });
 
 // Canvas route uses the anonymous-aware guard so visitors with a
@@ -205,6 +208,7 @@ const routeTree = rootRoute.addChildren([
   inviteErrorRoute,
   postLoginRoute,
   dashboardRoute,
+  accountRoute,
   profileRoute,
   sessionsRoute,
   apiKeysRoute,

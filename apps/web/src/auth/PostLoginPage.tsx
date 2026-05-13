@@ -50,7 +50,7 @@ export function PostLoginPage({ navigate, searchOverride }: PostLoginPageProps =
 
   return (
     <main className="flex min-h-screen items-center justify-center">
-      <span className="text-warm-sepia">{t("auth.verify.verifying")}</span>
+      <span className="text-text-muted">{t("auth.verify.verifying")}</span>
     </main>
   );
 }

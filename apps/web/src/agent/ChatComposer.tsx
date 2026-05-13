@@ -137,11 +137,11 @@ export function ChatComposer(props: ChatComposerProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t border-warm-sepia/30 p-3">
+    <div className="flex flex-col gap-2 border-t border-border/30 p-3">
       <textarea
         ref={taRef}
         data-testid="chat-composer-textarea"
-        className="min-h-[10rem] w-full resize-y rounded-md border border-warm-sepia/40 bg-white px-3 py-2 text-sm leading-relaxed text-ink-navy focus:outline-none disabled:cursor-not-allowed disabled:bg-paper-cream/60"
+        className="min-h-[10rem] w-full resize-y rounded-md border border-border/40 bg-surface px-3 py-2 text-sm leading-relaxed text-text-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-surface-elevated/60"
         rows={7}
         placeholder={t("agent.panel.placeholder")}
         value={draft}
@@ -150,7 +150,7 @@ export function ChatComposer(props: ChatComposerProps) {
       />
       {hasAnyProvider ? (
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-[11px] text-warm-sepia">
+          <div className="flex items-center gap-2 text-[11px] text-text-muted">
             <label className="flex items-center gap-1">
               <span className="sr-only">{t("agent.panel.providerLabel")}</span>
               <select
@@ -158,7 +158,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 value={selectedProvider ?? ""}
                 disabled={isRunning}
                 onChange={(e) => handleProviderChange(e.target.value as ProviderId)}
-                className="rounded border border-warm-sepia/40 bg-white px-1 py-0.5 text-[11px] text-ink-navy"
+                className="rounded border border-border/40 bg-surface px-1 py-0.5 text-[11px] text-text-primary"
               >
                 {availableProviders.map((p) => (
                   <option key={p.provider} value={p.provider}>
@@ -175,7 +175,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 value={selectedModel}
                 disabled={isRunning || modelOptions.length === 0}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="rounded border border-warm-sepia/40 bg-white px-1 py-0.5 text-[11px] text-ink-navy"
+                className="rounded border border-border/40 bg-surface px-1 py-0.5 text-[11px] text-text-primary"
               >
                 {modelOptions.map((m) => (
                   <option key={m} value={m}>
@@ -190,7 +190,7 @@ export function ChatComposer(props: ChatComposerProps) {
               type="button"
               data-testid="chat-composer-cancel"
               onClick={onCancel}
-              className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-600/90"
+              className="rounded-md bg-accent-red px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-red/90"
             >
               {t("agent.panel.cancel")}
             </button>
@@ -200,7 +200,7 @@ export function ChatComposer(props: ChatComposerProps) {
               data-testid="chat-composer-send"
               onClick={submit}
               disabled={draft.trim().length === 0}
-              className="rounded-md bg-ink-navy px-3 py-1.5 text-sm font-semibold text-white hover:bg-ink-navy/90 disabled:cursor-not-allowed disabled:bg-ink-navy/40"
+              className="rounded-md bg-accent-purple px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-purple/90 disabled:cursor-not-allowed disabled:bg-accent-purple/40"
             >
               {t("agent.panel.send")}
             </button>
@@ -210,7 +210,7 @@ export function ChatComposer(props: ChatComposerProps) {
         <div className="flex items-center justify-between gap-2">
           <p
             data-testid="chat-composer-no-api-key-hint"
-            className="text-[11px] leading-tight text-warm-sepia"
+            className="text-[11px] leading-tight text-text-muted"
           >
             {t("agent.panel.noApiKeyHint")}
           </p>
@@ -219,7 +219,7 @@ export function ChatComposer(props: ChatComposerProps) {
             data-testid="chat-composer-send"
             onClick={submit}
             disabled
-            className="rounded-md bg-ink-navy px-3 py-1.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-ink-navy/40"
+            className="rounded-md bg-accent-purple px-3 py-1.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-accent-purple/40"
           >
             {t("agent.panel.send")}
           </button>

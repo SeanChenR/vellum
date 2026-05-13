@@ -20,8 +20,11 @@
  * 點 link 應引導，不應裸 JSON").
  */
 
+import { AlertTriangle } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
 import { useAuth } from "./useAuth";
 
 type InviteErrorReason = "email_mismatch" | "expired" | "not_found" | "unknown";
@@ -77,29 +80,35 @@ export function InviteErrorPage({ logout: logoutOverride, navigate }: InviteErro
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-warm-50 p-8">
-      <div className="w-full max-w-md rounded-2xl border border-warm-200 bg-white p-8 shadow-sm">
-        <h1 className="font-serif text-2xl text-ink-navy">{t("inviteError.title")}</h1>
-        <p className="mt-4 text-sm leading-relaxed text-warm-sepia">{bodyByReason[reason]}</p>
+    <main className="flex flex-1 items-center justify-center p-8">
+      <Card
+        variant="elevated"
+        className="w-full max-w-[460px] !p-10 text-center"
+        style={{ borderTop: "3px solid var(--accent-orange)" }}
+      >
+        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-accent-orange/10 text-accent-orange">
+          <AlertTriangle size={26} aria-hidden />
+        </div>
+        <h1 className="mb-2 font-serif text-2xl font-medium text-text-primary">
+          {t("inviteError.title")}
+        </h1>
+        <p className="text-sm leading-relaxed text-text-muted" style={{ textWrap: "pretty" }}>
+          {bodyByReason[reason]}
+        </p>
         <div className="mt-8 flex flex-col gap-3">
           {canSwitch && (
-            <button
-              type="button"
-              onClick={handleSwitch}
-              disabled={busy}
-              className="rounded-lg bg-ink-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-ink-navy/90 disabled:opacity-50"
-            >
+            <Button variant="primary" size="md" onClick={handleSwitch} disabled={busy}>
               {t("inviteError.switchAccount")}
-            </button>
+            </Button>
           )}
           <a
             href="/"
-            className="rounded-lg border border-warm-200 px-4 py-2.5 text-center text-sm font-semibold text-ink-navy hover:bg-warm-50"
+            className="focus-visible-ring rounded-lg border border-border px-4 py-2.5 text-center text-sm font-semibold text-text-primary hover:border-accent-purple hover:text-accent-purple"
           >
             {t("inviteError.backHome")}
           </a>
         </div>
-      </div>
+      </Card>
     </main>
   );
 }

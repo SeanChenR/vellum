@@ -36,18 +36,18 @@ export function CanvasDeleteDialog({
       aria-labelledby="canvas-delete-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h2 id="canvas-delete-title" className="mb-2 text-lg font-semibold">
+      <div className="w-full max-w-md rounded-xl bg-surface p-6 shadow-xl">
+        <h2 id="canvas-delete-title" className="mb-2 text-lg font-semibold text-text-primary">
           {t("canvas.dialog.delete.title")}
         </h2>
-        <p className="mb-6 text-sm text-gray-600">
+        <p className="mb-6 text-sm text-text-muted">
           {t("canvas.dialog.delete.confirm", { title: canvasTitle })}
         </p>
         <div className="flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="focus-visible-ring rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+            className="focus-visible-ring rounded-lg px-4 py-2 text-sm text-text-muted hover:bg-surface-elevated"
           >
             {t("common.cancel")}
           </button>
@@ -55,7 +55,7 @@ export function CanvasDeleteDialog({
             type="button"
             disabled={isPending}
             onClick={onConfirm}
-            className="focus-visible-ring rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            className="focus-visible-ring rounded-lg bg-accent-red px-4 py-2 text-sm font-semibold text-white hover:bg-accent-red/90 disabled:opacity-50"
           >
             {isPending ? "Deleting…" : "Delete"}
           </button>

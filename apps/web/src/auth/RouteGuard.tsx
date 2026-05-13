@@ -23,7 +23,7 @@ export function RouteGuard({ children }: RouteGuardProps) {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <span className="text-warm-sepia">{t("common.loading")}</span>
+        <span className="text-text-muted">{t("common.loading")}</span>
       </div>
     );
   }

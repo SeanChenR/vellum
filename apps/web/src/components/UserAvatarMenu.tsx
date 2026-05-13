@@ -37,52 +37,36 @@ export function UserAvatarMenu({ user, onSignOut }: UserAvatarMenuProps) {
         type="button"
         aria-label={t("nav.userMenu.label")}
         onClick={() => setOpen((v) => !v)}
-        className="focus-visible-ring rounded-full transition-shadow hover:ring-2 hover:ring-ink-navy/20"
+        className="focus-visible-ring rounded-full transition-shadow hover:ring-2 hover:ring-accent-purple/20"
       >
         <UserAvatar user={user} />
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-1 w-44 rounded-lg border border-ink-navy/10 bg-white py-1 shadow-lg"
+          className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-lg"
         >
-          <div className="border-b border-ink-navy/10 px-3 py-2">
-            <p className="truncate text-xs font-medium text-ink-navy">{user.name}</p>
-            <p className="truncate text-xs text-warm-sepia">{user.email}</p>
+          <div className="border-b border-border px-3 py-2">
+            <p className="truncate text-xs font-medium text-text-primary">{user.name}</p>
+            <p className="truncate text-xs text-text-muted">{user.email}</p>
           </div>
           <a
             role="menuitem"
             href="/dashboard"
             onClick={() => setOpen(false)}
-            className="focus-visible-ring block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+            className="focus-visible-ring block px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-elevated"
           >
             {t("nav.userMenu.dashboard")}
           </a>
           <a
             role="menuitem"
-            href="/account/profile"
+            href="/account"
             onClick={() => setOpen(false)}
-            className="focus-visible-ring block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+            className="focus-visible-ring block px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-elevated"
           >
-            {t("nav.userMenu.profile")}
+            {t("nav.userMenu.settings")}
           </a>
-          <a
-            role="menuitem"
-            href="/account/sessions"
-            onClick={() => setOpen(false)}
-            className="focus-visible-ring block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
-          >
-            {t("nav.userMenu.sessions")}
-          </a>
-          <a
-            role="menuitem"
-            href="/account/api-keys"
-            onClick={() => setOpen(false)}
-            className="focus-visible-ring block px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
-          >
-            {t("nav.userMenu.apiKeys")}
-          </a>
-          <div className="my-1 border-t border-ink-navy/10" />
+          <div className="my-1 border-t border-border" />
           <button
             type="button"
             role="menuitem"
@@ -90,7 +74,7 @@ export function UserAvatarMenu({ user, onSignOut }: UserAvatarMenuProps) {
               setOpen(false);
               onSignOut();
             }}
-            className="focus-visible-ring w-full px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+            className="focus-visible-ring w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-elevated"
           >
             {t("nav.userMenu.signOut")}
           </button>

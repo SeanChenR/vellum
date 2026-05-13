@@ -138,8 +138,8 @@ function RenameTitleDialog({ open, currentTitle, onConfirm, onClose }: RenameTit
       aria-label={t("canvas.title.renameDialog.label")}
       className="pointer-events-auto fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
     >
-      <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
-        <h2 className="mb-4 text-base font-semibold text-ink-navy">
+      <div className="w-full max-w-sm rounded-xl bg-surface p-6 shadow-2xl">
+        <h2 className="mb-4 text-base font-semibold text-text-primary">
           {t("canvas.title.renameDialog.label")}
         </h2>
         <form
@@ -151,25 +151,25 @@ function RenameTitleDialog({ open, currentTitle, onConfirm, onClose }: RenameTit
           <input
             type="text"
             autoFocus
-            className="mb-1 w-full rounded-lg border border-ink-navy/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink-navy"
+            className="mb-1 w-full rounded-lg border border-border/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-purple"
             {...register("title")}
             ref={(el) => {
               register("title").ref(el);
               (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
             }}
           />
-          {errors.title && <p className="mb-2 text-xs text-red-600">{errors.title.message}</p>}
+          {errors.title && <p className="mb-2 text-xs text-accent-red">{errors.title.message}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm text-warm-sepia hover:bg-parchment-cream"
+              className="rounded-lg px-4 py-2 text-sm text-text-muted hover:bg-surface-elevated"
             >
               {t("canvas.title.renameDialog.cancel")}
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white hover:bg-ink-navy/90"
+              className="rounded-lg bg-accent-purple px-4 py-2 text-sm font-semibold text-white hover:bg-accent-purple/90"
             >
               {t("canvas.title.renameDialog.confirm")}
             </button>
@@ -205,12 +205,12 @@ export function TopBar({
 
   return (
     <>
-      <header className="pointer-events-auto flex h-14 shrink-0 items-center gap-3 border-b border-ink-navy/10 bg-white px-4">
+      <header className="pointer-events-auto flex h-14 shrink-0 items-center gap-3 border-b border-border/10 bg-surface px-4">
         {/* Logo — clickable, returns to dashboard */}
         <a
           href="/dashboard"
           aria-label={t("nav.backToDashboard")}
-          className="flex shrink-0 items-center gap-2 rounded-md p-1 hover:bg-parchment-cream"
+          className="flex shrink-0 items-center gap-2 rounded-md p-1 hover:bg-surface-elevated"
         >
           <img
             src={vellumLogo}
@@ -224,16 +224,16 @@ export function TopBar({
         <div className="flex min-w-0 flex-1 items-center gap-1 text-sm">
           <a
             href="/dashboard"
-            className="shrink-0 rounded px-1 text-warm-sepia hover:bg-parchment-cream hover:text-ink-navy"
+            className="shrink-0 rounded px-1 text-text-muted hover:bg-surface-elevated hover:text-text-primary"
           >
             {breadcrumb}
           </a>
-          <span className="shrink-0 text-ink-navy/40">/</span>
+          <span className="shrink-0 text-text-primary/40">/</span>
           <button
             type="button"
             aria-label={title}
             onClick={() => setRenameOpen(true)}
-            className="min-w-0 truncate rounded px-1 font-serif text-ink-navy hover:bg-parchment-cream focus:outline-none focus:ring-2 focus:ring-ink-navy/30"
+            className="min-w-0 truncate rounded px-1 font-serif text-text-primary hover:bg-surface-elevated focus:outline-none focus:ring-2 focus:ring-accent-purple/30"
           >
             {title}
           </button>
@@ -262,8 +262,8 @@ export function TopBar({
               onClick={onAiPanelToggle}
               className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
                 aiPanelOpen
-                  ? "border-ink-navy bg-ink-navy text-white"
-                  : "border-ink-navy/20 text-ink-navy hover:bg-parchment-cream"
+                  ? "border-border bg-accent-purple text-white"
+                  : "border-border/20 text-text-primary hover:bg-surface-elevated"
               }`}
             >
               ✨
@@ -275,7 +275,7 @@ export function TopBar({
             <button
               type="button"
               onClick={onShareClick}
-              className="rounded-lg border border-ink-navy/20 px-3 py-1.5 text-sm font-medium text-ink-navy hover:bg-parchment-cream"
+              className="rounded-lg border border-border/20 px-3 py-1.5 text-sm font-medium text-text-primary hover:bg-surface-elevated"
             >
               {t("canvas.chrome.topbar.shareButton")}
             </button>

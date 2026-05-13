@@ -40,21 +40,21 @@ interface VariantSpec {
 const VARIANT_SPECS: Record<CalloutVariant, VariantSpec> = {
   info: {
     icon: Info,
-    accentBg: "bg-blue-50",
-    accentBorder: "border-blue-300",
-    iconColor: "text-blue-600",
+    accentBg: "bg-accent-sky/10",
+    accentBorder: "border-accent-sky/40",
+    iconColor: "text-accent-sky",
   },
   warning: {
     icon: AlertTriangle,
-    accentBg: "bg-amber-50",
-    accentBorder: "border-amber-300",
-    iconColor: "text-amber-600",
+    accentBg: "bg-accent-orange/10",
+    accentBorder: "border-accent-orange/40",
+    iconColor: "text-accent-orange",
   },
   danger: {
     icon: AlertOctagon,
-    accentBg: "bg-red-50",
-    accentBorder: "border-red-300",
-    iconColor: "text-red-600",
+    accentBg: "bg-accent-red/10",
+    accentBorder: "border-accent-red/40",
+    iconColor: "text-accent-red",
   },
 };
 
@@ -84,7 +84,7 @@ export function CalloutShapeView({
       {locked && lockedBy && (
         <span
           data-testid="callout-shape-lock-badge"
-          className="absolute right-2 top-2 rounded-md bg-ink-navy/85 px-2 py-1 text-xs font-medium text-white"
+          className="absolute right-2 top-2 rounded-md bg-accent-purple/85 px-2 py-1 text-xs font-medium text-white"
         >
           {t("shapes.common.lockedBy", { name: lockedBy.userName })}
         </span>
@@ -96,7 +96,7 @@ export function CalloutShapeView({
       />
       <div
         data-testid="callout-shape-body"
-        className="flex-1 whitespace-pre-wrap text-sm leading-relaxed text-ink-navy"
+        className="flex-1 whitespace-pre-wrap text-sm leading-relaxed text-text-primary"
       >
         {body}
       </div>
@@ -141,7 +141,7 @@ export function CalloutVariantPicker({ variant, onChange }: CalloutVariantPicker
             className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-sm transition ${
               active
                 ? `${spec.accentBorder} ${spec.accentBg} ${spec.iconColor} font-medium`
-                : "border-warm-200 bg-white text-gray-500 hover:bg-warm-50"
+                : "border-border bg-surface text-text-muted hover:bg-surface-elevated"
             }`}
           >
             <VIcon className="h-4 w-4" />

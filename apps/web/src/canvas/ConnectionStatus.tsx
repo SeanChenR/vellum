@@ -13,15 +13,15 @@ import { useSyncConnectionStore } from "./use-sync-store";
 import type { ConnectionState } from "./use-sync-store";
 
 const STATE_DOT_COLOR: Record<ConnectionState, string> = {
-  connecting: "bg-warm-sepia",
+  connecting: "bg-text-muted",
   connected: "bg-emerald-500",
   reconnecting: "bg-amber-500",
   disconnected: "bg-red-500",
 };
 
 const STATE_LABEL_COLOR: Record<ConnectionState, string> = {
-  connecting: "text-warm-sepia",
-  connected: "text-warm-sepia",
+  connecting: "text-text-muted",
+  connected: "text-text-muted",
   reconnecting: "text-amber-600",
   disconnected: "text-red-600",
 };
@@ -72,11 +72,11 @@ function DisconnectedBanner() {
       role="alert"
       className="pointer-events-auto fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-red-500/30 bg-white px-4 py-3 text-sm shadow-lg"
     >
-      <span className="text-ink-navy">{t("canvas.chrome.connection.disconnectedBanner")}</span>
+      <span className="text-text-primary">{t("canvas.chrome.connection.disconnectedBanner")}</span>
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="ml-3 rounded-md bg-ink-navy px-3 py-1 text-xs font-semibold text-white hover:bg-ink-navy/90"
+        className="ml-3 rounded-md bg-accent-purple px-3 py-1 text-xs font-semibold text-white hover:bg-accent-purple/90"
       >
         {t("canvas.chrome.connection.refresh")}
       </button>

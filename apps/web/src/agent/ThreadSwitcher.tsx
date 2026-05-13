@@ -32,25 +32,25 @@ export function ThreadSwitcher({
   const active = threads.find((th) => th.id === activeThreadId);
 
   return (
-    <div className="relative border-b border-warm-sepia/30" data-testid="thread-switcher">
+    <div className="relative border-b border-border/30" data-testid="thread-switcher">
       <button
         type="button"
         data-testid="thread-switcher-toggle"
-        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-ink-navy hover:bg-paper-cream/50"
+        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-text-primary hover:bg-surface-elevated/50"
         onClick={() => setOpen((v) => !v)}
       >
         <span className="truncate">{active?.title || t("agent.panel.untitled")}</span>
-        <span className="text-warm-sepia">{open ? "▾" : "▸"}</span>
+        <span className="text-text-muted">{open ? "▾" : "▸"}</span>
       </button>
       {open && (
         <div
           data-testid="thread-switcher-list"
-          className="absolute left-0 right-0 top-full z-10 max-h-64 overflow-y-auto bg-white shadow-md"
+          className="absolute left-0 right-0 top-full z-10 max-h-64 overflow-y-auto bg-surface shadow-md"
         >
           <button
             type="button"
             data-testid="thread-switcher-new"
-            className="flex w-full items-center gap-2 border-b border-warm-sepia/20 px-3 py-2 text-left text-sm font-medium text-ink-navy hover:bg-paper-cream"
+            className="flex w-full items-center gap-2 border-b border-border/20 px-3 py-2 text-left text-sm font-medium text-text-primary hover:bg-surface-elevated"
             onClick={() => {
               onCreate();
               setOpen(false);
@@ -92,8 +92,8 @@ function ThreadRow({
     <div
       data-testid="thread-switcher-row"
       data-thread-id={thread.id}
-      className={`group flex items-center justify-between px-3 py-2 text-sm hover:bg-paper-cream ${
-        active ? "bg-paper-cream/60 font-medium text-ink-navy" : "text-warm-sepia"
+      className={`group flex items-center justify-between px-3 py-2 text-sm hover:bg-surface-elevated ${
+        active ? "bg-surface-elevated/60 font-medium text-text-primary" : "text-text-muted"
       }`}
     >
       <button type="button" className="flex-1 truncate text-left" onClick={onClick}>
@@ -103,7 +103,7 @@ function ThreadRow({
         type="button"
         data-testid="thread-switcher-delete"
         aria-label={t("agent.panel.deleteThread")}
-        className="ml-2 hidden text-xs text-red-600 hover:underline group-hover:inline"
+        className="ml-2 hidden text-xs text-accent-red hover:underline group-hover:inline"
         onClick={(e) => {
           e.stopPropagation();
           onDelete();

@@ -13,7 +13,7 @@
  * Spec: canvas-editor — "Editor mounts with a multiplayer-aware sync store"
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Tldraw, createShapeId, type Editor as TldrawEditor } from "tldraw";
 import "tldraw/tldraw.css";
@@ -30,6 +30,7 @@ import { exportCanvas, type ExportFormat, type ExportScale } from "./export/expo
 import { slugify } from "./export/slugify";
 import { AiSidePanel } from "../agent/AiSidePanel";
 import { useAiPanelStore } from "../agent/store";
+import { useTheme } from "../theme/useTheme";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -88,6 +89,15 @@ export function Editor({
   const [editorInstance, setEditorInstance] = useState<TldrawEditor | null>(null);
   const aiPanelOpen = useAiPanelStore((s) => s.panelOpen);
   const togglePanel = useAiPanelStore((s) => s.togglePanel);
+  const { effectiveTheme } = useTheme();
+
+  // Sync tldraw's built-in colorScheme (toolbar, color palette, style menu)
+  // with Vellum's Aura theme so the canvas chrome doesn't flash light when
+  // the page is dark. tldraw stores this in its global user preferences.
+  useEffect(() => {
+    if (!editorInstance) return;
+    editorInstance.user.updateUserPreferences({ colorScheme: effectiveTheme });
+  }, [editorInstance, effectiveTheme]);
 
   const isOwner = currentUser?.id === ownerId;
   // Prefer server-provided effectiveRole (correct for all paths); fall
@@ -220,12 +230,12 @@ export function Editor({
             </div>
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <span className="text-sm text-warm-sepia">{t("canvas.chrome.loading")}</span>
+              <span className="text-sm text-text-muted">{t("canvas.chrome.loading")}</span>
             </div>
           )}
         </div>
         {showAiPanel && (
-          <div className="h-full w-[384px] shrink-0 border-l border-warm-sepia/30 bg-white">
+          <div className="h-full w-[384px] shrink-0 border-l border-border/30 bg-surface">
             {/* The panel's `useCursorAiBadge` hook flips a module-level
                 tldraw atom (`aiActiveAtom`) while mounted. `useSyncStore`
                 reads the atom inside its `getUserPresence` override so

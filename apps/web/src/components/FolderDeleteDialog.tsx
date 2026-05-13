@@ -40,16 +40,16 @@ export function FolderDeleteDialog({
       ariaLabelledBy="folder-delete-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
-      <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h2 id="folder-delete-title" className="mb-2 text-lg font-semibold">
+      <DialogPanel className="w-full max-w-md rounded-xl bg-surface p-6 shadow-xl">
+        <h2 id="folder-delete-title" className="mb-2 text-lg font-semibold text-text-primary">
           {t("folder.delete")}
         </h2>
-        <p className="mb-4 text-sm text-gray-600">
+        <p className="mb-4 text-sm text-text-muted">
           {t("folder.deleteConfirm", { name: folderName })}
         </p>
 
         {errorKey === "errors.folder.notEmpty" && (
-          <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          <p className="mb-4 rounded-lg bg-accent-orange/10 px-3 py-2 text-sm text-accent-orange">
             {t("errors.folder.notEmpty")}
           </p>
         )}
@@ -58,7 +58,7 @@ export function FolderDeleteDialog({
           <button
             type="button"
             onClick={onClose}
-            className="focus-visible-ring rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+            className="focus-visible-ring rounded-lg px-4 py-2 text-sm text-text-muted hover:bg-surface-elevated"
           >
             {t("common.cancel")}
           </button>
@@ -66,7 +66,7 @@ export function FolderDeleteDialog({
             type="button"
             disabled={isPending}
             onClick={onConfirm}
-            className="focus-visible-ring rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            className="focus-visible-ring rounded-lg bg-accent-red px-4 py-2 text-sm font-semibold text-white hover:bg-accent-red/90 disabled:opacity-50"
           >
             {isPending ? "Deleting…" : "Delete"}
           </button>

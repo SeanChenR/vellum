@@ -15,6 +15,8 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 import { z } from "zod";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
 import { safeRedirect } from "./safe-redirect";
 import vellumLogo from "../assets/vellum-logo.png";
 
@@ -73,8 +75,8 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center px-6 py-16">
-      <div className="w-full max-w-sm space-y-8">
+    <div className="flex flex-1 items-center justify-center px-6 py-16">
+      <Card variant="elevated" className="w-full max-w-[420px] space-y-8">
         {/* Logo / Title */}
         <div className="flex flex-col items-center text-center">
           <img
@@ -83,13 +85,15 @@ export function LoginPage() {
             className="h-14 w-14 select-none"
             draggable={false}
           />
-          <h1 className="mt-3 font-serif text-3xl text-ink-navy">{t("app.name")}</h1>
-          <p className="mt-2 text-sm text-warm-sepia">{t("auth.login.subtitle")}</p>
+          <h1 className="mt-3 font-serif text-3xl text-text-primary">{t("app.name")}</h1>
+          <p className="mt-2 text-sm text-text-muted">{t("auth.login.subtitle")}</p>
         </div>
 
         {/* Google OAuth Button — POST to /sign-in/social, follow returned redirect URL */}
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="lg"
+          className="w-full"
           onClick={async () => {
             setErrorKey(null);
             try {
@@ -108,24 +112,23 @@ export function LoginPage() {
               setErrorKey("auth.errors.googleOauthFailed");
             }
           }}
-          className="focus-visible-ring flex w-full items-center justify-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium transition hover:bg-gray-50"
+          icon={<GoogleIcon />}
         >
-          <GoogleIcon />
           {t("auth.login.googleButton")}
-        </button>
+        </Button>
 
-        <div className="relative">
+        <div className="relative" data-testid="login-divider">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200" />
+            <div className="w-full border-t border-border" />
           </div>
-          <div className="relative flex justify-center text-xs text-gray-400">
-            <span className="bg-white px-2">{t("auth.login.magicLinkLabel")}</span>
+          <div className="relative flex justify-center text-xs text-text-muted">
+            <span className="bg-surface-elevated px-2">{t("auth.login.magicLinkLabel")}</span>
           </div>
         </div>
 
         {/* Magic Link Form */}
         {sent ? (
-          <div className="rounded-lg bg-green-50 p-4 text-center text-sm text-green-800">
+          <div className="rounded-lg bg-accent-cyan/10 p-4 text-center text-sm text-accent-cyan">
             {t("auth.login.checkEmail")}
           </div>
         ) : (
@@ -135,7 +138,10 @@ export function LoginPage() {
             className="space-y-4"
           >
             <div>
-              <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="mb-1 block text-xs font-semibold uppercase tracking-wider text-text-muted"
+              >
                 {t("auth.login.emailLabel")}
               </label>
               <input
@@ -143,27 +149,29 @@ export function LoginPage() {
                 type="email"
                 autoComplete="email"
                 placeholder={t("auth.login.emailPlaceholder")}
-                className="focus-visible-ring w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-ink-navy"
+                className="focus-visible-ring h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm text-text-primary placeholder:text-text-muted"
                 {...register("email")}
               />
             </div>
 
             {errorKey && (
-              <p data-testid="auth-error" className="text-sm text-red-600">
+              <p data-testid="auth-error" className="text-sm text-accent-red">
                 {t(errorKey, { defaultValue: errorKey })}
               </p>
             )}
 
-            <button
+            <Button
               type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
               disabled={isSubmitting}
-              className="focus-visible-ring w-full rounded-lg bg-ink-navy px-4 py-3 text-sm font-semibold text-white transition hover:bg-opacity-90 disabled:opacity-50"
             >
               {t("auth.login.sendLinkButton")}
-            </button>
+            </Button>
           </form>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

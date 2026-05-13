@@ -54,7 +54,7 @@ export function CanvasPage() {
         aria-label={t("app.name")}
         className="flex h-screen items-center justify-center"
       >
-        <span className="text-sm text-warm-sepia">{t("canvas.chrome.loading")}</span>
+        <span className="text-sm text-text-muted">{t("canvas.chrome.loading")}</span>
       </div>
     );
   }
@@ -65,7 +65,7 @@ export function CanvasPage() {
         <p className="text-sm text-red-600">{t("errors.canvas.notFound")}</p>
         <a
           href="/dashboard"
-          className="rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white hover:bg-ink-navy/90"
+          className="rounded-lg bg-accent-purple px-4 py-2 text-sm font-semibold text-white hover:bg-accent-purple/90"
         >
           {t("dashboard.myCanvases")}
         </a>

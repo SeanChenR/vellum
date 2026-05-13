@@ -32,7 +32,7 @@ export function OAuthCallbackPage() {
   if (!target) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <span className="text-warm-sepia">{t("auth.verify.verifying")}</span>
+        <span className="text-text-muted">{t("auth.verify.verifying")}</span>
       </div>
     );
   }

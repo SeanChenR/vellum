@@ -12,7 +12,7 @@ export interface UserAvatarProps {
 
 export function UserAvatar({ user, className = "" }: UserAvatarProps) {
   const base =
-    "flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-ink-navy text-xs font-bold text-white";
+    "flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-accent-purple text-xs font-bold text-white";
   const merged = className ? `${base} ${className}` : base;
 
   if (user.image) {

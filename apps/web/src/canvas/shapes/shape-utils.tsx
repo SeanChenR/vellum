@@ -339,13 +339,13 @@ function CodeLanguagePicker({
 }) {
   const { t } = useTranslation();
   return (
-    <label className="flex items-center gap-2 text-sm text-ink-navy">
+    <label className="flex items-center gap-2 text-sm text-text-primary">
       <span>{t("shapes.code.languageSelectorLabel")}</span>
       <select
         aria-label={t("shapes.code.languageSelectorLabel")}
         value={value}
         onChange={(e) => onChange(e.target.value as SupportedLanguage)}
-        className="rounded border border-warm-200 bg-white px-2 py-1 text-sm"
+        className="rounded border border-border bg-bg px-2 py-1 text-sm text-text-primary"
       >
         {SUPPORTED_LANGUAGES.map((l) => (
           <option key={l} value={l}>

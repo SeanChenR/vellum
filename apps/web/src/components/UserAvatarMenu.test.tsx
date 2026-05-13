@@ -1,10 +1,11 @@
 /**
- * UserAvatarMenu tests — public-pages spec "User avatar menu surfaces a
- * Go-to-Dashboard entry".
+ * UserAvatarMenu tests.
  *
- * Asserts the menu shows four items in the spec-defined order, the new
- * Go-to-Dashboard entry links to /dashboard, and remains visible
- * regardless of which surface the menu is opened on.
+ * After the redesign-ui-aura-theme ingest (2026-05-13) consolidated
+ * the three account sub-routes into a single `/account` tab page, the
+ * avatar dropdown collapsed from 5 → 3 items: Dashboard / Settings /
+ * Sign-out. "Settings" lands on `/account` which defaults to the
+ * profile tab; users pick their sub-tab on the page itself.
  */
 
 import "../i18n";
@@ -50,18 +51,16 @@ beforeEach(async () => {
 afterEach(() => cleanup());
 
 describe("UserAvatarMenu", () => {
-  test("menu opens to five interactive items in the spec-defined order", async () => {
+  test("menu opens to three interactive items in spec-defined order", async () => {
     const user = userEvent.setup();
     renderMenu();
     await openMenu(user);
     const items = screen.getAllByRole("menuitem");
-    expect(items.length).toBe(5);
+    expect(items.length).toBe(3);
     const labels = items.map((el) => el.textContent?.trim() ?? "");
     expect(labels[0]).toMatch(/Go to Dashboard/i);
-    expect(labels[1]).toMatch(/Profile/i);
-    expect(labels[2]).toMatch(/Active sessions|Sessions/i);
-    expect(labels[3]).toMatch(/API keys/i);
-    expect(labels[4]).toMatch(/Sign out/i);
+    expect(labels[1]).toMatch(/Settings/i);
+    expect(labels[2]).toMatch(/Sign out/i);
   });
 
   test("Go-to-Dashboard item is an anchor pointing to /dashboard", async () => {
@@ -73,25 +72,13 @@ describe("UserAvatarMenu", () => {
     expect(dashItem.getAttribute("href")).toBe("/dashboard");
   });
 
-  test("Profile and Sessions anchors point to the existing account routes", async () => {
+  test("Settings item is an anchor pointing to /account (default tab)", async () => {
     const user = userEvent.setup();
     renderMenu();
     await openMenu(user);
-    expect(screen.getByRole("menuitem", { name: /Profile/i }).getAttribute("href")).toBe(
-      "/account/profile",
-    );
-    expect(
-      screen.getByRole("menuitem", { name: /Active sessions|Sessions/i }).getAttribute("href"),
-    ).toBe("/account/sessions");
-  });
-
-  test("API keys menuitem is an anchor pointing to /account/api-keys", async () => {
-    const user = userEvent.setup();
-    renderMenu();
-    await openMenu(user);
-    const item = screen.getByRole("menuitem", { name: /API keys/i });
-    expect(item.tagName.toLowerCase()).toBe("a");
-    expect(item.getAttribute("href")).toBe("/account/api-keys");
+    const settingsItem = screen.getByRole("menuitem", { name: /Settings/i });
+    expect(settingsItem.tagName.toLowerCase()).toBe("a");
+    expect(settingsItem.getAttribute("href")).toBe("/account");
   });
 
   test("Sign-out menuitem invokes the onSignOut callback", async () => {
@@ -100,15 +87,5 @@ describe("UserAvatarMenu", () => {
     await openMenu(user);
     await user.click(screen.getByRole("menuitem", { name: /Sign out/i }));
     expect(onSignOut).toHaveBeenCalledTimes(1);
-  });
-
-  test("menu uses the localized nav.userMenu.dashboard key", async () => {
-    const user = userEvent.setup();
-    renderMenu();
-    await openMenu(user);
-    // The exact value comes from en.json — assert presence rather than the
-    // literal string to keep the test resilient to copy edits.
-    const item = screen.getByRole("menuitem", { name: /Go to Dashboard/i });
-    expect(item).not.toBeNull();
   });
 });

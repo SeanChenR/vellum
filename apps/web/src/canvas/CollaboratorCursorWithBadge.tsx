@@ -17,6 +17,7 @@
  */
 
 import { memo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Sparkles } from "lucide-react";
 import { type TLCursorProps, useEditor, useSharedSafeId, useTransform, useValue } from "tldraw";
 
@@ -29,6 +30,7 @@ export const CollaboratorCursorWithBadge = memo(function CollaboratorCursorWithB
   chatMessage,
   userId,
 }: TLCursorProps) {
+  const { t } = useTranslation();
   const rCursor = useRef<HTMLDivElement>(null);
   useTransform(rCursor, point?.x, point?.y, 1 / zoom);
   const cursorId = useSharedSafeId("cursor");
@@ -91,7 +93,7 @@ export const CollaboratorCursorWithBadge = memo(function CollaboratorCursorWithB
           }}
         >
           <Sparkles size={10} strokeWidth={2.5} />
-          AI
+          {t("agent.badge.aiLabel")}
         </div>
       )}
       {chatMessage ? (

@@ -92,12 +92,12 @@ export function CodeShapeView({
         if (locked) return;
         onRequestEdit();
       }}
-      className="relative flex h-full min-h-[120px] min-w-[240px] flex-col overflow-hidden rounded-lg border border-warm-200 bg-white"
+      className="relative flex h-full min-h-[120px] min-w-[240px] flex-col overflow-hidden rounded-lg border border-border bg-surface"
     >
       {locked && lockedBy && (
         <span
           data-testid="code-shape-lock-badge"
-          className="absolute right-2 top-2 z-10 rounded-md bg-ink-navy/85 px-2 py-1 text-xs font-medium text-white"
+          className="absolute right-2 top-2 z-10 rounded-md bg-accent-purple/85 px-2 py-1 text-xs font-medium text-white"
         >
           {t("shapes.common.lockedBy", { name: lockedBy.userName })}
         </span>
@@ -105,9 +105,9 @@ export function CodeShapeView({
 
       <div
         onPointerDown={(e) => e.stopPropagation()}
-        className="flex items-center gap-2 border-b border-warm-200 bg-warm-50 px-3 py-2 text-xs"
+        className="flex items-center gap-2 border-b border-border bg-surface-elevated px-3 py-2 text-xs"
       >
-        <span data-testid="code-shape-language" className="font-medium text-ink-navy">
+        <span data-testid="code-shape-language" className="font-medium text-text-primary">
           {languageLabel}
         </span>
         <button
@@ -117,11 +117,11 @@ export function CodeShapeView({
             e.stopPropagation();
             void handleCopy();
           }}
-          className="ml-auto rounded border border-warm-200 bg-white px-2 py-1 hover:bg-warm-100"
+          className="ml-auto rounded border border-border bg-surface px-2 py-1 text-text-primary hover:bg-surface-elevated"
         >
           {t("shapes.code.copyButton")}
         </button>
-        {copied && <span className="text-xs text-warm-sepia">{t("shapes.code.copied")}</span>}
+        {copied && <span className="text-xs text-text-muted">{t("shapes.code.copied")}</span>}
       </div>
 
       <div ref={scrollRef} className="relative flex-1 overflow-auto font-mono text-sm leading-6">

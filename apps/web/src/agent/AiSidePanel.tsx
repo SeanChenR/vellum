@@ -181,7 +181,7 @@ export function AiSidePanel({ canvasId, onRunDone }: AiSidePanelProps) {
   return (
     <aside
       data-testid="ai-side-panel"
-      className="flex h-full w-full flex-col bg-white"
+      className="flex h-full w-full flex-col bg-surface"
       aria-label={t("agent.panel.toggleOpen")}
     >
       <ThreadSwitcher

@@ -44,19 +44,19 @@ export function LinkCardShapeView({ stored, locked, lockedBy, onRetry }: LinkCar
   return (
     <div
       data-testid="link-card-shape-root"
-      className="relative flex h-full w-full flex-col overflow-hidden rounded-lg border border-warm-200 bg-white"
+      className="relative flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-surface"
     >
       {locked && lockedBy && (
         <span
           data-testid="link-card-shape-lock-badge"
-          className="absolute right-2 top-2 z-10 rounded-md bg-ink-navy/85 px-2 py-1 text-xs font-medium text-white"
+          className="absolute right-2 top-2 z-10 rounded-md bg-accent-purple/85 px-2 py-1 text-xs font-medium text-white"
         >
           {t("shapes.common.lockedBy", { name: lockedBy.userName })}
         </span>
       )}
 
       {stored.state === "pending" && (
-        <div className="flex h-full items-center justify-center gap-2 text-sm text-warm-sepia">
+        <div className="flex h-full items-center justify-center gap-2 text-sm text-text-muted">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           <span>{t("shapes.linkCard.loading")}</span>
         </div>
@@ -88,16 +88,16 @@ export function LinkCardShapeView({ stored, locked, lockedBy, onRetry }: LinkCar
           )}
           <div className="flex flex-1 flex-col gap-1 p-3">
             {stored.metadata.title && (
-              <span className="line-clamp-2 text-sm font-semibold text-ink-navy">
+              <span className="line-clamp-2 text-sm font-semibold text-text-primary">
                 {stored.metadata.title}
               </span>
             )}
             {stored.metadata.description && (
-              <span className="line-clamp-2 text-xs text-gray-600">
+              <span className="line-clamp-2 text-xs text-text-muted">
                 {stored.metadata.description}
               </span>
             )}
-            <div className="mt-auto flex items-center gap-2 pt-2 text-xs text-warm-sepia">
+            <div className="mt-auto flex items-center gap-2 pt-2 text-xs text-text-muted">
               {faviconUrl && (
                 <img
                   data-testid="link-card-favicon"
@@ -130,13 +130,13 @@ export function LinkCardShapeView({ stored, locked, lockedBy, onRetry }: LinkCar
               }}
             />
           )}
-          <span className="text-sm text-warm-sepia">{t("shapes.linkCard.previewUnavailable")}</span>
-          <span className="break-all text-xs text-gray-500">{stored.url}</span>
+          <span className="text-sm text-text-muted">{t("shapes.linkCard.previewUnavailable")}</span>
+          <span className="break-all text-xs text-text-muted">{stored.url}</span>
           <button
             type="button"
             onClick={onRetry}
             disabled={locked}
-            className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-warm-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-navy hover:bg-warm-50 disabled:opacity-50"
+            className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-elevated disabled:opacity-50"
           >
             <RefreshCw className="h-3 w-3" aria-hidden />
             {t("shapes.linkCard.retry")}

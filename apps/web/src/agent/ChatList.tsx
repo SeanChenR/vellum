@@ -24,8 +24,12 @@ import type { AiMessage } from "./useAgentThread";
  * crafted to phish another reader of a shared canvas in the future).
  */
 function AssistantMarkdown({ text }: { text: string }) {
+  // Prose defaults bake in slate-900-ish text for headings / strong / code,
+  // which goes invisible on the dark Aura surface. We pin every element to
+  // text-text-primary (the heading/strong/em variants don't inherit from
+  // the parent's text-* class — they need explicit prose-* overrides).
   return (
-    <div className="prose prose-sm max-w-none break-words text-ink-navy [&_a]:text-ink-navy [&_a]:underline [&_code]:rounded [&_code]:bg-warm-sepia/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.85em] [&_p]:my-1 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-warm-sepia/10 [&_pre]:p-2 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5">
+    <div className="prose prose-sm max-w-none break-words text-text-primary prose-headings:text-text-primary prose-strong:text-text-primary prose-em:text-text-primary prose-blockquote:text-text-muted prose-blockquote:border-border prose-hr:border-border prose-th:text-text-primary prose-td:text-text-primary [&_a]:text-text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-text-muted/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.85em] [&_code]:text-text-primary [&_code]:before:content-none [&_code]:after:content-none [&_p]:my-1 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-text-muted/10 [&_pre]:p-2 [&_pre]:text-text-primary [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-text-primary [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_li]:text-text-primary">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
     </div>
   );
@@ -62,7 +66,7 @@ export function ChatList({ messages, streamingText, isStreaming }: ChatListProps
       ))}
       {isStreaming && (
         <div className="flex" data-testid="chat-message-assistant-streaming">
-          <div className="max-w-[85%] rounded-lg bg-paper-cream px-3 py-2 text-sm text-ink-navy">
+          <div className="max-w-[85%] rounded-lg bg-surface-elevated px-3 py-2 text-sm text-text-primary">
             {hasStreamText ? (
               <>
                 <AssistantMarkdown text={streamingText ?? ""} />
@@ -71,7 +75,7 @@ export function ChatList({ messages, streamingText, isStreaming }: ChatListProps
             ) : (
               <span
                 data-testid="chat-message-assistant-thinking"
-                className="inline-flex items-center gap-1 text-warm-sepia"
+                className="inline-flex items-center gap-1 text-text-muted"
               >
                 {t("agent.panel.thinking")}
                 <span className="animate-blink">▍</span>
@@ -90,7 +94,7 @@ function MessageBubble({ message, showCaret }: { message: AiMessage; showCaret: 
     const text = (message.content as { text?: string } | undefined)?.text ?? "";
     return (
       <div className="flex justify-end" data-testid="chat-message-user">
-        <div className="max-w-[85%] rounded-lg bg-ink-navy px-3 py-2 text-sm text-white">
+        <div className="max-w-[85%] rounded-lg bg-accent-purple px-3 py-2 text-sm text-white">
           {text}
         </div>
       </div>
@@ -100,7 +104,7 @@ function MessageBubble({ message, showCaret }: { message: AiMessage; showCaret: 
     const text = (message.content as { text?: string } | undefined)?.text ?? "";
     return (
       <div className="flex" data-testid="chat-message-assistant">
-        <div className="max-w-[85%] rounded-lg bg-paper-cream px-3 py-2 text-sm text-ink-navy">
+        <div className="max-w-[85%] rounded-lg bg-surface-elevated px-3 py-2 text-sm text-text-primary">
           <AssistantMarkdown text={text} />
           {showCaret && <span className="ml-1 animate-blink">▍</span>}
         </div>
@@ -148,17 +152,17 @@ function ToolAccordion({
   return (
     <div
       data-testid={testId}
-      className="rounded-md border border-warm-sepia/30 bg-paper-cream/40 px-2 py-1 font-mono text-xs"
+      className="rounded-md border border-border/30 bg-surface-elevated/40 px-2 py-1 font-mono text-xs"
     >
       <button
         type="button"
-        className="flex w-full items-center justify-between text-left text-ink-navy"
+        className="flex w-full items-center justify-between text-left text-text-primary"
         onClick={() => setOpen((v) => !v)}
       >
         <span>{label}</span>
-        <span className="text-warm-sepia">{open ? "▾" : "▸"}</span>
+        <span className="text-text-muted">{open ? "▾" : "▸"}</span>
       </button>
-      {open && <div className="mt-1 text-warm-sepia">{children}</div>}
+      {open && <div className="mt-1 text-text-muted">{children}</div>}
     </div>
   );
 }

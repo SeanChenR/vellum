@@ -55,18 +55,18 @@ export function MarkdownShapeView({
     <div
       data-testid="markdown-shape-root"
       onDoubleClick={handleDoubleClick}
-      className="relative h-full w-full overflow-auto rounded-lg border border-warm-200 bg-white p-4"
+      className="relative h-full w-full overflow-auto rounded-lg border border-border bg-surface p-4"
     >
       {locked && lockedBy && (
         <span
           data-testid="markdown-shape-lock-badge"
-          className="absolute right-2 top-2 rounded-md bg-ink-navy/85 px-2 py-1 text-xs font-medium text-white"
+          className="absolute right-2 top-2 rounded-md bg-accent-purple/85 px-2 py-1 text-xs font-medium text-white"
         >
           {t("shapes.common.lockedBy", { name: lockedBy.userName })}
         </span>
       )}
       <div
-        className="prose prose-sm max-w-none"
+        className="prose prose-sm max-w-none text-text-primary prose-headings:text-text-primary prose-strong:text-text-primary prose-a:text-accent-purple prose-code:text-text-primary prose-code:bg-surface-elevated prose-pre:bg-surface-elevated prose-pre:text-text-primary prose-blockquote:text-text-muted prose-blockquote:border-border prose-hr:border-border"
         // Rendered HTML is already sanitized by `parseMarkdown` (DOMPurify).
         dangerouslySetInnerHTML={{ __html: html }}
       />
@@ -141,9 +141,12 @@ export function MarkdownEditDialog({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl"
+        className="w-full max-w-2xl rounded-xl bg-surface p-6 shadow-xl"
       >
-        <h2 id="markdown-edit-dialog-title" className="mb-4 text-lg font-semibold text-ink-navy">
+        <h2
+          id="markdown-edit-dialog-title"
+          className="mb-4 text-lg font-semibold text-text-primary"
+        >
           {title ?? t("shapes.markdown.editDialogTitle")}
         </h2>
         {headerExtras && <div className="mb-4">{headerExtras}</div>}
@@ -153,20 +156,20 @@ export function MarkdownEditDialog({
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder ?? t("shapes.markdown.editPlaceholder")}
           rows={14}
-          className="w-full rounded-lg border border-warm-200 px-3 py-2 font-mono text-sm focus:border-ink-navy focus:outline-none focus:ring-1 focus:ring-ink-navy"
+          className="w-full rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-muted focus:border-border focus:outline-none focus:ring-1 focus:ring-accent-purple"
         />
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+            className="rounded-lg px-4 py-2 text-sm text-text-muted hover:bg-surface-elevated"
           >
             {t("shapes.common.cancel")}
           </button>
           <button
             type="button"
             onClick={() => onSubmit(value)}
-            className="rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white hover:bg-ink-navy/90"
+            className="rounded-lg bg-accent-purple px-4 py-2 text-sm font-semibold text-white hover:bg-accent-purple/90"
           >
             {t("shapes.common.save")}
           </button>

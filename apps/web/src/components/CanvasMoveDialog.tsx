@@ -58,12 +58,12 @@ export function CanvasMoveDialog({
       aria-labelledby="canvas-move-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h2 id="canvas-move-title" className="mb-4 text-lg font-semibold text-ink-navy">
+      <div className="w-full max-w-md rounded-xl bg-surface p-6 shadow-xl">
+        <h2 id="canvas-move-title" className="mb-4 text-lg font-semibold text-text-primary">
           {t("canvas.dialog.move.title")}
         </h2>
 
-        <ul className="max-h-72 space-y-1 overflow-y-auto rounded-lg border border-ink-navy/10 p-1">
+        <ul className="max-h-72 space-y-1 overflow-y-auto rounded-lg border border-border/10 p-1">
           <FolderRow
             value={UNFILED_VALUE}
             label={t("canvas.dialog.move.unfiled")}
@@ -89,7 +89,7 @@ export function CanvasMoveDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm text-warm-sepia hover:bg-parchment-cream"
+            className="rounded-lg px-4 py-2 text-sm text-text-muted hover:bg-surface-elevated"
           >
             {t("canvas.dialog.move.cancelButton")}
           </button>
@@ -97,7 +97,7 @@ export function CanvasMoveDialog({
             type="button"
             onClick={handleSubmit}
             disabled={isPending}
-            className="rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white hover:bg-ink-navy/90 disabled:opacity-50"
+            className="rounded-lg bg-accent-purple px-4 py-2 text-sm font-semibold text-white hover:bg-accent-purple/90 disabled:opacity-50"
           >
             {t("canvas.dialog.move.confirmButton")}
           </button>
@@ -132,12 +132,14 @@ function FolderRow({
         data-value={value}
         className={[
           "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors",
-          isSelected ? "bg-ink-navy/10 text-ink-navy" : "text-ink-navy hover:bg-parchment-cream",
+          isSelected
+            ? "bg-accent-purple/10 text-text-primary"
+            : "text-text-primary hover:bg-surface-elevated",
         ].join(" ")}
       >
         <span className="truncate">{label}</span>
         {isCurrent && (
-          <span className="ml-2 shrink-0 rounded-full bg-warm-200 px-2 py-0.5 text-xs text-warm-sepia">
+          <span className="ml-2 shrink-0 rounded-full bg-warm-200 px-2 py-0.5 text-xs text-text-muted">
             {currentLabel}
           </span>
         )}

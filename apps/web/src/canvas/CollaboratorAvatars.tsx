@@ -50,7 +50,7 @@ export function CollaboratorAvatars({ localUserId, collaborators }: Collaborator
       {overflow > 0 && (
         <span
           data-testid="collaborator-overflow"
-          className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-warm-sepia text-[11px] font-semibold text-white"
+          className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-text-muted text-[11px] font-semibold text-white"
         >
           +{overflow}
         </span>
@@ -68,7 +68,7 @@ function Avatar({ presence }: { presence: CollaboratorPresence }) {
   // avatar rendering or the hover/click hit area.
   const aiActive = presence.aiActive === true;
   const borderClass = aiActive ? "border-amber-400 ring-2 ring-amber-300" : "border-white";
-  const baseClass = `flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 ${borderClass} bg-ink-navy text-[11px] font-bold text-white`;
+  const baseClass = `flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 ${borderClass} bg-accent-purple text-[11px] font-bold text-white`;
   const inner = presence.image ? (
     <img
       data-testid="collaborator-avatar"

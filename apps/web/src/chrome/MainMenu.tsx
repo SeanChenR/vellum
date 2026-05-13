@@ -62,18 +62,18 @@ function DeleteConfirmDialog({ open, onConfirm, onClose }: DeleteConfirmDialogPr
       ariaLabelledBy="delete-confirm-title"
       className="pointer-events-auto fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
     >
-      <DialogPanel className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
-        <h2 id="delete-confirm-title" className="mb-2 text-base font-semibold text-ink-navy">
+      <DialogPanel className="w-full max-w-sm rounded-xl bg-surface p-6 shadow-2xl">
+        <h2 id="delete-confirm-title" className="mb-2 text-base font-semibold text-text-primary">
           {t("canvas.chrome.mainMenu.deleteConfirmTitle")}
         </h2>
-        <p className="mb-6 text-sm text-warm-sepia">
+        <p className="mb-6 text-sm text-text-muted">
           {t("canvas.chrome.mainMenu.deleteConfirmBody")}
         </p>
         <div className="flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm text-warm-sepia hover:bg-parchment-cream"
+            className="rounded-lg px-4 py-2 text-sm text-text-muted hover:bg-surface-elevated"
           >
             {t("canvas.chrome.mainMenu.deleteConfirmNo")}
           </button>
@@ -83,7 +83,7 @@ function DeleteConfirmDialog({ open, onConfirm, onClose }: DeleteConfirmDialogPr
               onConfirm();
               onClose();
             }}
-            className="focus-visible-ring rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            className="focus-visible-ring rounded-lg bg-accent-red px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
           >
             {t("canvas.chrome.mainMenu.deleteConfirmYes")}
           </button>
@@ -158,7 +158,7 @@ export function MainMenu({ onRename, onDuplicate, onDelete, onExport, isReadOnly
           aria-haspopup="true"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((v) => !v)}
-          className="flex h-8 items-center gap-1 rounded px-2 text-sm text-ink-navy hover:bg-parchment-cream"
+          className="flex h-8 items-center gap-1 rounded px-2 text-sm text-text-primary hover:bg-surface-elevated"
         >
           <span>{t("canvas.chrome.mainMenu.label")}</span>
           <svg className="h-3 w-3" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
@@ -169,7 +169,7 @@ export function MainMenu({ onRename, onDuplicate, onDelete, onExport, isReadOnly
         {menuOpen && (
           <div
             role="menu"
-            className="absolute left-0 z-50 mt-1 min-w-[220px] rounded-lg border border-ink-navy/10 bg-white py-1 shadow-lg"
+            className="absolute left-0 z-50 mt-1 min-w-[220px] rounded-lg border border-border/10 bg-surface py-1 shadow-lg"
           >
             <button
               type="button"
@@ -178,7 +178,7 @@ export function MainMenu({ onRename, onDuplicate, onDelete, onExport, isReadOnly
                 closeMenu();
                 onRename();
               }}
-              className="w-full px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+              className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-elevated"
             >
               {t("canvas.chrome.mainMenu.rename")}
             </button>
@@ -190,7 +190,7 @@ export function MainMenu({ onRename, onDuplicate, onDelete, onExport, isReadOnly
                 closeMenu();
                 onDuplicate();
               }}
-              className="w-full px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+              className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-elevated"
             >
               {t("canvas.chrome.mainMenu.duplicate")}
             </button>
@@ -202,14 +202,14 @@ export function MainMenu({ onRename, onDuplicate, onDelete, onExport, isReadOnly
                 closeMenu();
                 setDeleteConfirmOpen(true);
               }}
-              className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+              className="w-full px-3 py-2 text-left text-sm text-accent-red hover:bg-red-50"
             >
               {t("canvas.chrome.mainMenu.delete")}
             </button>
 
             {!isReadOnly && (
               <>
-                <div className="my-1 border-t border-ink-navy/10" />
+                <div className="my-1 border-t border-border/10" />
                 <div className="relative">
                   <button
                     type="button"
@@ -219,7 +219,7 @@ export function MainMenu({ onRename, onDuplicate, onDelete, onExport, isReadOnly
                     onMouseEnter={() => setExportSubmenuOpen(true)}
                     onFocus={() => setExportSubmenuOpen(true)}
                     onClick={() => setExportSubmenuOpen((v) => !v)}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-elevated"
                   >
                     <span>{t("canvas.chrome.mainMenu.export")}</span>
                     <svg
@@ -234,7 +234,7 @@ export function MainMenu({ onRename, onDuplicate, onDelete, onExport, isReadOnly
                   {exportSubmenuOpen && (
                     <div
                       role="menu"
-                      className="absolute left-full top-0 min-w-[220px] rounded-lg border border-ink-navy/10 bg-white py-1 shadow-lg"
+                      className="absolute left-full top-0 min-w-[220px] rounded-lg border border-border/10 bg-surface py-1 shadow-lg"
                     >
                       {FORMAT_ENTRIES.map((entry) => (
                         <FormatItem
@@ -285,7 +285,7 @@ function FormatItem({ entry, openScaleFormat, onOpenScale, onExport }: FormatIte
         type="button"
         role="menuitem"
         onClick={() => onExport(entry.format)}
-        className="w-full px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+        className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-elevated"
       >
         {t(entry.labelKey)}
       </button>
@@ -302,7 +302,7 @@ function FormatItem({ entry, openScaleFormat, onOpenScale, onExport }: FormatIte
         onMouseEnter={() => onOpenScale(entry.format)}
         onFocus={() => onOpenScale(entry.format)}
         onClick={() => onOpenScale(isOpen ? null : entry.format)}
-        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-elevated"
       >
         <span>{t(entry.labelKey)}</span>
         <svg className="h-3 w-3" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
@@ -312,7 +312,7 @@ function FormatItem({ entry, openScaleFormat, onOpenScale, onExport }: FormatIte
       {isOpen && (
         <div
           role="menu"
-          className="absolute left-full top-0 min-w-[160px] rounded-lg border border-ink-navy/10 bg-white py-1 shadow-lg"
+          className="absolute left-full top-0 min-w-[160px] rounded-lg border border-border/10 bg-surface py-1 shadow-lg"
         >
           {SCALES.map((scale) => (
             <button
@@ -320,7 +320,7 @@ function FormatItem({ entry, openScaleFormat, onOpenScale, onExport }: FormatIte
               type="button"
               role="menuitem"
               onClick={() => onExport(entry.format, scale)}
-              className="w-full px-3 py-2 text-left text-sm text-ink-navy hover:bg-parchment-cream"
+              className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-elevated"
             >
               {t(scaleLabelKey(scale))}
             </button>
