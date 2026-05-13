@@ -101,7 +101,7 @@ test.describe("Canvas CRUD happy path", () => {
 
     // Step 3: Create a canvas.
     await page
-      .getByRole("button", { name: /建立畫布|create canvas/i })
+      .getByRole("button", { name: /新畫布|建立畫布|new canvas|create canvas/i })
       .first()
       .click();
     const titleInput = page
