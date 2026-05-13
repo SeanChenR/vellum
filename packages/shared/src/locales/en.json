@@ -24,14 +24,29 @@
       "profile": "Profile",
       "sessions": "Active sessions",
       "apiKeys": "API keys",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "settings": "Settings"
+    },
+    "theme": {
+      "toggleAriaLabel": "Switch theme — current: {{mode}}",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "locale": {
+      "toggleAriaLabel": "Switch language — current: {{name}}",
+      "serverPatchFailed": "Could not sync your language preference to the server; applied locally.",
+      "zh-TW": "繁體中文",
+      "en": "English"
     }
   },
   "landing": {
     "hero": {
       "headline": "A whiteboard built with care.",
       "tagline": "Light, fast, and made for thinking. Vellum is a craftsmanship-driven canvas — no AI gimmicks, no upsell.",
-      "cta": "Get started"
+      "cta": "Get started",
+      "badge": "v0.7 · Public Beta",
+      "secondaryCta": "See what this is"
     },
     "features": {
       "heading": "A tool for people who think slowly",
@@ -51,7 +66,10 @@
     "narrative": {
       "heading": "Why we wrote a whiteboard",
       "body": "Most tools today pile on features. Vellum borrows Whimsical's lightness and tldraw's openness, then pairs them with our own editing philosophy — for people willing to take their time.",
-      "readMore": "Read our story →"
+      "readMore": "Read our story →",
+      "badge": "Origin",
+      "pullQuote": "Words written on parchment are read with care.",
+      "pullQuoteAttribution": "── Design notes, 2026.04"
     },
     "mobileNotice": {
       "heading": "Best on a desktop browser",
@@ -123,7 +141,22 @@
     "createCanvas": "Create canvas",
     "empty": {
       "owned": "No canvases yet — create your first one!",
-      "shared": "Nothing has been shared with you yet"
+      "shared": "Nothing has been shared with you yet",
+      "searchNoMatch": "No canvases match \"{{query}}\"."
+    },
+    "greeting": {
+      "hello": "Hello, {{name}}"
+    },
+    "searchPlaceholder": "Search canvases…",
+    "newCanvasCta": "New canvas",
+    "sort": {
+      "recent": "Recently edited",
+      "alphabetical": "Alphabetical"
+    },
+    "sidebar": {
+      "foldersHeading": "Folders",
+      "tagsHeading": "Tags",
+      "sortHeading": "Sort"
     }
   },
   "canvas": {
@@ -391,8 +424,11 @@
     "sessions": {
       "title": "Active sessions",
       "current": "Current device",
+      "thisDeviceBadge": "This device",
       "revokeButton": "Sign out this device",
       "revokeSuccess": "Signed out",
+      "revokeConfirmTitle": "Sign out this device?",
+      "revokeConfirmBody": "The other device will be logged out immediately. This cannot be undone.",
       "createdAt": "Signed in",
       "lastSeen": "Last active",
       "ipAddress": "IP address",
@@ -466,7 +502,9 @@
         "title": "Default model",
         "subtitle": "Used when you open the AI panel.",
         "unset": "No default selected"
-      }
+      },
+      "savedBadge": "Connected",
+      "helpLinkLabel": "Open provider console"
     },
     "pat": {
       "title": "MCP Tokens",
@@ -492,6 +530,31 @@
       "expiresAt": "Expires: {{when}}",
       "expiresNeverDisplay": "Never expires",
       "emptyState": "No tokens yet."
+    },
+    "heading": "Account Settings",
+    "tabs": {
+      "profile": "Profile",
+      "sessions": "Sessions",
+      "apiKeys": "API & MCP",
+      "pricing": "Pricing"
+    },
+    "pricing": {
+      "title": "Pricing Reference",
+      "subtitle": "BYOK published rates · USD per 1M tokens · for cost estimation only.",
+      "tier": {
+        "flagship": "Flagship",
+        "balanced": "Balanced",
+        "economy": "Economy"
+      },
+      "inputLabel": "Input",
+      "outputLabel": "Output",
+      "unit": "USD / 1M tokens",
+      "modelFamily": {
+        "anthropic": "Claude",
+        "openai": "OpenAI",
+        "google": "Gemini"
+      },
+      "tierHeader": "Tier"
     }
   },
   "agent": {
@@ -536,7 +599,8 @@
       "noUsage": "—"
     },
     "badge": {
-      "aiEditingTooltip": "{{name}} is editing with AI"
+      "aiEditingTooltip": "{{name}} is editing with AI",
+      "aiLabel": "AI"
     },
     "thread": {
       "fallbackTitleEmpty": "New chat"

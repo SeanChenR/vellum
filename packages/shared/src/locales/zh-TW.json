@@ -24,14 +24,29 @@
       "profile": "個人資料",
       "sessions": "登入裝置",
       "apiKeys": "API 金鑰",
-      "signOut": "登出"
+      "signOut": "登出",
+      "settings": "帳號設定"
+    },
+    "theme": {
+      "toggleAriaLabel": "切換主題 — 目前：{{mode}}",
+      "system": "跟隨系統",
+      "light": "淺色",
+      "dark": "深色"
+    },
+    "locale": {
+      "toggleAriaLabel": "切換語言 — 目前：{{name}}",
+      "serverPatchFailed": "語言偏好同步到伺服器失敗，已套用本機切換。",
+      "zh-TW": "繁體中文",
+      "en": "English"
     }
   },
   "landing": {
     "hero": {
       "headline": "用心做的白板。",
       "tagline": "輕、快，為了思考而生。Vellum 是一個重視工藝感的畫布——沒有 AI 噱頭、沒有升級推銷。",
-      "cta": "開始使用"
+      "cta": "開始使用",
+      "badge": "v0.7 · 公開測試版",
+      "secondaryCta": "看一下這是什麼"
     },
     "features": {
       "heading": "為慢慢想事情的人做的工具",
@@ -51,7 +66,10 @@
     "narrative": {
       "heading": "為何寫一個白板",
       "body": "市面上的工具堆砌了太多功能。Vellum 把 Whimsical 那種輕巧、tldraw 的開放、再加上自己的編輯哲學，做給願意慢慢用的人。",
-      "readMore": "讀我們的故事 →"
+      "readMore": "讀我們的故事 →",
+      "badge": "緣起",
+      "pullQuote": "寫在羊皮紙上的字，會被認真地讀。",
+      "pullQuoteAttribution": "── 設計筆記，2026.04"
     },
     "mobileNotice": {
       "heading": "請以桌面瀏覽",
@@ -123,7 +141,22 @@
     "createCanvas": "建立畫布",
     "empty": {
       "owned": "還沒有畫布，立即建立第一個吧！",
-      "shared": "目前尚無共用畫布"
+      "shared": "目前尚無共用畫布",
+      "searchNoMatch": "找不到符合 \"{{query}}\" 的畫布。"
+    },
+    "greeting": {
+      "hello": "你好，{{name}}"
+    },
+    "searchPlaceholder": "搜尋畫布⋯",
+    "newCanvasCta": "新畫布",
+    "sort": {
+      "recent": "最近編輯",
+      "alphabetical": "字母排序"
+    },
+    "sidebar": {
+      "foldersHeading": "資料夾",
+      "tagsHeading": "標籤",
+      "sortHeading": "排序"
     }
   },
   "canvas": {
@@ -391,8 +424,11 @@
     "sessions": {
       "title": "登入裝置",
       "current": "目前裝置",
+      "thisDeviceBadge": "這台裝置",
       "revokeButton": "登出此裝置",
       "revokeSuccess": "已登出",
+      "revokeConfirmTitle": "確認登出此裝置？",
+      "revokeConfirmBody": "對應裝置會立即失去登入狀態，且無法復原。",
       "createdAt": "登入時間",
       "lastSeen": "最後活動",
       "ipAddress": "IP 位址",
@@ -466,7 +502,9 @@
         "title": "預設模型",
         "subtitle": "開啟 AI panel 時的預設選擇。",
         "unset": "尚未選擇預設"
-      }
+      },
+      "savedBadge": "已連線",
+      "helpLinkLabel": "前往控制台"
     },
     "pat": {
       "title": "MCP Tokens",
@@ -492,6 +530,31 @@
       "expiresAt": "到期：{{when}}",
       "expiresNeverDisplay": "永不過期",
       "emptyState": "尚未建立任何 token。"
+    },
+    "heading": "帳號設定",
+    "tabs": {
+      "profile": "個人資料",
+      "sessions": "登入裝置",
+      "apiKeys": "API 與 MCP",
+      "pricing": "定價參考"
+    },
+    "pricing": {
+      "title": "定價參考",
+      "subtitle": "依各家 BYOK 模型公告價格，單位 USD / 1M tokens，僅供換算參考。",
+      "tier": {
+        "flagship": "旗艦",
+        "balanced": "平衡",
+        "economy": "經濟"
+      },
+      "inputLabel": "輸入",
+      "outputLabel": "輸出",
+      "unit": "USD / 1M tokens",
+      "modelFamily": {
+        "anthropic": "Claude",
+        "openai": "OpenAI",
+        "google": "Gemini"
+      },
+      "tierHeader": "層級"
     }
   },
   "agent": {
@@ -536,7 +599,8 @@
       "noUsage": "—"
     },
     "badge": {
-      "aiEditingTooltip": "{{name}} 正在用 AI 編輯"
+      "aiEditingTooltip": "{{name}} 正在用 AI 編輯",
+      "aiLabel": "AI"
     },
     "thread": {
       "fallbackTitleEmpty": "新對話"
