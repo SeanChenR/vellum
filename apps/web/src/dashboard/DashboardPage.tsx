@@ -1,33 +1,33 @@
 /**
- * DashboardPage — main canvas dashboard.
+ * DashboardPage — main canvas dashboard with the Aura two-column layout.
  *
- * Layout:
- *   Left sidebar: FolderTree with sentinels [All / Unfiled / Shared with me]
- *     followed by the user's own folders.
- *   Main area: renders one section depending on `activeFolderId`:
- *     - "shared" → "Shared with me" canvases (not filterable by folder)
- *     - any other (null / "unfiled" / <folder uuid>) → "My Canvases"
+ * Design ref: openspec/changes/redesign-ui-aura-theme/design.md Decision 9
+ * Spec ref:   openspec/specs/public-pages/spec.md
+ *   "DashboardPage uses a two-column layout with greeting strip, sidebar,
+ *    and canvas grid"
  *
- * Note: "Shared with me" is a virtual folder rather than a permanent
- * second section, so users on a specific folder view aren't visually
- * distracted by canvases they don't own (Bug 3 fix).
+ * Structure:
+ *   - <DashboardGreeting> top strip with date, welcome line, search, "New".
+ *   - Two-column grid: <DashboardSidebar> | <CanvasGrid>.
+ *   - All canvas / folder dialogs orchestrated here.
  *
- * Dialog orchestration: all 6 dialogs (create/rename/delete for canvas and folder)
- * are managed here at the page level.
+ * "Shared with me" still uses a virtual folder selector so users on a
+ * specific folder view aren't visually distracted by canvases they don't
+ * own (Bug 3 fix, preserved from previous implementation).
  *
- * Spec: "Dashboard canvas list view"
+ * NO subscription / upgrade callout is rendered — vellum has no
+ * subscription tier; the spec explicitly requires this absence.
  */
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
+import { useAuth } from "../auth/useAuth";
 import { useCanvasList } from "./useCanvasList";
 import type { Canvas } from "./useCanvasList";
 import { useFolderList } from "./useFolderList";
 import type { Folder } from "./useFolderList";
-import { FolderTree } from "../components/FolderTree";
-import { CanvasCard } from "../components/CanvasCard";
 import { CanvasCreateDialog } from "../components/CanvasCreateDialog";
 import { CanvasRenameDialog } from "../components/CanvasRenameDialog";
 import { CanvasDeleteDialog } from "../components/CanvasDeleteDialog";
@@ -35,11 +35,11 @@ import { CanvasMoveDialog } from "../components/CanvasMoveDialog";
 import { FolderCreateDialog } from "../components/FolderCreateDialog";
 import { FolderRenameDialog } from "../components/FolderRenameDialog";
 import { FolderDeleteDialog } from "../components/FolderDeleteDialog";
-import { FadeIn, StaggerContainer } from "../motion/primitives";
-
-// ---------------------------------------------------------------------------
-// Dialog state types
-// ---------------------------------------------------------------------------
+import { CanvasGrid } from "./CanvasGrid";
+import { DashboardGreeting } from "./DashboardGreeting";
+import { DashboardSidebar } from "./DashboardSidebar";
+import { SortToggle } from "./SortToggle";
+import { useSortOrder } from "./useSortOrder";
 
 type DialogState =
   | { kind: "none" }
@@ -51,19 +51,16 @@ type DialogState =
   | { kind: "folder-rename"; folder: Folder }
   | { kind: "folder-delete"; folder: Folder; errorKey: string | null };
 
-// ---------------------------------------------------------------------------
-// DashboardPage
-// ---------------------------------------------------------------------------
-
 export function DashboardPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [dialog, setDialog] = useState<DialogState>({ kind: "none" });
+  const { order: sortOrder, setOrder: setSortOrder } = useSortOrder();
 
   const isSharedView = activeFolderId === "shared";
 
-  // Owned canvases (filtered by folder when activeFolderId is a folder selector).
-  // Skip when sharedView is active — caller binds to sharedList instead.
   const folderFilter =
     activeFolderId === "unfiled" ? null : activeFolderId === null ? undefined : activeFolderId;
 
@@ -71,13 +68,6 @@ export function DashboardPage() {
   const sharedList = useCanvasList("shared");
   const { folders, createFolder, renameFolder, deleteFolder } = useFolderList();
 
-  // ---------------------------------------------------------------------------
-  // Canvas handlers
-  // ---------------------------------------------------------------------------
-
-  // PointerSensor with a small activation distance lets the canvas card
-  // remain clickable for navigation while still allowing drags to start
-  // once the pointer travels >5px.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   function handleDragEnd(event: DragEndEvent) {
@@ -85,15 +75,11 @@ export function DashboardPage() {
     if (!over) return;
     const canvasId = String(active.id);
     const targetId = String(over.id);
-    if (targetId === "all") return; // dropping on "All canvases" is a no-op
-    if (targetId === "shared") return; // owned canvases can't be dropped into "Shared with me"
+    if (targetId === "all") return;
+    if (targetId === "shared") return;
     const targetFolderId = targetId === "unfiled" ? null : targetId;
     ownedList.moveCanvas.mutate({ id: canvasId, folderId: targetFolderId });
   }
-
-  // ---------------------------------------------------------------------------
-  // Folder delete (needs notEmpty error handling)
-  // ---------------------------------------------------------------------------
 
   function handleFolderDeleteConfirm() {
     if (dialog.kind !== "folder-delete") return;
@@ -114,92 +100,67 @@ export function DashboardPage() {
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
+  const activeCanvases = isSharedView ? sharedList.canvases : ownedList.canvases;
+  const userName = user?.name ?? "";
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-8">
-        {/* Folder tabs — horizontal pill strip, aligned with Navbar width */}
-        <FolderTree
-          folders={folders}
-          activeFolderId={activeFolderId}
-          onSelectFolder={setActiveFolderId}
-          onRenameFolder={(folder) => setDialog({ kind: "folder-rename", folder })}
-          onDeleteFolder={(folder) => setDialog({ kind: "folder-delete", folder, errorKey: null })}
-          onCreateFolder={() => setDialog({ kind: "folder-create" })}
+      <div
+        data-testid="dashboard-root"
+        className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 md:px-8"
+      >
+        <DashboardGreeting
+          userName={userName}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onCreateClick={() => setDialog({ kind: "canvas-create" })}
         />
 
-        {/* Main content — single section based on activeFolderId */}
-        <main className="flex-1">
-          {isSharedView ? (
-            <section aria-labelledby="section-shared">
-              <h2 id="section-shared" className="mb-4 text-xl font-semibold text-ink-navy">
-                {t("dashboard.sharedWithMe")}
-              </h2>
+        <div
+          data-testid="dashboard-two-col"
+          className="grid grid-cols-1 gap-8 md:grid-cols-[220px_1fr]"
+        >
+          <DashboardSidebar
+            folders={folders}
+            activeFolderId={activeFolderId}
+            onSelectFolder={setActiveFolderId}
+            onRenameFolder={(folder) => setDialog({ kind: "folder-rename", folder })}
+            onDeleteFolder={(folder) =>
+              setDialog({ kind: "folder-delete", folder, errorKey: null })
+            }
+            onCreateFolder={() => setDialog({ kind: "folder-create" })}
+          />
 
-              {sharedList.isLoading ? (
-                <p className="text-sm text-gray-400">{t("common.loading")}</p>
-              ) : sharedList.canvases.length === 0 ? (
-                <p className="text-sm text-gray-500">{t("dashboard.empty.shared")}</p>
-              ) : (
-                <StaggerContainer
-                  staggerMs={80}
-                  className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                >
-                  {sharedList.canvases.map((canvas) => (
-                    <FadeIn key={canvas.id} duration={400}>
-                      <CanvasCard
-                        canvas={canvas}
-                        onRename={(c) => setDialog({ kind: "canvas-rename", canvas: c })}
-                        onDelete={(c) => setDialog({ kind: "canvas-delete", canvas: c })}
-                        onMove={() => {}}
-                      />
-                    </FadeIn>
-                  ))}
-                </StaggerContainer>
-              )}
-            </section>
-          ) : (
-            <section aria-labelledby="section-owned">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 id="section-owned" className="text-xl font-semibold text-ink-navy">
-                  {t("dashboard.myCanvases")}
+          <main className="min-w-0">
+            <section aria-labelledby="section-active" data-testid="dashboard-canvas-section">
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <h2 id="section-active" className="font-serif text-xl text-text-primary">
+                  {isSharedView ? t("dashboard.sharedWithMe") : t("dashboard.myCanvases")}
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => setDialog({ kind: "canvas-create" })}
-                  className="rounded-lg bg-ink-navy px-4 py-2 text-sm font-semibold text-white hover:bg-ink-navy/90"
-                >
-                  {t("dashboard.createCanvas")}
-                </button>
+                <SortToggle value={sortOrder} onChange={setSortOrder} />
               </div>
 
-              {ownedList.isLoading ? (
-                <p className="text-sm text-gray-400">{t("common.loading")}</p>
-              ) : ownedList.canvases.length === 0 ? (
-                <p className="text-sm text-gray-500">{t("dashboard.empty.owned")}</p>
+              {(isSharedView ? sharedList.isLoading : ownedList.isLoading) ? (
+                <p className="text-sm text-text-muted">{t("common.loading")}</p>
               ) : (
-                <StaggerContainer
-                  staggerMs={80}
-                  className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                >
-                  {ownedList.canvases.map((canvas) => (
-                    <FadeIn key={canvas.id} duration={400}>
-                      <CanvasCard
-                        canvas={canvas}
-                        onRename={(c) => setDialog({ kind: "canvas-rename", canvas: c })}
-                        onDelete={(c) => setDialog({ kind: "canvas-delete", canvas: c })}
-                        onMove={(c) => setDialog({ kind: "canvas-move", canvas: c })}
-                      />
-                    </FadeIn>
-                  ))}
-                </StaggerContainer>
+                <CanvasGrid
+                  canvases={activeCanvases}
+                  searchQuery={searchQuery}
+                  sortOrder={sortOrder}
+                  emptyMessageKey={
+                    isSharedView ? "dashboard.empty.shared" : "dashboard.empty.owned"
+                  }
+                  onRename={(c) => setDialog({ kind: "canvas-rename", canvas: c })}
+                  onDelete={(c) => setDialog({ kind: "canvas-delete", canvas: c })}
+                  onMove={(c) => {
+                    if (isSharedView) return;
+                    setDialog({ kind: "canvas-move", canvas: c });
+                  }}
+                />
               )}
             </section>
-          )}
-        </main>
+          </main>
+        </div>
       </div>
 
       {/* ── Dialogs ── */}

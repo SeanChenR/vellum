@@ -153,6 +153,46 @@ describe("DashboardPage", () => {
     });
   });
 
+  test("renders the three Aura layout regions: greeting + sidebar + canvas section", async () => {
+    const qc = makeQC();
+    const { container } = render(
+      React.createElement(Wrapper, { qc }, React.createElement(DashboardPage)),
+    );
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="dashboard-root"]')).not.toBeNull();
+    });
+    expect(container.querySelector('[data-testid="dashboard-greeting-hello"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="dashboard-two-col"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="dashboard-canvas-section"]')).not.toBeNull();
+  });
+
+  test("does NOT render any 'upgrade' / 'Studio' / '升級' subscription callout", async () => {
+    const qc = makeQC();
+    const { container } = render(
+      React.createElement(Wrapper, { qc }, React.createElement(DashboardPage)),
+    );
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="dashboard-root"]')).not.toBeNull();
+    });
+    const text = container.textContent ?? "";
+    expect(text).not.toMatch(/Upgrade/i);
+    expect(text).not.toMatch(/Studio/i);
+    expect(text).not.toContain("升級");
+    expect(text).not.toContain("訂閱");
+  });
+
+  test("two-column layout uses md:grid-cols-[220px_1fr]", async () => {
+    const qc = makeQC();
+    const { container } = render(
+      React.createElement(Wrapper, { qc }, React.createElement(DashboardPage)),
+    );
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="dashboard-two-col"]')).not.toBeNull();
+    });
+    const twoCol = container.querySelector('[data-testid="dashboard-two-col"]')!;
+    expect(twoCol.className).toContain("md:grid-cols-[220px_1fr]");
+  });
+
   // The "user menu shows Profile / Sessions / Sign out" assertion moved to
   // UserAvatarMenu.test.tsx after unify-navbar — DashboardPage no longer
   // renders its own header (AppLayout provides Navbar at the route level).

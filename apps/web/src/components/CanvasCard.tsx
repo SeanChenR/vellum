@@ -77,7 +77,7 @@ export function CanvasCard({ canvas, onRename, onDelete, onMove }: CanvasCardPro
     <div
       ref={setDragRef}
       style={dragStyle}
-      className={`group relative rounded-xl border border-warm-200 bg-white shadow-sm transition-shadow hover:shadow-md ${
+      className={`group relative rounded-xl border border-border bg-surface shadow-sm transition-shadow hover:shadow-md ${
         isDragging ? "z-50 cursor-grabbing opacity-80 shadow-2xl" : ""
       }`}
       data-canvas-id={canvas.id}
@@ -101,8 +101,8 @@ export function CanvasCard({ canvas, onRename, onDelete, onMove }: CanvasCardPro
       <div className="px-3 py-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-gray-900">{canvas.title}</p>
-            <time dateTime={canvas.updatedAt} className="mt-0.5 block text-xs text-gray-500">
+            <p className="truncate text-sm font-semibold text-text-primary">{canvas.title}</p>
+            <time dateTime={canvas.updatedAt} className="mt-0.5 block text-xs text-text-muted">
               {t("canvas.card.lastEdited", { time: relTime })}
             </time>
           </div>
@@ -114,7 +114,7 @@ export function CanvasCard({ canvas, onRename, onDelete, onMove }: CanvasCardPro
               aria-label={t("canvas.card.menuLabel")}
               aria-haspopup="true"
               aria-expanded={menuOpen}
-              className="focus-visible-ring rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="focus-visible-ring rounded p-1 text-text-muted hover:bg-surface-elevated hover:text-text-muted"
               onClick={(e) => {
                 e.preventDefault();
                 setMenuOpen((v) => !v);
@@ -144,12 +144,12 @@ export function CanvasCard({ canvas, onRename, onDelete, onMove }: CanvasCardPro
                 {/* Menu */}
                 <div
                   role="menu"
-                  className="absolute right-0 z-20 mt-1 min-w-[140px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+                  className="absolute right-0 z-20 mt-1 min-w-[140px] rounded-lg border border-border bg-surface py-1 shadow-lg"
                 >
                   <button
                     role="menuitem"
                     type="button"
-                    className="focus-visible-ring flex w-full items-center px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    className="focus-visible-ring flex w-full items-center px-3 py-1.5 text-left text-sm text-text-primary hover:bg-surface-elevated"
                     onClick={() => {
                       setMenuOpen(false);
                       onRename(canvas);
@@ -160,7 +160,7 @@ export function CanvasCard({ canvas, onRename, onDelete, onMove }: CanvasCardPro
                   <button
                     role="menuitem"
                     type="button"
-                    className="focus-visible-ring flex w-full items-center px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    className="focus-visible-ring flex w-full items-center px-3 py-1.5 text-left text-sm text-text-primary hover:bg-surface-elevated"
                     onClick={() => {
                       setMenuOpen(false);
                       onMove(canvas);

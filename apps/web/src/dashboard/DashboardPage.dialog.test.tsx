@@ -116,7 +116,8 @@ describe("DashboardPage — dialog triggers", () => {
   test("create-canvas button opens the create-canvas dialog", async () => {
     const user = userEvent.setup();
     renderDashboard();
-    await user.click(screen.getByRole("button", { name: /create canvas/i }));
+    // The dashboard greeting strip now uses the "New canvas" CTA label.
+    await user.click(screen.getByTestId("dashboard-greeting-new-canvas"));
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: /create canvas/i, level: 2 })).not.toBeNull();
     });
@@ -231,7 +232,7 @@ describe("DashboardPage — dialog confirm flows exercise onSuccess paths", () =
   test("create-canvas confirm calls createCanvas mutation", async () => {
     const user = userEvent.setup();
     renderDashboard();
-    await user.click(screen.getByRole("button", { name: /create canvas/i }));
+    await user.click(screen.getByTestId("dashboard-greeting-new-canvas"));
     const input = screen.getByPlaceholderText(/canvas title/i);
     await user.type(input, "X");
     await user.click(screen.getAllByRole("button", { name: /^create$/i })[0]!);
