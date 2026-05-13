@@ -1,16 +1,35 @@
-# Vellum
+<p align="center">
+  <img src="asset/vellum-logo-removebg.png" width="280" alt="Vellum logo" />
+</p>
 
-[English](./README.md) · **繁體中文**
+<p align="center"><i>用心做的白板 · A canvas built with care.</i></p>
 
-以 tldraw SDK 為核心的協作式白板畫布，搭配自訂 chrome、自訂形狀、即時多人協作，以及完整的帳號 / 分享 / 匯出殼層。
+<p align="center">
+  <a href="./README.md">English</a> · <strong>繁體中文</strong>
+</p>
 
-匠心打造 · v0.1.0 · © 2026 Sean Chen
+<p align="center">
+  <video src="asset/vellum-canvas.mp4" controls width="720"></video>
+  <br/>
+  <sub>若 viewer 無法 inline 嵌入，請<a href="asset/vellum-canvas.mp4">直接開啟 <code>asset/vellum-canvas.mp4</code></a>。</sub>
+</p>
+
+---
+
+以 tldraw SDK 為核心的協作式白板畫布，搭配自訂 chrome、自訂形狀、即時多人協作、完整的帳號 / 分享 / 匯出殼層、畫布內的 AI Side Panel（自帶 API Key，支援 Anthropic / OpenAI / Google），以及一個 Model Context Protocol server 讓外部 AI 客戶端（Claude Desktop、Cursor）能直接編輯畫布。
+
+匠心打造 · v0.6.0 · © 2026 Sean Chen
 
 ---
 
 ## 進度
 
-Phase 1 里程碑（詳見 [`docs/PRD.md`](./docs/PRD.md)）：
+| Phase | 範圍 | 狀態 |
+|---|---|---|
+| **Phase 1**（M1–M10） | 本地畫布基底 — 認證 · CRUD · 多人同步 · 分享 · 自訂形狀 · 匯出 · 品牌 · i18n+a11y · 測試覆蓋率 | ✅ 已交付 — 詳見 [docs/PHASE1_MILESTONES.md](./docs/PHASE1_MILESTONES.md) |
+| **Phase 2**（M11–M15） | AI 副駕 — 伺服器 tldraw mutator · agent runtime · BYOK · AI Side Panel · 給外部 client 的 MCP server | ✅ 已交付 — 詳見 [docs/PHASE2_MILESTONES.md](./docs/PHASE2_MILESTONES.md) |
+
+### Phase 1 里程碑
 
 | 里程碑 | 範圍 | 狀態 |
 |---|---|---|
@@ -26,7 +45,17 @@ Phase 1 里程碑（詳見 [`docs/PRD.md`](./docs/PRD.md)）：
 | M9 | i18n 稽核 + 無障礙（focus trap、focus-visible、skip-link） | ✅ |
 | M10 | 測試覆蓋率收尾 — 5 條 PRD 黃金路徑、README | ✅ |
 
-下一個版號：Phase 2 deploy checklist 全部關閉時 bump 為 **v1.0.0**。
+### Phase 2 里程碑
+
+| 里程碑 | 範圍 | 版本 |
+|---|---|---|
+| M11 | BYOK 金鑰 — Anthropic / OpenAI / Google 三家、加密儲存、個別 model 偏好 | v0.2.0 |
+| M12 | 伺服器 tldraw mutator + 低層 tool 介面 — 6 個 write tool、batch undo 語意 | v0.3.0 |
+| M13 | Agent runtime + streaming — Vercel AI SDK、canvas digest、SSE channel、cancel + timeout | v0.4.0 |
+| M14 | AI Side Panel UI + thread store · cursor AI badge · 多 tab presence | v0.5.0 |
+| M15 | Vellum MCP server — PAT 認證、13 tool 介面、外部 client 整合 | v0.6.0 |
+
+下一個版號：Deploy checklist 全部關閉時 bump 為 **v1.0.0**（hosting、Resend、CI、Sentry、CSP、secrets store）。
 
 ---
 
@@ -169,17 +198,28 @@ E2E smoke（3 個 spec：`smoke`、`auth-magic-link`、`canvas-crud`）會在 `g
 |---|---|
 | `a11y` | Focus trap、focus-visible-ring 工具、skip-link、icon button 稽核 |
 | `account` | 個人資料編輯、Session 列表與撤銷、刪除帳號 |
+| `agent-runtime` | Vercel AI SDK 的 agent loop、含 cancel + timeout、每 run 用量追蹤 |
+| `ai-side-panel` | 畫布內 chat composer + thread switcher + token usage footer + cursor AI badge |
+| `ai-thread` | 每畫布每 user 的訊息 thread，含標題生成 + 持久化 |
 | `auth` | better-auth 整合、OAuth + Magic Link、route guard |
+| `byok-keys` | 自帶 API Key（Anthropic / OpenAI / Google）+ 加密儲存 + 定價感知的 model 選擇器 |
+| `canvas-digest` | 給 agent system prompt 的事前快照 builder，包含現有形狀 |
 | `canvas-editor` | tldraw 嵌入 + 自訂 chrome（TopBar、MainMenu）、每畫布獨立房間 |
 | `canvas-export` | PNG / SVG / PDF / JSON 匯出，倍率 1× / 2× / 4× |
 | `canvas-management` | 畫布 CRUD（建立 / 改名 / 移動 / 刪除） |
 | `canvas-shapes` | 4 個自訂形狀 — Markdown / Code / Callout / Link card |
+| `e2e-coverage` | Playwright spec 覆蓋矩陣 + skip 隔離政策 |
 | `folder-management` | Folder CRUD，附非空刪除阻擋 |
 | `i18n-audit` | 靜態 AST 掃描，擋 hardcoded 顯示字串 |
+| `mcp-server` | Stateless Streamable HTTP JSON-RPC endpoint，把 13 個 tool 暴露給外部 MCP client |
 | `motion-system` | 4 個動畫原語 + dialog wrapper、`prefers-reduced-motion` |
 | `multiplayer-sync` | tldraw sync 跑在 Bun.serve WebSocket、變更驅動的快照寫入 |
+| `permission-guard` | 單一 resolver 解 owner / editor / viewer / anon 角色，sync、dev mutate、agent、MCP 共用 |
+| `personal-access-token` | 不透明 PAT（DB 內 SHA-256 hash）+ Settings UI 給 MCP client 認證 |
 | `public-pages` | 首頁 / About / Navbar / Footer / favicon、認證路由的 AppLayout |
+| `server-mutation-bridge` | 透過 `TLSocketRoom` 的伺服器端 `applyMutation` + 低層 tool registry（6 write + 7 read） |
 | `sharing` | Email 邀請、公開連結三模式（closed / view / edit） |
+| `streaming-channel` | 每 user 的 SSE channel 廣播 agent run 事件（text delta、tool call、terminal） |
 
 ---
 
@@ -201,6 +241,9 @@ E2E smoke（3 個 spec：`smoke`、`auth-magic-link`、`canvas-crud`）會在 `g
 | 0010 | [Link card cache: two-tier](./docs/adr/0010-link-card-cache-two-tier.md) | 伺服器快取（長）+ 客戶端快取（短）給 OG metadata。 |
 | 0011 | [Image asset Phase 1: data URL](./docs/adr/0011-image-asset-phase1-data-url.md) | jsonb 內以 data URL 內嵌；雲端上傳是 Phase 2。 |
 | 0012 | [Mutation-driven snapshot flush](./docs/adr/0012-mutation-driven-snapshot-flush.md) | commit 時 flush，非定時 — WAL 有界、idle 時 DB 不吵。 |
+| 0013 | [Server tldraw mutator trade-offs](./docs/adr/0013-server-tldraw-mutator-trade-offs.md) | 伺服器透過實際 `TLSocketRoom` apply mutation；sync 自動廣播給所有 client。 |
+| 0014 | [Full tool surface — tldraw record shapes](./docs/adr/0014-full-tool-surface-tldraw-record-shapes.md) | Tool registry 直接說 tldraw record shape；registry / agent / MCP 共用一份 schema。 |
+| 0019 | [M13 e2e five-bug postmortem](./docs/adr/0019-m13-e2e-five-bug-postmortem.md) | M13 agent 整合那場五蟲 debug session 的教訓 — schema strictness、OpenAI strict mode 等。 |
 
 ---
 
@@ -227,7 +270,7 @@ discuss?  →  propose  →  apply  ⇄  ingest  →  archive
 | Phase | 主題 | 狀態 |
 |---|---|---|
 | **Phase 1** | 本機 canvas 基礎 — auth · CRUD · 多人協作 · 分享 · 自訂形狀 · 匯出 · 品牌 · i18n+a11y · 測試覆蓋 | ✅ 已交付 — 見 [docs/PHASE1_MILESTONES.md](./docs/PHASE1_MILESTONES.md) |
-| **Phase 2** | AI co-pilot 整合 — server-side agent · BYOK（Anthropic / OpenAI / Google 9 個模型）· low-level tool primitives · progressive streaming | 🚧 規劃中 — 見 [docs/PHASE2_MILESTONES.md](./docs/PHASE2_MILESTONES.md) |
+| **Phase 2** | AI 副駕 — BYOK · 伺服器 tldraw mutator + tool registry · agent runtime + streaming · AI Side Panel · MCP server | ✅ 已交付 — 見 [docs/PHASE2_MILESTONES.md](./docs/PHASE2_MILESTONES.md) |
 | **Pre-deploy**（v1.0 前） | 部署選型 · Resend 真 Email · GitHub Actions CI · Sentry · CSP headers · secrets store 遷移 | ⏳ 暫緩，依 [ADR-0004](./docs/adr/0004-defer-hosting-decision.md) |
 | **Phase 3+** | 行動裝置適配 · 畫布資產雲端上傳 · 跨 canvas 記憶 · multi-agent 編排 · 行銷頁面 | ⏳ Backlog |
 

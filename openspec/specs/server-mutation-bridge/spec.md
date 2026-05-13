@@ -585,28 +585,29 @@ tests:
 ---
 ### Requirement: Tool registry enumerates the full agent tool surface
 
-The system SHALL provide a `tool-registry` module that exposes a typed lookup table containing one entry per agent tool. The registry SHALL include all eleven tools defined in this capability: six write tools (`createShape`, `updateShape`, `deleteShape`, `groupShapes`, `ungroupShape`, `connectShapes`) and five read tools (`listShapesInViewport`, `listShapesInSelection`, `getShape`, `getCanvasBounds`, `getViewport`).
+The system SHALL provide a `tool-registry` module that exposes a typed lookup table containing one entry per agent tool. As of M15 the registry SHALL include thirteen tools: six write tools (`createShape`, `updateShape`, `deleteShape`, `groupShapes`, `ungroupShape`, `connectShapes`), six canvas-scoped read tools (`listShapes`, `listShapesInViewport`, `listShapesInSelection`, `getShape`, `getCanvasBounds`, `getViewport`), and one user-scoped read tool (`listCanvases`).
 
 Each registry entry SHALL contain:
 
-- `name: ToolName` — exhaustive string literal type covering all eleven tool names
-- `kind: "write" | "read"` — discriminator distinguishing mutator-bound tools from snapshot-derived readers
-- `description: string` — REQUIRED non-empty LLM-facing description forwarded by the agent runtime to the underlying LLM provider tool surface. Per-shape-type descriptions SHALL be provided for the four mutating tools that operate on shape props or relationships:
+- `name: ToolName` — exhaustive string literal type covering all thirteen tool names
+- `kind: "write" | "read"` — discriminator distinguishing mutator-bound tools from snapshot-derived readers (`listCanvases` is `kind: "read"`)
+- `description: string` — REQUIRED non-empty LLM-facing description forwarded by the agent runtime to the underlying LLM provider tool surface and by the MCP server's `tools/list` to external MCP clients. Per-shape-type descriptions SHALL be provided for the four mutating tools that operate on shape props or relationships:
   - `createShape`: SHALL enumerate every supported shape type and the per-type required `props` keys (matching `apps/api/src/sync/shape-schemas.ts`)
   - `updateShape`: SHALL enumerate the `patch.props` keys that are writable per shape type for all four custom shape types (`markdown`, `code`, `callout`, `link-card`)
   - `connectShapes`: SHALL describe the start and end shape id parameters and the arrow style props (color, dash, bend) accepted on the resulting arrow
   - `groupShapes`: SHALL describe the input array of shape ids, the resulting group behavior (children retain their absolute positions), and the absence of group-level editable props
-- `schema: ZodSchema` — Zod schema validating the tool's input payload
-- `execute: (deps, canvasId, input) => Promise<Result>` — function that runs the tool against the active room or snapshot
+  - `listCanvases`: SHALL describe that it returns the calling user's accessible canvases (own + shared as editor/viewer) and SHALL recommend that MCP clients call it before other tools when the user has not specified a canvas
+- `schema: ZodSchema` — Zod schema validating the tool's input payload (`listCanvases` SHALL use `z.object({}).strict()`)
+- `execute: (deps, canvasId, input) => Promise<Result>` — function that runs the tool against the active room or snapshot. For `listCanvases`, the `canvasId` parameter SHALL be ignored and the implementation SHALL resolve the user id from `deps` and return the user's accessible canvas list.
 
-Write-tool entries SHALL invoke `applyMutation` with a single-element `Mutation[]` array constructed from the entry's input. Read-tool entries SHALL invoke the corresponding reader function exported from `mutator-readers`. The registry SHALL NOT bypass either entry point or reimplement tool logic.
+Write-tool entries SHALL invoke `applyMutation` with a single-element `Mutation[]` array constructed from the entry's input. Canvas-scoped read-tool entries SHALL invoke the corresponding reader function exported from `mutator-readers`. The `listCanvases` entry SHALL invoke a new `listCanvasesForUser(deps, userId)` reader at `apps/api/src/sync/list-canvases-reader.ts`. The registry SHALL NOT bypass either entry point or reimplement tool logic.
 
-#### Scenario: Registry enumerates exactly eleven entries with correct kinds
+#### Scenario: Registry enumerates exactly twelve entries with correct kinds
 
 - **WHEN** consumer code reads `Object.values(toolRegistry)`
-- **THEN** the array MUST contain exactly eleven entries
+- **THEN** the array MUST contain exactly twelve entries
 - **AND** entries with `kind: "write"` MUST be six (one per write tool)
-- **AND** entries with `kind: "read"` MUST be five (one per read tool)
+- **AND** entries with `kind: "read"` MUST be six (five canvas-scoped readers plus `listCanvases`)
 - **AND** every entry MUST have a non-empty `name`, a non-empty `description`, a Zod `schema`, and a callable `execute`.
 
 #### Scenario: createShape description enumerates every supported shape type's required props
@@ -635,6 +636,12 @@ Write-tool entries SHALL invoke `applyMutation` with a single-element `Mutation[
 - **THEN** the description string MUST mention that grouped children retain their absolute positions
 - **AND** MUST mention that the group itself has no editable props.
 
+#### Scenario: listCanvases description signals user-scoped discovery
+
+- **WHEN** consumer code reads `toolRegistry.listCanvases.description`
+- **THEN** the description string MUST contain a phrase indicating that it lists canvases the user can access
+- **AND** MUST mention that each returned entry includes the user's role on that canvas.
+
 #### Scenario: Write-tool execute routes through applyMutation
 
 - **GIVEN** an entry `toolRegistry["createShape"]`
@@ -649,92 +656,82 @@ Write-tool entries SHALL invoke `applyMutation` with a single-element `Mutation[
 - **THEN** the function MUST internally call `getShape(deps, <canvasId>, "shape:abc")`
 - **AND** the resolved result MUST equal what `getShape` returned.
 
+#### Scenario: listCanvases execute routes through listCanvasesForUser ignoring canvasId
+
+- **GIVEN** an entry `toolRegistry["listCanvases"]` and `deps.session.userId = "user_42"`
+- **WHEN** consumer code calls `entry.execute(deps, "any-canvas-id-or-placeholder", {})`
+- **THEN** the function MUST internally call `listCanvasesForUser(deps, "user_42")`
+- **AND** the resolved result MUST equal what `listCanvasesForUser` returned
+- **AND** the `canvasId` argument MUST NOT be used in the resolution.
+
 
 <!-- @trace
-source: add-ai-side-panel-and-threads
+source: add-mcp-server
 updated: 2026-05-13
 code:
-  - .agents/skills/mcp-builder/scripts/requirements.txt
-  - docs/PHASE2_MILESTONES.md
-  - scripts/dev-proxy.ts
-  - skills-lock.json
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/agent/threads/handlers.ts
-  - apps/web/src/agent/useAgentThread.ts
-  - .agents/skills/mcp-builder/reference/python_mcp_server.md
-  - apps/web/src/canvas/CollaboratorAvatars.tsx
-  - apps/web/src/agent/ChatList.tsx
-  - .agents/skills/mcp-builder/reference/evaluation.md
-  - apps/api/src/agent/threads/repo.ts
-  - apps/api/drizzle/meta/0006_snapshot.json
-  - apps/api/src/index.ts
-  - apps/web/package.json
-  - apps/api/src/agent/sse-endpoint.ts
-  - apps/web/src/agent/sse-parser.ts
-  - .agents/skills/mcp-builder/reference/node_mcp_server.md
-  - apps/api/src/lib/rate-limit-rules.ts
-  - apps/api/src/agent/runtime.ts
-  - .agents/skills/mcp-builder/reference/mcp_best_practices.md
-  - apps/api/src/sync/mutator.ts
-  - apps/api/src/sync/geo-defaults.ts
-  - packages/shared/src/agent-events.ts
-  - e2e/helpers/agent-setup.ts
-  - apps/api/drizzle/0006_ai_threads.sql
-  - apps/web/src/agent/ThreadSwitcher.tsx
-  - apps/web/src/agent/cursor-ai-badge.ts
-  - .agents/skills/mcp-builder/scripts/evaluation.py
-  - packages/shared/src/locales/en.json
-  - apps/api/drizzle/meta/_journal.json
-  - apps/api/src/db/schema.ts
-  - apps/web/src/agent/ChatComposer.tsx
-  - apps/web/src/canvas/Editor.tsx
-  - .agents/skills/mcp-builder/scripts/connections.py
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/agent/wiring.ts
-  - .agents/skills/mcp-builder/scripts/example_evaluation.xml
-  - apps/web/src/chrome/TopBar.tsx
+  - apps/api/src/mcp/jsonrpc.ts
+  - apps/api/src/pat/auth.ts
   - apps/web/src/agent/AiSidePanel.tsx
-  - apps/api/src/agent/system-prompt.ts
-  - apps/web/src/agent/store.ts
+  - apps/api/src/mcp/methods/initialize.ts
+  - apps/web/src/canvas/ai-active-signal.ts
+  - apps/api/src/mcp/methods/ping.ts
+  - apps/web/src/canvas/Editor.tsx
+  - apps/web/src/canvas/presence-collaborator.ts
+  - apps/api/src/sync/tool-registry.ts
+  - apps/web/src/chrome/index.tsx
+  - apps/api/drizzle/0007_personal_access_tokens.sql
+  - apps/api/drizzle/meta/0007_snapshot.json
+  - apps/api/src/pat/token-format.ts
+  - apps/api/src/mcp/dispatch.ts
+  - apps/api/src/db/schema.ts
+  - apps/api/src/mcp/index.ts
+  - apps/web/src/account/PatTokensSection.tsx
   - packages/shared/src/locales/zh-TW.json
-  - apps/web/src/agent/useAgentRun.ts
-  - apps/api/src/agent/title-gen.ts
-  - .agents/skills/mcp-builder/SKILL.md
-  - apps/web/src/agent/TokenUsageFooter.tsx
-  - bun.lock
-  - .agents/skills/mcp-builder/LICENSE.txt
+  - CONTEXT.md
+  - docs/PHASE2_MILESTONES.md
+  - apps/web/src/agent/ChatComposer.tsx
+  - apps/api/src/index.ts
+  - apps/api/src/lib/rate-limit-rules.ts
+  - apps/api/src/pat/repo.ts
+  - apps/web/src/agent/cursor-ai-badge.ts
+  - packages/shared/src/locales/en.json
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/account/ApiKeysPage.tsx
+  - asset/vellum-canvas.mp4
+  - apps/api/src/pat/routes.ts
+  - apps/web/src/canvas/CollaboratorCursorWithBadge.tsx
+  - packages/shared/src/tool-types.ts
+  - apps/api/src/mcp/methods/tools-call.ts
+  - apps/api/src/sync/list-canvases-reader.ts
+  - apps/web/src/styles.css
+  - apps/web/src/account/usePatTokens.ts
+  - apps/api/src/sync/mutator.ts
+  - apps/web/src/canvas/use-sync-store.ts
+  - apps/api/drizzle/meta/_journal.json
+  - apps/api/src/mcp/zod-to-json-schema.ts
+  - apps/api/src/mcp/methods/tools-list.ts
 tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/web/src/agent/TokenUsageFooter.test.tsx
-  - apps/web/src/canvas/CollaboratorAvatars.test.tsx
-  - e2e/agent-rate-limit-toast.spec.ts
-  - packages/shared/src/agent-events.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
-  - apps/api/src/agent/threads/handlers.test.ts
-  - apps/api/src/sync/geo-defaults.test.ts
+  - apps/api/src/pat/token-format.test.ts
+  - apps/api/src/mcp/methods/tools-call.test.ts
+  - apps/api/src/mcp/index.test.ts
+  - e2e/mcp-server-roundtrip.spec.ts
+  - apps/api/src/mcp/jsonrpc.test.ts
+  - apps/web/src/account/PatTokensSection.test.tsx
+  - apps/api/src/mcp/methods/tools-list.test.ts
+  - apps/web/src/account/usePatTokens.test.ts
+  - apps/web/src/canvas/presence-collaborator.test.ts
+  - apps/api/src/pat/repo.test.ts
+  - apps/api/src/mcp/dispatch.test.ts
   - apps/api/src/sync/tool-registry.test.ts
-  - e2e/agent-multi-tab-badge.spec.ts
-  - apps/web/src/agent/store.test.ts
-  - apps/api/src/agent/integration.test.ts
-  - apps/web/src/agent/ChatList.test.tsx
-  - apps/api/src/agent/threads/repo.test.ts
-  - apps/api/src/agent/runtime.test.ts
-  - apps/web/src/agent/AiSidePanel.test.tsx
-  - apps/api/src/agent/title-gen.test.ts
-  - apps/api/src/db/schema.test.ts
-  - e2e/agent-cancel.spec.ts
-  - apps/web/src/agent/useAgentThread.test.ts
-  - apps/api/src/agent/sse-endpoint.test.ts
-  - apps/web/src/agent/ChatComposer.test.tsx
+  - apps/api/src/sync/list-canvases-reader.test.ts
+  - apps/api/src/mcp/methods/ping.test.ts
+  - apps/api/src/pat/routes.test.ts
+  - apps/api/src/mcp/methods/initialize.test.ts
   - apps/web/src/agent/cursor-ai-badge.test.ts
-  - apps/web/src/agent/ThreadSwitcher.test.tsx
-  - e2e/agent-viewer-no-panel.spec.ts
-  - e2e/sharing-acceptance.spec.ts
-  - apps/api/src/agent/wiring.test.ts
-  - apps/web/src/agent/useAgentRun.test.ts
-  - apps/web/src/agent/sse-parser.test.ts
-  - apps/api/src/agent/streaming.test.ts
-  - apps/api/src/agent/system-prompt.test.ts
+  - e2e/agent-multi-tab-badge.spec.ts
+  - apps/api/src/pat/auth.test.ts
+  - apps/api/src/db/schema.test.ts
+  - apps/api/src/mcp/zod-to-json-schema.test.ts
 -->
 
 ---

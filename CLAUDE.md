@@ -37,9 +37,9 @@ For the full background, read [`docs/PRD.md`](./docs/PRD.md). For per-decision r
 
 ## What is Vellum
 
-A canvas-based collaborative web app — Whimsical-clone aesthetic — built on tldraw SDK with custom chrome, custom shapes, real-time multiplayer, and a complete account / sharing / export shell.
+A canvas-based collaborative web app — Whimsical-clone aesthetic — built on tldraw SDK with custom chrome, custom shapes, real-time multiplayer, a complete account / sharing / export shell, an in-canvas AI side panel (BYOK across Anthropic / OpenAI / Google), and an MCP server so external AI clients (Claude Desktop, Cursor) can drive canvas edits.
 
-**Owner motivation:** "不想做一半"（craftsmanship-driven, not user-acquisition-driven）. Phase 1 is local-only; deployment is deferred.
+**Owner motivation:** "不想做一半"（craftsmanship-driven, not user-acquisition-driven）. Phase 1 (local canvas foundation, M1–M10) and Phase 2 (AI co-pilot + MCP, M11–M15) are both shipped. Deployment is the next milestone gate (pre-v1.0).
 
 **Implementation model:** Claude writes; user reviews. Engineering volume is not a cost; review/decision quality is.
 
@@ -64,10 +64,14 @@ A canvas-based collaborative web app — Whimsical-clone aesthetic — built on 
 | Email | Mailpit (dev, local Docker) → Resend (prod, phase 2) |
 | Email template | React Email |
 | Realtime | tldraw sync, self-hosted on Bun.serve WebSocket |
+| AI agent | Vercel AI SDK (`ai` + per-provider adapters) with cancel + timeout |
+| AI providers (BYOK) | `@ai-sdk/anthropic` + `@ai-sdk/openai` + `@ai-sdk/google` — user supplies the key, server encrypts at rest |
+| AI surface | In-canvas Side Panel + per-canvas threads + SSE streaming + cursor AI badge |
+| MCP transport | Stateless Streamable HTTP JSON-RPC at `POST /api/mcp`, PAT-authenticated |
 | Logging | Pino → stdout (structured JSON) |
 | i18n | i18next + react-i18next (zh-TW + en) |
 
-**Single binary architecture:** Bun.serve handles HTTP API + WebSocket + static frontend in one process.
+**Single binary architecture:** Bun.serve handles HTTP API + WebSocket + static frontend + MCP endpoint in one process.
 
 ---
 
@@ -83,15 +87,27 @@ vellum/
 ├── docker-compose.yml     # Mailpit
 ├── apps/
 │   ├── web/               # React + tldraw frontend
-│   └── api/               # Bun.serve (HTTP + WS + static serve)
-│       └── drizzle/       # migrations
+│   │   └── src/
+│   │       ├── agent/     # AI Side Panel, ChatComposer, ThreadSwitcher, useAgentRun, cursor-ai-badge
+│   │       ├── account/   # Profile, Sessions, API Keys, MCP Tokens panel
+│   │       └── canvas/    # Editor, sync store, shape utils, CollaboratorCursorWithBadge
+│   └── api/               # Bun.serve (HTTP + WS + MCP + static serve)
+│       ├── drizzle/       # migrations
+│       └── src/
+│           ├── agent/     # runtime, streaming, threads, title-gen, wiring
+│           ├── byok/      # vault (encrypt-at-rest), providers, routes
+│           ├── mcp/       # JSON-RPC dispatch, methods (initialize/ping/tools.list/tools.call)
+│           ├── pat/       # PAT repo, token format, authenticator, routes
+│           ├── lib/       # permission-guard, rate-limit-rules, validate-external-url
+│           └── sync/      # mutator, mutator-readers, tool-registry, list-canvases-reader
 ├── packages/
 │   └── shared/            # Drizzle schema, API types, shape types, locales, zod
 ├── docs/
 │   ├── PRD.md             # full Phase 1 PRD
+│   ├── PHASE2_MILESTONES.md  # M11–M15 status
 │   └── adr/               # architecture decision records
-├── e2e/                   # Playwright tests
-└── asset/                 # logo, brand assets
+├── e2e/                   # Playwright tests (incl. mcp-server-roundtrip, agent-multi-tab-badge)
+└── asset/                 # logo, brand assets, demo video
 ```
 
 ---
@@ -176,11 +192,20 @@ When solving a problem, prefer Bun built-ins over npm packages:
 
 ### 8. Out-of-Scope Guard
 
-These are **explicitly Phase 2+** and must not be added to Phase 1 work:
+Phase 1 + Phase 2 are shipped (canvas foundation + AI co-pilot + MCP). The following remain **explicitly out of scope** until they reach an approved milestone:
 
-Mobile (<768px) · Comments / @mentions · Multi-page canvas · Mind-map / Voting / Table shapes · Wireframe components · AI integration · Image cloud upload · Embed iframe API · Activity log / version history · Sentry · Analytics · Real email via Resend · Custom domain · Offline / PWA · Public canvas discovery
+Mobile (<768px) · Comments / @mentions · Multi-page canvas · Mind-map / Voting / Table shapes · Wireframe components · Image cloud upload · Embed iframe API · Activity log / version history · Sentry · Analytics · Real email via Resend · Custom domain · Offline / PWA · Public canvas discovery · Cross-canvas memory · Multi-agent orchestration · Plan-then-execute confirmation steps · In-app token usage billing surfaces
 
 If a request seems to require any of these, surface the conflict before proceeding.
+
+### 9. MCP Tool Surface Discipline
+
+When changing the tool registry (`apps/api/src/sync/tool-registry.ts`):
+
+- The MCP `tools/list` handler injects `canvasId` into every canvas-scoped tool's schema. Canvas-scoped schemas SHALL NOT declare `canvasId` themselves; the in-process agent runtime supplies it out-of-band.
+- The MCP `tools/call` dispatcher strips `canvasId` from args before Zod validation; tool schemas remain `.strict()`-compatible.
+- Tool description is part of the contract — LLM-facing chain hints (e.g. "call `listShapes` first before placing new shapes") belong in the description, not in code comments.
+- `listCanvases` is user-scoped: it ignores `canvasId` and resolves the user from the authenticated session.
 
 ---
 
@@ -221,10 +246,12 @@ docker compose up -d mailpit      # then visit http://localhost:8025
 ## Memory & Documentation
 
 - **PRD (canonical):** `docs/PRD.md` and GitHub Issue #1
-- **ADRs:** `docs/adr/`
+- **Phase 1 milestone log:** `docs/PHASE1_MILESTONES.md`
+- **Phase 2 milestone log:** `docs/PHASE2_MILESTONES.md` (M11–M15 ✅ v0.6.0)
+- **ADRs:** `docs/adr/` (latest: 0019 — M13 e2e five-bug postmortem)
+- **Specs (canonical):** `openspec/specs/<capability>/spec.md` — 24 capabilities as of M15
 - **Auto memory (cross-conversation):** `.claude/projects/-Users-seanchen-Sean-MySideProject-vellum/memory/MEMORY.md`
-- **Phase 1 Milestones:** `project_milestones.md` in memory
-- **Deploy checklist (phase 1 → 2 transition):** `project_deploy_checklist.md` in memory
+- **Deploy checklist (pre-v1.0):** `project_deploy_checklist.md` in memory
 
 ---
 

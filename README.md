@@ -1,16 +1,35 @@
-# Vellum
+<p align="center">
+  <img src="asset/vellum-logo-removebg.png" width="280" alt="Vellum logo" />
+</p>
 
-**English** · [繁體中文](./README.zh-TW.md)
+<p align="center"><i>用心做的白板 · A canvas built with care.</i></p>
 
-A canvas-based collaborative whiteboard built on the tldraw SDK with custom chrome, custom shapes, real-time multiplayer, and a full account / sharing / export shell.
+<p align="center">
+  <strong>English</strong> · <a href="./README.zh-TW.md">繁體中文</a>
+</p>
 
-Made with care · v0.1.0 · © 2026 Sean Chen
+<p align="center">
+  <video src="asset/vellum-canvas.mp4" controls width="720"></video>
+  <br/>
+  <sub>If the video does not embed inline on your viewer, <a href="asset/vellum-canvas.mp4">open <code>asset/vellum-canvas.mp4</code> directly</a>.</sub>
+</p>
+
+---
+
+A canvas-based collaborative whiteboard built on the tldraw SDK with custom chrome, custom shapes, real-time multiplayer, a full account / sharing / export shell, an in-canvas AI side panel (BYOK across Anthropic / OpenAI / Google), and a Model Context Protocol server so external AI clients (Claude Desktop, Cursor) can drive canvas edits.
+
+Made with care · v0.6.0 · © 2026 Sean Chen
 
 ---
 
 ## Status
 
-Phase 1 milestone roadmap (see [`docs/PRD.md`](./docs/PRD.md)):
+| Phase | Scope | Status |
+|---|---|---|
+| **Phase 1** (M1–M10) | Local-only canvas foundation — auth · CRUD · multiplayer · sharing · custom shapes · export · branding · i18n+a11y · test coverage | ✅ Shipped — see [docs/PHASE1_MILESTONES.md](./docs/PHASE1_MILESTONES.md) |
+| **Phase 2** (M11–M15) | AI co-pilot — server tldraw mutator · agent runtime · BYOK · AI side panel · MCP server for external clients | ✅ Shipped — see [docs/PHASE2_MILESTONES.md](./docs/PHASE2_MILESTONES.md) |
+
+### Phase 1 milestones
 
 | Milestone | Scope | Status |
 |---|---|---|
@@ -26,7 +45,17 @@ Phase 1 milestone roadmap (see [`docs/PRD.md`](./docs/PRD.md)):
 | M9 | i18n audit + a11y (focus trap, focus-visible, skip-link) | ✅ |
 | M10 | Test coverage closing — 5 PRD happy paths, README | ✅ |
 
-Next planned bump: **v1.0.0** when the Phase 2 deploy checklist is closed.
+### Phase 2 milestones
+
+| Milestone | Scope | Version |
+|---|---|---|
+| M11 | BYOK keys — Anthropic / OpenAI / Google providers, encryption at rest, per-provider preferences | v0.2.0 |
+| M12 | Server tldraw mutator + low-level tool surface — 6 write tools, batch undo semantics | v0.3.0 |
+| M13 | Agent runtime + streaming — Vercel AI SDK, canvas digest, SSE channel, cancel + timeout | v0.4.0 |
+| M14 | AI Side Panel UI + thread store · cursor AI badge · multi-tab presence | v0.5.0 |
+| M15 | Vellum MCP server — PAT auth · 13-tool surface · external client integration | v0.6.0 |
+
+Next planned bump: **v1.0.0** when the deploy checklist is closed (hosting, Resend, CI, Sentry, CSP, secrets store).
 
 ---
 
@@ -169,17 +198,28 @@ Each capability has a spec under `openspec/specs/<name>/spec.md`. Specs are norm
 |---|---|
 | `a11y` | Focus trap, focus-visible-ring utility, skip-link, icon-button audit |
 | `account` | Profile edit, session listing & revoke, delete account |
+| `agent-runtime` | Vercel AI SDK agent loop with cancel + timeout + per-run usage tracking |
+| `ai-side-panel` | In-canvas chat composer + thread switcher + token usage footer + cursor AI badge |
+| `ai-thread` | Per-canvas per-user message threads with title generation + persistence |
 | `auth` | better-auth integration, OAuth + Magic Link, route guard |
+| `byok-keys` | Bring-your-own API keys (Anthropic / OpenAI / Google) + encryption at rest + pricing-aware model picker |
+| `canvas-digest` | Up-front snapshot builder feeding the agent system prompt with existing shapes |
 | `canvas-editor` | tldraw embed + custom chrome (TopBar, MainMenu), per-canvas room |
 | `canvas-export` | PNG / SVG / PDF / JSON export, scale 1× / 2× / 4× |
 | `canvas-management` | Canvas CRUD (create / rename / move / delete) |
 | `canvas-shapes` | 4 custom shapes — Markdown / Code / Callout / Link card |
+| `e2e-coverage` | Playwright spec coverage matrix + skip-quarantine policy |
 | `folder-management` | Folder CRUD with non-empty delete guard |
 | `i18n-audit` | Static AST scanner blocking hardcoded display strings |
+| `mcp-server` | Stateless Streamable HTTP JSON-RPC endpoint exposing the 13-tool surface to external MCP clients |
 | `motion-system` | 4 motion primitives + dialog wrapper, `prefers-reduced-motion` |
 | `multiplayer-sync` | tldraw sync over Bun.serve WebSocket, mutation-driven snapshot flush |
+| `permission-guard` | Single resolver for owner/editor/viewer/anon roles shared by sync, dev mutate, agent, MCP |
+| `personal-access-token` | Opaque PATs (SHA-256 at rest) + Settings UI for MCP client authentication |
 | `public-pages` | Homepage / About / Navbar / Footer / favicon, AppLayout for authenticated routes |
+| `server-mutation-bridge` | Server-side `applyMutation` over `TLSocketRoom` + low-level tool registry (6 write + 7 read tools) |
 | `sharing` | Email invite, public link three modes (closed / view / edit) |
+| `streaming-channel` | Per-user SSE channel for agent run events (text delta, tool call, terminal) |
 
 ---
 
@@ -201,6 +241,9 @@ Architecture decision records live under [`docs/adr/`](./docs/adr/). One-line ta
 | 0010 | [Link card cache: two-tier](./docs/adr/0010-link-card-cache-two-tier.md) | Server cache (long) + client cache (short) for OG metadata. |
 | 0011 | [Image asset Phase 1: data URL](./docs/adr/0011-image-asset-phase1-data-url.md) | Inline as data URL in jsonb; cloud upload is Phase 2. |
 | 0012 | [Mutation-driven snapshot flush](./docs/adr/0012-mutation-driven-snapshot-flush.md) | Flush on commit, not on a timer — bounded WAL, no idle DB chatter. |
+| 0013 | [Server tldraw mutator trade-offs](./docs/adr/0013-server-tldraw-mutator-trade-offs.md) | Server applies mutations through the live `TLSocketRoom`; sync broadcasts handle distribution. |
+| 0014 | [Full tool surface — tldraw record shapes](./docs/adr/0014-full-tool-surface-tldraw-record-shapes.md) | Tool registry speaks tldraw record shapes directly; one canonical schema across registry / agent / MCP. |
+| 0019 | [M13 e2e five-bug postmortem](./docs/adr/0019-m13-e2e-five-bug-postmortem.md) | Lessons from the M13 agent integration's five-bug debugging session — schema strictness, OpenAI strict mode, etc. |
 
 ---
 
@@ -227,7 +270,7 @@ Project conventions in [`CLAUDE.md`](./CLAUDE.md). Spec analyzer rules in `.spec
 | Phase | Theme | Status |
 |---|---|---|
 | **Phase 1** | Local-only canvas foundation — auth · CRUD · multiplayer · sharing · custom shapes · export · branding · i18n+a11y · test coverage | ✅ Shipped — see [docs/PHASE1_MILESTONES.md](./docs/PHASE1_MILESTONES.md) |
-| **Phase 2** | AI co-pilot integration — server-side agent · BYOK (9 models across Anthropic / OpenAI / Google) · low-level tool primitives · progressive streaming | 🚧 Planning — see [docs/PHASE2_MILESTONES.md](./docs/PHASE2_MILESTONES.md) |
+| **Phase 2** | AI co-pilot — BYOK · server tldraw mutator + tool registry · agent runtime + streaming · AI side panel · MCP server | ✅ Shipped — see [docs/PHASE2_MILESTONES.md](./docs/PHASE2_MILESTONES.md) |
 | **Pre-deploy** (before v1.0) | Hosting decision · Resend (real email) · GitHub Actions CI · Sentry · CSP headers · secrets store migration | ⏳ Deferred per [ADR-0004](./docs/adr/0004-defer-hosting-decision.md) |
 | **Phase 3+** | Mobile responsive · canvas asset cloud upload · cross-canvas memory · multi-agent orchestration · marketing surfaces | ⏳ Backlog |
 

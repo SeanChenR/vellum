@@ -596,7 +596,9 @@ tests:
 ---
 ### Requirement: Cursor AI Badge surfaces aiActive presence flag
 
-When a run dispatched from the local instance enters `running` state, the Side Panel SHALL set tldraw `instancePresence.userMeta.aiActive = true` on the local instance. When the run reaches any terminal state, the flag SHALL be reset to `false`. The CollaboratorAvatars chrome SHALL render an enhanced visual treatment (gradient golden border plus a sparkle SVG overlay) on any avatar whose presence row reports `aiActive === true`. The flag SHALL be the only AI-related field broadcast through the sync presence channel; thread message content SHALL NEVER traverse this channel.
+When a run dispatched from the local instance enters `running` state, the Side Panel SHALL set the local user's tldraw `instancePresence.meta.aiActive = true` by writing to the user's `TLInstancePresence` record via `editor.store.put`. When the run reaches any terminal state, the flag SHALL be reset to `false` on the same presence record. The flag SHALL ride the tldraw sync presence channel automatically so every collaborator in the same room sees the change. The CollaboratorAvatars chrome SHALL render an enhanced visual treatment (gradient golden border plus a sparkle SVG overlay) on any avatar whose presence row reports `meta.aiActive === true`. Only the boolean `aiActive` flag SHALL be broadcast through this channel — thread message content SHALL NEVER traverse the presence channel.
+
+The previous implementation that wrote to `TLInstance.meta` via `editor.updateInstanceState` was local-only (TLInstance is not synced) and SHALL be replaced. The presence record id is derived from the user id via `InstancePresenceRecordType.createId(userId)`.
 
 #### Scenario: Multi-tab badge visibility
 
@@ -606,99 +608,96 @@ When a run dispatched from the local instance enters `running` state, the Side P
 - **WHEN** the run terminates in tab A (any terminal state)
 - **THEN** within 500ms the overlay SHALL disappear from tab B.
 
+#### Scenario: Same-user multi-tab visibility
+
+- **GIVEN** user U1 has the same canvas open in tab A and tab A'
+- **WHEN** U1 starts an agent run in tab A
+- **THEN** within 500ms tab A''s CollaboratorAvatars SHALL display the badge on U1's avatar
+- **WHEN** the run terminates
+- **THEN** the badge SHALL disappear in both tabs.
+
 #### Scenario: Disconnect clears badge implicitly
 
-- **GIVEN** U1 has `aiActive=true` and is running an agent
+- **GIVEN** U1 has `meta.aiActive=true` and is running an agent
 - **WHEN** U1's WebSocket disconnects (network drop, browser close, server restart)
 - **THEN** the sync presence row for U1 SHALL be removed from the collaborator list in all other tabs
 - **AND** the overlay SHALL no longer appear for U1 in those tabs.
 
+#### Scenario: Badge channel never carries thread content
+
+- **GIVEN** an agent run is in progress and emitting assistant text + tool calls via SSE
+- **WHEN** any collaborator inspects U1's `TLInstancePresence.meta`
+- **THEN** the only AI-related field present SHALL be `aiActive: boolean`
+- **AND** no field SHALL contain prompt text, assistant text, tool arguments, or tool results.
+
 
 <!-- @trace
-source: add-ai-side-panel-and-threads
+source: add-mcp-server
 updated: 2026-05-13
 code:
-  - .agents/skills/mcp-builder/scripts/requirements.txt
-  - docs/PHASE2_MILESTONES.md
-  - scripts/dev-proxy.ts
-  - skills-lock.json
-  - apps/api/src/sync/mutator-readers.ts
-  - apps/api/src/agent/threads/handlers.ts
-  - apps/web/src/agent/useAgentThread.ts
-  - .agents/skills/mcp-builder/reference/python_mcp_server.md
-  - apps/web/src/canvas/CollaboratorAvatars.tsx
-  - apps/web/src/agent/ChatList.tsx
-  - .agents/skills/mcp-builder/reference/evaluation.md
-  - apps/api/src/agent/threads/repo.ts
-  - apps/api/drizzle/meta/0006_snapshot.json
-  - apps/api/src/index.ts
-  - apps/web/package.json
-  - apps/api/src/agent/sse-endpoint.ts
-  - apps/web/src/agent/sse-parser.ts
-  - .agents/skills/mcp-builder/reference/node_mcp_server.md
-  - apps/api/src/lib/rate-limit-rules.ts
-  - apps/api/src/agent/runtime.ts
-  - .agents/skills/mcp-builder/reference/mcp_best_practices.md
-  - apps/api/src/sync/mutator.ts
-  - apps/api/src/sync/geo-defaults.ts
-  - packages/shared/src/agent-events.ts
-  - e2e/helpers/agent-setup.ts
-  - apps/api/drizzle/0006_ai_threads.sql
-  - apps/web/src/agent/ThreadSwitcher.tsx
-  - apps/web/src/agent/cursor-ai-badge.ts
-  - .agents/skills/mcp-builder/scripts/evaluation.py
-  - packages/shared/src/locales/en.json
-  - apps/api/drizzle/meta/_journal.json
-  - apps/api/src/db/schema.ts
-  - apps/web/src/agent/ChatComposer.tsx
-  - apps/web/src/canvas/Editor.tsx
-  - .agents/skills/mcp-builder/scripts/connections.py
-  - apps/api/src/sync/tool-registry.ts
-  - apps/api/src/agent/wiring.ts
-  - .agents/skills/mcp-builder/scripts/example_evaluation.xml
-  - apps/web/src/chrome/TopBar.tsx
+  - apps/api/src/mcp/jsonrpc.ts
+  - apps/api/src/pat/auth.ts
   - apps/web/src/agent/AiSidePanel.tsx
-  - apps/api/src/agent/system-prompt.ts
-  - apps/web/src/agent/store.ts
+  - apps/api/src/mcp/methods/initialize.ts
+  - apps/web/src/canvas/ai-active-signal.ts
+  - apps/api/src/mcp/methods/ping.ts
+  - apps/web/src/canvas/Editor.tsx
+  - apps/web/src/canvas/presence-collaborator.ts
+  - apps/api/src/sync/tool-registry.ts
+  - apps/web/src/chrome/index.tsx
+  - apps/api/drizzle/0007_personal_access_tokens.sql
+  - apps/api/drizzle/meta/0007_snapshot.json
+  - apps/api/src/pat/token-format.ts
+  - apps/api/src/mcp/dispatch.ts
+  - apps/api/src/db/schema.ts
+  - apps/api/src/mcp/index.ts
+  - apps/web/src/account/PatTokensSection.tsx
   - packages/shared/src/locales/zh-TW.json
-  - apps/web/src/agent/useAgentRun.ts
-  - apps/api/src/agent/title-gen.ts
-  - .agents/skills/mcp-builder/SKILL.md
-  - apps/web/src/agent/TokenUsageFooter.tsx
-  - bun.lock
-  - .agents/skills/mcp-builder/LICENSE.txt
+  - CONTEXT.md
+  - docs/PHASE2_MILESTONES.md
+  - apps/web/src/agent/ChatComposer.tsx
+  - apps/api/src/index.ts
+  - apps/api/src/lib/rate-limit-rules.ts
+  - apps/api/src/pat/repo.ts
+  - apps/web/src/agent/cursor-ai-badge.ts
+  - packages/shared/src/locales/en.json
+  - apps/web/src/canvas/CollaboratorAvatars.tsx
+  - apps/web/src/account/ApiKeysPage.tsx
+  - asset/vellum-canvas.mp4
+  - apps/api/src/pat/routes.ts
+  - apps/web/src/canvas/CollaboratorCursorWithBadge.tsx
+  - packages/shared/src/tool-types.ts
+  - apps/api/src/mcp/methods/tools-call.ts
+  - apps/api/src/sync/list-canvases-reader.ts
+  - apps/web/src/styles.css
+  - apps/web/src/account/usePatTokens.ts
+  - apps/api/src/sync/mutator.ts
+  - apps/web/src/canvas/use-sync-store.ts
+  - apps/api/drizzle/meta/_journal.json
+  - apps/api/src/mcp/zod-to-json-schema.ts
+  - apps/api/src/mcp/methods/tools-list.ts
 tests:
-  - apps/api/src/sync/mutator.test.ts
-  - apps/web/src/agent/TokenUsageFooter.test.tsx
-  - apps/web/src/canvas/CollaboratorAvatars.test.tsx
-  - e2e/agent-rate-limit-toast.spec.ts
-  - packages/shared/src/agent-events.test.ts
-  - apps/api/src/sync/mutator-readers.test.ts
-  - apps/api/src/agent/threads/handlers.test.ts
-  - apps/api/src/sync/geo-defaults.test.ts
+  - apps/api/src/pat/token-format.test.ts
+  - apps/api/src/mcp/methods/tools-call.test.ts
+  - apps/api/src/mcp/index.test.ts
+  - e2e/mcp-server-roundtrip.spec.ts
+  - apps/api/src/mcp/jsonrpc.test.ts
+  - apps/web/src/account/PatTokensSection.test.tsx
+  - apps/api/src/mcp/methods/tools-list.test.ts
+  - apps/web/src/account/usePatTokens.test.ts
+  - apps/web/src/canvas/presence-collaborator.test.ts
+  - apps/api/src/pat/repo.test.ts
+  - apps/api/src/mcp/dispatch.test.ts
   - apps/api/src/sync/tool-registry.test.ts
-  - e2e/agent-multi-tab-badge.spec.ts
-  - apps/web/src/agent/store.test.ts
-  - apps/api/src/agent/integration.test.ts
-  - apps/web/src/agent/ChatList.test.tsx
-  - apps/api/src/agent/threads/repo.test.ts
-  - apps/api/src/agent/runtime.test.ts
-  - apps/web/src/agent/AiSidePanel.test.tsx
-  - apps/api/src/agent/title-gen.test.ts
-  - apps/api/src/db/schema.test.ts
-  - e2e/agent-cancel.spec.ts
-  - apps/web/src/agent/useAgentThread.test.ts
-  - apps/api/src/agent/sse-endpoint.test.ts
-  - apps/web/src/agent/ChatComposer.test.tsx
+  - apps/api/src/sync/list-canvases-reader.test.ts
+  - apps/api/src/mcp/methods/ping.test.ts
+  - apps/api/src/pat/routes.test.ts
+  - apps/api/src/mcp/methods/initialize.test.ts
   - apps/web/src/agent/cursor-ai-badge.test.ts
-  - apps/web/src/agent/ThreadSwitcher.test.tsx
-  - e2e/agent-viewer-no-panel.spec.ts
-  - e2e/sharing-acceptance.spec.ts
-  - apps/api/src/agent/wiring.test.ts
-  - apps/web/src/agent/useAgentRun.test.ts
-  - apps/web/src/agent/sse-parser.test.ts
-  - apps/api/src/agent/streaming.test.ts
-  - apps/api/src/agent/system-prompt.test.ts
+  - e2e/agent-multi-tab-badge.spec.ts
+  - apps/api/src/pat/auth.test.ts
+  - apps/api/src/db/schema.test.ts
+  - apps/api/src/mcp/zod-to-json-schema.test.ts
 -->
 
 ---
