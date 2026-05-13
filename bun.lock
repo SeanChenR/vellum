@@ -16,7 +16,7 @@
     },
     "apps/api": {
       "name": "@vellum/api",
-      "version": "0.1.0",
+      "version": "0.7.0",
       "dependencies": {
         "@ai-sdk/anthropic": "~3.0.75",
         "@ai-sdk/google": "~3.0.68",
@@ -48,12 +48,13 @@
     },
     "apps/web": {
       "name": "@vellum/web",
-      "version": "0.1.0",
+      "version": "0.7.0",
       "dependencies": {
         "@dnd-kit/core": "^6.3.1",
         "@dnd-kit/sortable": "^10.0.0",
         "@dnd-kit/utilities": "^3.2.2",
         "@hookform/resolvers": "^5.2.2",
+        "@icons-pack/react-simple-icons": "^13.13.0",
         "@tailwindcss/typography": "^0.5.19",
         "@tanstack/react-query": "^5.100.6",
         "@tanstack/react-query-devtools": "^5.100.6",
@@ -96,7 +97,7 @@
     },
     "packages/shared": {
       "name": "@vellum/shared",
-      "version": "0.1.0",
+      "version": "0.7.0",
       "dependencies": {
         "drizzle-orm": "^0.45.2",
         "tldraw": "4.5.10",
@@ -230,6 +231,8 @@
     "@happy-dom/global-registrator": ["@happy-dom/global-registrator@20.9.0", "", { "dependencies": { "@types/node": ">=20.0.0", "happy-dom": "^20.9.0" } }, "sha512-lBW6/m5BIFl3pMuWPNN0lIOYw9LMCmPfix53ExS3FBi4E+NELEljQ3xH6aAV9IYiQRfn9YIIgzzMrD0vIcD7tw=="],
 
     "@hookform/resolvers": ["@hookform/resolvers@5.2.2", "", { "dependencies": { "@standard-schema/utils": "^0.3.0" }, "peerDependencies": { "react-hook-form": "^7.55.0" } }, "sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA=="],
+
+    "@icons-pack/react-simple-icons": ["@icons-pack/react-simple-icons@13.13.0", "", { "peerDependencies": { "react": "^16.13 || ^17 || ^18 || ^19" } }, "sha512-B5HhQMIpcSH4z8IZ8HFhD59CboHceKYMpPC9kAwGyKntvPdyJJv26DLu4Z1wAjcCLyrJhf11tMhiQGom9Rxb9g=="],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
 

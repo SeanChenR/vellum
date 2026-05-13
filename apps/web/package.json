@@ -1,6 +1,6 @@
 {
   "name": "@vellum/web",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Vellum frontend — React + tldraw SDK + Tailwind v4",
   "type": "module",
@@ -17,6 +17,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.2.2",
+    "@icons-pack/react-simple-icons": "^13.13.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-query": "^5.100.6",
     "@tanstack/react-query-devtools": "^5.100.6",
