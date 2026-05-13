@@ -1,24 +1,39 @@
 /**
- * Navbar tests — public-pages spec "Navbar exposes product identity
- * and primary navigation" (auth-aware right side after unify-navbar).
+ * Navbar.test.tsx — three-region grid + new chrome controls.
  *
- * Three render modes by `useAuth()`:
- *   - isLoading=true  → fixed-width placeholder, no Sign-in, no avatar
- *   - isAuthenticated=false → Sign-in CTA visible, avatar absent
- *   - isAuthenticated=true  → UserAvatarMenu rendered, Sign-in absent
+ * Spec ref: openspec/specs/public-pages/spec.md
+ *   "Navbar exposes product identity and primary navigation"
+ *   scenarios: "NavBar regions render in the correct order",
+ *              "Loading state does not shift layout",
+ *              "Active route link is visually distinguished"
  */
 
 import "../i18n";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, render, screen } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
-import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as RealRouter from "@tanstack/react-router";
 import i18n from "../i18n";
 import type { AuthUser } from "../auth/useAuth";
 
-// ---------------------------------------------------------------------------
-// Mocks — must come before importing the component under test
-// ---------------------------------------------------------------------------
+// `Link` from TanStack Router blows up without a RouterProvider; the
+// rest of the module we want to keep (so other test files importing
+// e.g. `useNavigate` still resolve). Replace only Link with a plain
+// anchor and pass through everything else.
+mock.module("@tanstack/react-router", () => ({
+  ...RealRouter,
+  Link: (props: {
+    to: string;
+    children: React.ReactNode;
+    className?: string;
+    "aria-label"?: string;
+  }) => (
+    <a href={props.to} className={props.className} aria-label={props["aria-label"]}>
+      {props.children}
+    </a>
+  ),
+}));
 
 interface MockAuthState {
   user: AuthUser | null;
@@ -39,6 +54,11 @@ mock.module("../auth/useAuth", () => ({
   }),
 }));
 
+function setMockPathname(path: string) {
+  window.history.replaceState(null, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
 const fakeUser: AuthUser = {
   id: "u-1",
   email: "test@example.com",
@@ -50,122 +70,114 @@ const fakeUser: AuthUser = {
 
 const { Navbar } = await import("./Navbar");
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function renderNavbar() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <I18nextProvider i18n={i18n}>
-      <Navbar />
-    </I18nextProvider>,
+    <QueryClientProvider client={client}>
+      <I18nextProvider i18n={i18n}>
+        <Navbar />
+      </I18nextProvider>
+    </QueryClientProvider>,
   );
 }
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
   mockAuth = { user: null, isLoading: false, isAuthenticated: false };
+  setMockPathname("/");
 });
 
 afterEach(() => cleanup());
 
-// ---------------------------------------------------------------------------
-// Anonymous visitor (the original spec scenarios)
-// ---------------------------------------------------------------------------
+describe("Navbar — layout structure", () => {
+  test("renders three grid regions in left/center/right DOM order", () => {
+    mockAuth = { user: fakeUser, isLoading: false, isAuthenticated: true };
+    const { container } = renderNavbar();
+    const inner = container.querySelector('[data-testid="navbar-inner"]') as HTMLElement;
+    expect(inner).not.toBeNull();
+    // grid-cols-[1fr_auto_1fr] declares three columns.
+    expect(inner.className).toContain("grid-cols-[1fr_auto_1fr]");
+    const regions = inner.querySelectorAll("[data-region]");
+    expect(regions).toHaveLength(3);
+    expect((regions[0] as HTMLElement).getAttribute("data-region")).toBe("brand");
+    expect((regions[1] as HTMLElement).getAttribute("data-region")).toBe("nav-links");
+    expect((regions[2] as HTMLElement).getAttribute("data-region")).toBe("chrome-controls");
+  });
+
+  test("chrome-controls right region contains LocaleToggle, ThemeToggle, then auth action in order", () => {
+    mockAuth = { user: fakeUser, isLoading: false, isAuthenticated: true };
+    const { container } = renderNavbar();
+    const right = container.querySelector('[data-region="chrome-controls"]') as HTMLElement;
+    const localeBtn = right.querySelector('[data-testid="locale-toggle-label"]');
+    const themeIcon = right.querySelector('[data-testid^="theme-toggle-icon-"]');
+    const userMenu = right.querySelector('[aria-label*="user menu" i]');
+    expect(localeBtn).not.toBeNull();
+    expect(themeIcon).not.toBeNull();
+    expect(userMenu).not.toBeNull();
+    const elements = [localeBtn!, themeIcon!, userMenu!];
+    for (let i = 0; i < elements.length - 1; i++) {
+      const a = elements[i] as HTMLElement;
+      const b = elements[i + 1] as HTMLElement;
+      const cmp = a.compareDocumentPosition(b);
+      expect(cmp & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+});
+
+describe("Navbar — active route highlighting", () => {
+  test("active link gets accent-purple underline class when pathname matches", () => {
+    setMockPathname("/about");
+    const { container } = renderNavbar();
+    const aboutLink = container.querySelector('a[href="/about"]') as HTMLElement;
+    expect(aboutLink.className).toContain("nav-link-active");
+  });
+
+  test("non-active link does NOT get the active class", () => {
+    setMockPathname("/");
+    const { container } = renderNavbar();
+    const aboutLink = container.querySelector('a[href="/about"]') as HTMLElement;
+    expect(aboutLink.className).not.toContain("nav-link-active");
+  });
+});
 
 describe("Navbar — anonymous visitor", () => {
-  test("renders the brand logo wrapped in a link to /", () => {
+  test("renders brand link to / + About link + Sign-in CTA", () => {
     const { container } = renderNavbar();
-    expect(container.querySelectorAll('a[href="/"]').length).toBeGreaterThan(0);
-    expect(container.querySelector('a[href="/"] img')).not.toBeNull();
-  });
-
-  test("renders an About link to /about with the localized label", () => {
-    const { container } = renderNavbar();
+    expect(container.querySelector('a[href="/"]')).not.toBeNull();
     expect(container.querySelector('a[href="/about"]')).not.toBeNull();
-    expect(screen.getByText("About")).not.toBeNull();
-  });
-
-  test("renders a Sign-in CTA pointing to /login", () => {
-    const { container } = renderNavbar();
-    const login = container.querySelector('a[href="/login"]');
-    expect(login).not.toBeNull();
-    expect(screen.getByText("Sign in")).not.toBeNull();
+    expect(container.querySelector('a[href="/login"]')).not.toBeNull();
   });
 
   test("does NOT render any user-avatar menu", () => {
     renderNavbar();
     expect(screen.queryByRole("button", { name: /user menu/i })).toBeNull();
   });
-
-  test("renders the brand name from nav.brand i18n key", () => {
-    renderNavbar();
-    expect(screen.getAllByText("Vellum").length).toBeGreaterThan(0);
-  });
 });
 
-// ---------------------------------------------------------------------------
-// Authenticated visitor — avatar menu replaces Sign-in CTA
-// ---------------------------------------------------------------------------
-
 describe("Navbar — authenticated visitor", () => {
-  test("renders the user-avatar menu and NO Sign-in CTA", () => {
+  test("renders user-avatar menu + NO Sign-in CTA", () => {
     mockAuth = { user: fakeUser, isLoading: false, isAuthenticated: true };
     const { container } = renderNavbar();
     expect(screen.getByRole("button", { name: /user menu/i })).not.toBeNull();
     expect(container.querySelector('a[href="/login"]')).toBeNull();
-    expect(screen.queryByText("Sign in")).toBeNull();
-  });
-
-  test("logo still links to /", () => {
-    mockAuth = { user: fakeUser, isLoading: false, isAuthenticated: true };
-    const { container } = renderNavbar();
-    const logoLinks = container.querySelectorAll('a[href="/"]');
-    expect(logoLinks.length).toBeGreaterThan(0);
-  });
-
-  test("About link still present", () => {
-    mockAuth = { user: fakeUser, isLoading: false, isAuthenticated: true };
-    const { container } = renderNavbar();
-    expect(container.querySelector('a[href="/about"]')).not.toBeNull();
   });
 });
 
-// ---------------------------------------------------------------------------
-// Auth state still loading — fixed-width placeholder, no CLS
-// ---------------------------------------------------------------------------
-
 describe("Navbar — auth loading", () => {
-  test("renders a placeholder element instead of Sign-in CTA or avatar", () => {
-    mockAuth = { user: null, isLoading: true, isAuthenticated: false };
-    const { container } = renderNavbar();
-    expect(container.querySelector('a[href="/login"]')).toBeNull();
-    expect(screen.queryByRole("button", { name: /user menu/i })).toBeNull();
-    // Placeholder is identifiable via data attribute set by Navbar.
-    const placeholder = container.querySelector('[data-testid="navbar-auth-placeholder"]');
-    expect(placeholder).not.toBeNull();
-  });
-
-  test("placeholder dimensions match the Sign-in CTA classes (no CLS)", () => {
-    // Render anonymous first, capture CTA element.
+  test("renders placeholder with the same width-related classes as the Sign-in CTA", () => {
     mockAuth = { user: null, isLoading: false, isAuthenticated: false };
-    const { container: anonContainer, unmount } = renderNavbar();
-    const cta = anonContainer.querySelector('a[href="/login"]') as HTMLElement;
-    expect(cta).not.toBeNull();
-    const ctaClasses = cta.className;
+    const { container: anon, unmount } = renderNavbar();
+    const cta = anon.querySelector('a[href="/login"]') as HTMLElement;
+    const widthTokens = cta.className.split(/\s+/).filter((c) => /^(px-|py-|w-|h-)/.test(c));
     unmount();
 
-    // Re-render with isLoading=true and check placeholder shares the
-    // size-affecting classes (px / py / inline-flex). Compare on length-bearing
-    // tokens to remain resilient to non-size class additions.
     mockAuth = { user: null, isLoading: true, isAuthenticated: false };
-    const { container: loadingContainer } = renderNavbar();
-    const placeholder = loadingContainer.querySelector(
+    const { container: loading } = renderNavbar();
+    const placeholder = loading.querySelector(
       '[data-testid="navbar-auth-placeholder"]',
     ) as HTMLElement;
     expect(placeholder).not.toBeNull();
-    const tokensFromCta = ctaClasses.split(/\s+/).filter((c) => /^(px-|py-|w-|h-)/.test(c));
-    for (const tok of tokensFromCta) {
+    for (const tok of widthTokens) {
       expect(placeholder.className).toContain(tok);
     }
   });

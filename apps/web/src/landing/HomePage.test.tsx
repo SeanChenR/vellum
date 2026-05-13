@@ -97,6 +97,33 @@ describe("HomePage — features section", () => {
     expect(screen.getByText("Real-time multiplayer")).not.toBeNull();
     expect(screen.getByText("Yours to share")).not.toBeNull();
   });
+
+  test("renders all three feature cards using the elevated Card primitive", () => {
+    renderHome();
+    const cards = [
+      screen.getByTestId("feature-card-canvas"),
+      screen.getByTestId("feature-card-multiplayer"),
+      screen.getByTestId("feature-card-sharing"),
+    ];
+    for (const card of cards) {
+      expect(card.getAttribute("data-variant")).toBe("elevated");
+    }
+    // hover-ring class applied to the card so the reduced-motion @media
+    // rule can target it (per spec motion-system).
+    for (const card of cards) {
+      expect(card.className).toContain("v-card-hover-ring");
+    }
+  });
+
+  test("each feature card renders its lucide icon (purple / cyan / pink accents)", () => {
+    renderHome();
+    expect(screen.getByTestId("feature-icon-canvas")).toBeDefined();
+    expect(screen.getByTestId("feature-icon-multiplayer")).toBeDefined();
+    expect(screen.getByTestId("feature-icon-sharing")).toBeDefined();
+    expect(screen.getByTestId("feature-icon-canvas").className).toContain("text-accent-purple");
+    expect(screen.getByTestId("feature-icon-multiplayer").className).toContain("text-accent-cyan");
+    expect(screen.getByTestId("feature-icon-sharing").className).toContain("text-accent-pink");
+  });
 });
 
 describe("HomePage — narrative band", () => {

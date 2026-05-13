@@ -10,6 +10,7 @@ import "../i18n";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, render, screen } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import i18n from "../i18n";
 import type { AuthUser } from "../auth/useAuth";
@@ -32,13 +33,35 @@ mock.module("../auth/useAuth", () => ({
   }),
 }));
 
+// Navbar's `Link` blows up without a RouterProvider; replace only it
+// and pass through the rest of the module so other test files (sharing
+// Bun's global module mock) keep their imports of `useNavigate` /
+// `useSearch` / `useLocation` resolving correctly.
+const RealRouter = await import("@tanstack/react-router");
+mock.module("@tanstack/react-router", () => ({
+  ...RealRouter,
+  Link: (props: {
+    to: string;
+    children: React.ReactNode;
+    className?: string;
+    "aria-label"?: string;
+  }) => (
+    <a href={props.to} className={props.className} aria-label={props["aria-label"]}>
+      {props.children}
+    </a>
+  ),
+}));
+
 const { AppLayout } = await import("./AppLayout");
 
 function renderLayout(children: React.ReactNode = <p>app-content</p>) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <I18nextProvider i18n={i18n}>
-      <AppLayout>{children}</AppLayout>
-    </I18nextProvider>,
+    <QueryClientProvider client={client}>
+      <I18nextProvider i18n={i18n}>
+        <AppLayout>{children}</AppLayout>
+      </I18nextProvider>
+    </QueryClientProvider>,
   );
 }
 
