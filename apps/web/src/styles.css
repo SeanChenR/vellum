@@ -3,12 +3,68 @@
 
 @source "./**/*.{ts,tsx,html}";
 
-@theme {
-  /* Vellum brand palette — see ADR-0005 + branding direction */
-  --color-ink-navy: #1a2332;
-  --color-parchment-cream: #f5f0e6;
-  --color-warm-sepia: #8b6f47;
-  --color-off-white: #fafaf7;
+/* ============================================================
+ * Aura Theme tokens — light + dark
+ *
+ * Source-of-truth palette for the v0.7.0 redesign. Components read
+ * these via Tailwind utility classes that map to the `@theme inline`
+ * block below; do NOT reference the raw `--bg` / `--surface` names in
+ * component code, use `bg-bg` / `bg-surface` etc.
+ *
+ * Spec: openspec/specs/theme-switching/spec.md
+ *   "Theme tokens are CSS custom properties switched by data-theme"
+ * Design: openspec/changes/redesign-ui-aura-theme/design.md (Decision 1)
+ * ============================================================ */
+
+:root,
+:root[data-theme="light"] {
+  --bg: #FAF9F6;
+  --surface: #FFFFFF;
+  --surface-elevated: #F4F2EE;
+  --border: #E5E3DC;
+  --text-primary: #21202E;
+  --text-muted: #6B6976;
+  --accent-purple: #7C3AED;
+  --accent-cyan: #0D9488;
+  --accent-pink: #DB2777;
+  --accent-orange: #EA580C;
+  --accent-red: #DC2626;
+  --accent-sky: #0284C7;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #21202E;
+  --surface: #2C2A3A;
+  --surface-elevated: #3D3B4D;
+  --border: #3D3B4D;
+  --text-primary: #EDECEE;
+  --text-muted: #A7A6B0;
+  --accent-purple: #A277FF;
+  --accent-cyan: #61FFCA;
+  --accent-pink: #FF6AD5;
+  --accent-orange: #FFCA85;
+  --accent-red: #FF6767;
+  --accent-sky: #38BDF8;
+  color-scheme: dark;
+}
+
+@theme inline {
+  /* Aura palette exposed as Tailwind utility names so components write
+   * `bg-bg` / `text-text-primary` / `border-border` etc., and the
+   * resolved value follows `data-theme`. */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-pink: var(--accent-pink);
+  --color-accent-orange: var(--accent-orange);
+  --color-accent-red: var(--accent-red);
+  --color-accent-sky: var(--accent-sky);
 
   /* Typography */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -19,8 +75,8 @@
 @layer base {
   html {
     font-family: var(--font-sans);
-    background: var(--color-off-white);
-    color: var(--color-ink-navy);
+    background: var(--bg);
+    color: var(--text-primary);
   }
 }
 
@@ -30,7 +86,7 @@
  * focus-visible-ring"` on every interactive element. */
 @layer utilities {
   .focus-visible-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warm-sepia focus-visible:ring-offset-2 focus-visible:ring-offset-off-white;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-purple focus-visible:ring-offset-2 focus-visible:ring-offset-bg;
   }
 }
 
@@ -45,5 +101,15 @@
   50% {
     transform: scale(1.08);
     opacity: 0.88;
+  }
+}
+
+/* Card hover-ring transition respects reduced-motion.
+ * Spec: openspec/specs/motion-system/spec.md
+ *   "Card hover-ring transition is bounded and respects reduced-motion"
+ */
+@media (prefers-reduced-motion: reduce) {
+  .v-card-hover-ring {
+    transition-duration: 0s !important;
   }
 }

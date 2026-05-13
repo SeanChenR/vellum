@@ -1,3 +1,9 @@
+// Apply persisted theme BEFORE React mounts so the first paint has the
+// correct background. Spec: openspec/specs/theme-switching/spec.md
+// "Document theme is applied before React mount".
+import { applyInitialTheme } from "./theme/bootstrap-theme";
+applyInitialTheme();
+
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./i18n";
