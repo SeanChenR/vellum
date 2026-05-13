@@ -37,10 +37,10 @@ export function ApiKeysPricingTable() {
   const { t } = useTranslation();
 
   return (
-    <section className="rounded-lg border border-gray-200 p-4">
+    <section className="rounded-lg border border-border p-4">
       <header className="mb-4">
         <h2 className="text-lg font-semibold">{t("account.apiKeys.pricing.title")}</h2>
-        <p className="text-xs text-gray-500">{t("account.apiKeys.pricing.subtitle")}</p>
+        <p className="text-xs text-text-muted">{t("account.apiKeys.pricing.subtitle")}</p>
       </header>
 
       <div className="space-y-5">
@@ -51,13 +51,13 @@ export function ApiKeysPricingTable() {
             <article
               key={providerId}
               data-testid={`byok-pricing-section-${providerId}`}
-              className="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0"
+              className="border-t border-border pt-4 first:border-t-0 first:pt-0"
             >
               <div
                 data-testid={`byok-pricing-header-${providerId}`}
                 className="mb-2 flex items-baseline justify-between gap-2"
               >
-                <h3 className="text-sm font-semibold text-ink-navy">
+                <h3 className="text-sm font-semibold text-text-primary">
                   {t(`account.apiKeys.providers.${providerId}.label`)}
                 </h3>
                 <a
@@ -65,14 +65,14 @@ export function ApiKeysPricingTable() {
                   href={vendorUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs text-blue-600 underline"
+                  className="text-xs text-accent-purple underline"
                 >
                   {t("account.apiKeys.pricing.column.link")}
                 </a>
               </div>
 
               <table className="w-full text-left text-sm tabular-nums">
-                <thead className="text-xs uppercase text-gray-400">
+                <thead className="text-xs uppercase text-text-muted">
                   <tr>
                     <th className="py-1 font-normal">{t("account.apiKeys.pricing.column.tier")}</th>
                     <th className="py-1 font-normal">
@@ -91,16 +91,16 @@ export function ApiKeysPricingTable() {
                     <tr
                       key={row.modelId}
                       data-testid="byok-pricing-row"
-                      className="border-t border-gray-100"
+                      className="border-t border-border"
                     >
-                      <td className="py-1.5 text-gray-700">
+                      <td className="py-1.5 text-text-primary">
                         {t(`account.apiKeys.pricing.tier.${row.tier}`)}
                       </td>
-                      <td className="py-1.5 font-mono text-xs text-gray-700">{row.modelId}</td>
-                      <td className="py-1.5 text-right text-gray-900">
+                      <td className="py-1.5 font-mono text-xs text-text-primary">{row.modelId}</td>
+                      <td className="py-1.5 text-right text-text-primary">
                         {formatUsd(row.inputUsdPer1M)}
                       </td>
-                      <td className="py-1.5 text-right text-gray-900">
+                      <td className="py-1.5 text-right text-text-primary">
                         {formatUsd(row.outputUsdPer1M)}
                       </td>
                     </tr>

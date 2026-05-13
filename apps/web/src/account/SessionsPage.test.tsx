@@ -1,10 +1,10 @@
 /**
- * SessionsPage component tests.
+ * SessionsPage tests — Aura redesign contract.
  *
- * Scenarios:
- * - lists multiple sessions, marks isCurrent
- * - revoke non-current session: removes from list
- * - revoke current session: redirects to /login
+ * Spec ref: openspec/specs/account/spec.md
+ *   "SessionsPage renders each session as a card row with current-session badge"
+ *   scenarios: "Current session is pinned with cyan badge",
+ *              "Revoke requires confirmation"
  */
 
 import "../i18n";
@@ -16,28 +16,22 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "../i18n";
 import { SessionsPage } from "./SessionsPage";
 
-const mockNavigate = mock((_path: string) => {});
-
-mock.module("@tanstack/react-router", () => ({
-  useNavigate: () => mockNavigate,
-}));
-
 const mockSessions = [
   {
-    id: "sess-1",
-    createdAt: new Date().toISOString(),
-    lastSeenAt: new Date().toISOString(),
-    ipAddress: "127.0.0.1",
-    userAgent: "Mozilla/5.0",
-    isCurrent: true,
-  },
-  {
-    id: "sess-2",
-    createdAt: new Date().toISOString(),
-    lastSeenAt: new Date().toISOString(),
+    id: "sess-non-current",
+    createdAt: "2026-05-12T00:00:00.000Z",
+    lastSeenAt: "2026-05-12T00:00:00.000Z",
     ipAddress: "192.168.1.10",
     userAgent: "Chrome/120",
     isCurrent: false,
+  },
+  {
+    id: "sess-current",
+    createdAt: "2026-05-13T00:00:00.000Z",
+    lastSeenAt: "2026-05-13T00:00:00.000Z",
+    ipAddress: "127.0.0.1",
+    userAgent: "Mozilla/5.0",
+    isCurrent: true,
   },
 ];
 
@@ -55,7 +49,8 @@ function createClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await i18n.changeLanguage("en");
   // biome-ignore lint/suspicious/noExplicitAny: test overriding global fetch
   (globalThis as any).fetch = mockFetch;
 });
@@ -63,7 +58,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   mockFetch.mockClear();
-  mockNavigate.mockClear();
 });
 
 function renderPage() {
@@ -78,61 +72,70 @@ function renderPage() {
 }
 
 describe("SessionsPage", () => {
-  test("lists multiple sessions with isCurrent indicator", async () => {
+  test("renders the current session as the first row with a cyan This-device badge", async () => {
     renderPage();
-
     await waitFor(() => {
-      // Both sessions should be displayed
-      const currentBadge = document.querySelector("[data-testid='current-session-badge']");
-      expect(currentBadge).not.toBeNull();
+      expect(screen.queryByTestId("current-session-badge")).not.toBeNull();
     });
+    const badge = screen.getByTestId("current-session-badge");
+    expect(badge.getAttribute("data-tone")).toBe("cyan");
+    expect(badge.textContent).toContain("This device");
+
+    // The row containing the badge must be the FIRST list item.
+    const listItems = document.querySelectorAll("ul li");
+    expect(listItems.length).toBeGreaterThan(1);
+    expect(listItems[0]!.contains(badge)).toBe(true);
   });
 
-  test("revoke non-current session removes from list", async () => {
-    const user = userEvent.setup();
+  test("the current-session row has NO Revoke button", async () => {
     renderPage();
-
     await waitFor(() => {
-      expect(screen.queryAllByRole("button", { name: /revoke/i }).length).toBeGreaterThan(0);
+      expect(screen.queryByTestId("current-session-badge")).not.toBeNull();
     });
-
-    const revokeButtons = screen.queryAllByRole("button", { name: /revoke/i });
-    // Find revoke button for non-current session (sess-2)
-    if (revokeButtons.length > 0) {
-      await user.click(revokeButtons[revokeButtons.length - 1]!);
-      await waitFor(() => {
-        const deleteCalls = mockFetch.mock.calls.filter(
-          (c) => (c[1] as RequestInit)?.method === "DELETE",
-        );
-        expect(deleteCalls.length).toBeGreaterThan(0);
-      });
-    }
+    const listItems = document.querySelectorAll("ul li");
+    const currentRow = listItems[0]! as HTMLElement;
+    expect(currentRow.querySelector("button")).toBeNull();
   });
 
-  test("revoke current session navigates to /login", async () => {
+  test("clicking Revoke on a non-current row opens a confirmation dialog before DELETE", async () => {
     const user = userEvent.setup();
-    // Make revoke return success for current session
-    mockFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
-      if (opts?.method === "DELETE") {
-        return Response.json({ data: { ok: true } });
-      }
-      return Response.json({ data: { sessions: mockSessions } });
-    });
-
     renderPage();
     await waitFor(() => {
-      expect(screen.queryAllByRole("button", { name: /revoke/i }).length).toBeGreaterThan(0);
+      expect(screen.queryAllByRole("button", { name: /sign out this device/i }).length).toBe(1);
     });
 
-    // Click revoke on the current session button
-    const currentRevokeBtn = document.querySelector(
-      "[data-testid='revoke-current-session']",
-    ) as HTMLButtonElement | null;
-    if (currentRevokeBtn) {
-      await user.click(currentRevokeBtn);
-      await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith("/login");
-      });
-    }
+    // No DELETE call before user confirms.
+    const beforeDeletes = mockFetch.mock.calls.filter(
+      (c) => (c[1] as RequestInit)?.method === "DELETE",
+    ).length;
+    expect(beforeDeletes).toBe(0);
+
+    // Click the Revoke button on the non-current row.
+    const revokeBtn = screen.getByRole("button", { name: /sign out this device/i });
+    await user.click(revokeBtn);
+
+    // Confirm dialog appears.
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeNull();
+    });
+
+    // Still no DELETE.
+    const midDeletes = mockFetch.mock.calls.filter(
+      (c) => (c[1] as RequestInit)?.method === "DELETE",
+    ).length;
+    expect(midDeletes).toBe(0);
+
+    // Confirm.
+    const buttons = screen.queryAllByRole("button", { name: /sign out this device/i });
+    // The second matching button is the confirmation in the dialog.
+    await user.click(buttons[buttons.length - 1]!);
+
+    await waitFor(() => {
+      const deletes = mockFetch.mock.calls.filter(
+        (c) => (c[1] as RequestInit)?.method === "DELETE",
+      );
+      expect(deletes.length).toBe(1);
+      expect((deletes[0]![0] as string).endsWith("/sess-non-current")).toBe(true);
+    });
   });
 });

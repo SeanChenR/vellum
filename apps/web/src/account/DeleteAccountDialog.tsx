@@ -71,16 +71,19 @@ export function DeleteAccountDialog({ open, onClose }: DeleteAccountDialogProps)
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-xl">
-        <h2 id="delete-account-title" className="text-lg font-semibold text-red-700 mb-4">
+      <div className="w-full max-w-md rounded-xl bg-surface p-8 shadow-xl">
+        <h2 id="delete-account-title" className="text-lg font-semibold text-accent-red mb-4">
           {t("account.deleteAccount.title")}
         </h2>
 
-        <p className="text-sm text-gray-600 mb-6">{t("account.deleteAccount.warning")}</p>
+        <p className="text-sm text-text-muted mb-6">{t("account.deleteAccount.warning")}</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="confirm-email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="confirm-email"
+              className="block text-sm font-medium text-text-primary mb-1"
+            >
               {t("account.deleteAccount.confirmEmailLabel")}
             </label>
             <input
@@ -90,17 +93,17 @@ export function DeleteAccountDialog({ open, onClose }: DeleteAccountDialogProps)
               aria-label={t("account.deleteAccount.confirmEmailLabel")}
               value={confirmEmail}
               onChange={(e) => setConfirmEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-red-400"
+              className="w-full rounded-lg border border-border bg-bg px-4 py-3 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-accent-red"
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{t(error, { defaultValue: error })}</p>}
+          {error && <p className="text-sm text-accent-red">{t(error, { defaultValue: error })}</p>}
 
           <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-lg border border-gray-200 px-4 py-3 text-sm"
+              className="flex-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-text-primary hover:bg-surface-elevated"
             >
               {t("account.deleteAccount.cancelButton")}
             </button>
@@ -109,7 +112,7 @@ export function DeleteAccountDialog({ open, onClose }: DeleteAccountDialogProps)
               type="submit"
               aria-label={t("account.deleteAccount.confirmButton")}
               disabled={!emailMatches || isSubmitting}
-              className="flex-1 rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
+              className="flex-1 rounded-lg bg-accent-red px-4 py-3 text-sm font-semibold text-white hover:bg-accent-red/90 disabled:opacity-40"
             >
               {t("account.deleteAccount.confirmButton")}
             </button>

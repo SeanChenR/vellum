@@ -1,33 +1,53 @@
 /**
- * ApiKeyRow — one Settings → API Keys row for a given provider.
+ * ApiKeyRow — one row of the API & MCP tab BYOK section.
  *
- * Extracted from the original ApiKeysPage so the same interaction logic
- * (empty / saved / save-error / delete-confirm) renders for any of the
- * three supported providers without duplicate JSX.
+ * Design ref: openspec/changes/redesign-ui-aura-theme/design.md Decision 12
+ * Spec ref:   openspec/specs/account/spec.md
+ *   "API & MCP tab uses row-based layout with saved-state indicator"
  *
- * Visual styling and the delete-confirm modal placement still live in
- * the parent ApiKeysPage; the row owns its own input / showInput /
- * confirmingDelete state and dispatches mutations via useApiKeys hooks.
+ * Three vertical zones with generous breathing room:
+ *   1. Identity   — 40 px brand logo + provider name + saved badge + console link
+ *   2. Credential — masked key OR password input + primary action(s)
+ *   3. Default model — labelled selector on its own visual subsection
  *
- * Spec ref:
- *   openspec/changes/add-byok-multi-provider-and-pricing/specs/byok-keys/spec.md
- *     "Settings API Keys page UI" — every row behaves identically across
- *     anthropic / openai / google.
+ * Layout: `px-6 py-5` + 16/20 px gaps between zones so each section has
+ * room to breathe; previously everything was crammed into a single
+ * 16 px-padded block.
  */
 
+import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderId } from "@vellum/shared";
 import { BYOK_PRICING, type PricingRow, type Tier } from "@vellum/shared/byok-pricing";
+import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
 import { useApiKeysList, useDeleteApiKey, useSaveApiKey, useUpdatePreferences } from "./useApiKeys";
+import anthropicPng from "../assets/providers/anthropic.png";
+import openaiPng from "../assets/providers/openai.png";
+import googlePng from "../assets/providers/google.png";
 
 const MASKED = "•••••••••••";
 const TIER_ORDER: Tier[] = ["flagship", "balanced", "economy"];
+
+const PROVIDER_LOGO: Record<ProviderId, string> = {
+  anthropic: anthropicPng,
+  openai: openaiPng,
+  google: googlePng,
+};
 
 function tierOptionsFor(provider: ProviderId): PricingRow[] {
   return BYOK_PRICING.filter((r) => r.providerId === provider).sort(
     (a, b) => TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier),
   );
+}
+
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
 }
 
 export interface ApiKeyRowProps {
@@ -51,6 +71,7 @@ export function ApiKeyRow({ provider }: ApiKeyRowProps) {
 
   const errorKey = save.error instanceof Error ? save.error.message : null;
   const tierRows = tierOptionsFor(provider);
+  const helpUrl = t(`account.apiKeys.providers.${provider}.helpUrl`);
 
   function handleSave() {
     if (!input.trim()) return;
@@ -72,23 +93,45 @@ export function ApiKeyRow({ provider }: ApiKeyRowProps) {
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <div className="font-medium">{t(`account.apiKeys.providers.${provider}.label`)}</div>
+    <div className="space-y-5 px-6 py-8">
+      {/* Zone 1: identity */}
+      <div className="flex items-start gap-4">
+        <img
+          src={PROVIDER_LOGO[provider]}
+          alt=""
+          data-testid={`apikey-provider-logo-${provider}`}
+          aria-hidden
+          className="h-12 w-12 flex-shrink-0 object-contain"
+          draggable={false}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="font-medium text-text-primary">
+              {t(`account.apiKeys.providers.${provider}.label`)}
+            </h4>
+            {isSaved && (
+              <Badge tone="cyan" dot data-testid={`apikey-saved-badge-${provider}`}>
+                {t("account.apiKeys.savedBadge")}
+              </Badge>
+            )}
+          </div>
           <a
-            href={t(`account.apiKeys.providers.${provider}.helpUrl`)}
+            href={helpUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-xs text-blue-600 underline"
+            className="mt-1 inline-flex items-center gap-1 text-xs text-text-muted transition-colors hover:text-accent-purple"
           >
-            {t(`account.apiKeys.providers.${provider}.helpUrl`)}
+            <span>{t("account.apiKeys.helpLinkLabel")}</span>
+            <span aria-hidden>·</span>
+            <span className="font-mono">{hostnameOf(helpUrl)}</span>
+            <ExternalLink size={11} aria-hidden />
           </a>
         </div>
       </div>
 
+      {/* Zone 2: credential */}
       {showEmptyForm ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <input
             type="password"
             value={input}
@@ -96,63 +139,72 @@ export function ApiKeyRow({ provider }: ApiKeyRowProps) {
               setInput(e.target.value);
             }}
             placeholder={t(`account.apiKeys.providers.${provider}.placeholder`)}
-            className="w-full rounded border border-gray-300 px-3 py-2"
+            className="focus-visible-ring h-10 w-full rounded-lg border border-border bg-surface px-3 font-mono text-sm text-text-primary placeholder:font-sans placeholder:text-text-muted"
             disabled={save.isPending}
           />
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="sm"
               onClick={handleSave}
               disabled={!input.trim() || save.isPending}
-              className="rounded bg-ink-navy px-4 py-2 text-white disabled:opacity-50"
             >
               {save.isPending
                 ? t("account.apiKeys.status.saving")
                 : t("account.apiKeys.actions.save")}
-            </button>
+            </Button>
             {isSaved && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setShowInput(false);
                   setInput("");
                 }}
-                className="text-sm text-gray-600 underline"
               >
-                {t("account.apiKeys.actions.delete")}
-              </button>
+                {t("common.cancel")}
+              </Button>
             )}
           </div>
-          {errorKey && <div className="text-sm text-red-600">{t(errorKey)}</div>}
+          {errorKey && <p className="text-xs text-accent-red">{t(errorKey)}</p>}
         </div>
       ) : (
-        <div className="space-y-2">
-          <div className="font-mono text-sm text-gray-700">{MASKED}</div>
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface px-4 py-3">
+          <span className="font-mono text-sm tracking-wider text-text-primary">{MASKED}</span>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 setShowInput(true);
               }}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm"
             >
               {t("account.apiKeys.actions.replace")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="destructive"
+              size="sm"
               onClick={() => {
                 setConfirmingDelete(true);
               }}
-              className="rounded border border-red-300 px-3 py-1.5 text-sm text-red-600"
             >
               {t("account.apiKeys.actions.delete")}
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
-        <label htmlFor={`default-model-${provider}`} className="text-xs font-medium text-gray-600">
+      {/* Zone 3: default model — no internal divider; the panel-level
+          divider lives between providers in ApiKeysTab. */}
+      <div className="space-y-2">
+        <label
+          htmlFor={`default-model-${provider}`}
+          className="block text-[11px] font-semibold uppercase tracking-wider text-text-muted"
+        >
           {t("account.apiKeys.defaultModel.title")}
         </label>
         <select
@@ -163,7 +215,7 @@ export function ApiKeyRow({ provider }: ApiKeyRowProps) {
             if (next === "") return;
             updatePref.mutate({ provider, model: next });
           }}
-          className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+          className="focus-visible-ring h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-text-primary"
         >
           <option value="">{t("account.apiKeys.defaultModel.unset")}</option>
           {tierRows.map((row) => (
@@ -179,31 +231,38 @@ export function ApiKeyRow({ provider }: ApiKeyRowProps) {
           role="dialog"
           aria-modal="true"
           aria-labelledby={`apikeys-delete-title-${provider}`}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
         >
-          <div className="w-full max-w-md rounded-lg bg-white p-6">
-            <h2 id={`apikeys-delete-title-${provider}`} className="mb-2 text-lg font-semibold">
+          <div className="w-full max-w-md rounded-xl bg-surface p-6 shadow-xl">
+            <h2
+              id={`apikeys-delete-title-${provider}`}
+              className="mb-2 text-lg font-semibold text-text-primary"
+            >
               {t("account.apiKeys.confirm.deleteTitle")}
             </h2>
-            <p className="mb-4 text-sm text-gray-600">{t("account.apiKeys.confirm.deleteBody")}</p>
+            <p className="mb-4 text-sm text-text-muted">
+              {t("account.apiKeys.confirm.deleteBody")}
+            </p>
             <div className="flex justify-end gap-2">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   setConfirmingDelete(false);
                 }}
-                className="rounded border border-gray-300 px-3 py-1.5 text-sm"
               >
-                {t("account.apiKeys.actions.replace")}
-              </button>
-              <button
+                {t("common.cancel")}
+              </Button>
+              <Button
                 type="button"
+                variant="destructive"
+                size="sm"
                 onClick={handleConfirmDelete}
                 disabled={del.isPending}
-                className="rounded bg-red-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
               >
                 {t("account.apiKeys.actions.delete")}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

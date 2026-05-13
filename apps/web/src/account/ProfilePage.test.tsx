@@ -66,7 +66,26 @@ describe("ProfilePage", () => {
     });
   });
 
-  test("submitting with valid name calls PATCH /api/account/profile", async () => {
+  test("renders the form inside an elevated Card primitive", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.queryByDisplayValue("Test User")).not.toBeNull();
+    });
+    const card = screen.getByTestId("profile-form-card");
+    expect(card.getAttribute("data-variant")).toBe("elevated");
+    expect(card.querySelector("form")).not.toBeNull();
+  });
+
+  test("does NOT render a locale select element", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.queryByDisplayValue("Test User")).not.toBeNull();
+    });
+    expect(document.querySelector("select#locale")).toBeNull();
+    expect(screen.queryByText(/介面語言|Interface language/i)).toBeNull();
+  });
+
+  test("submitting with valid name calls PATCH /api/account/profile with no locale field", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -89,6 +108,11 @@ describe("ProfilePage", () => {
       );
       expect(patchCalls.length).toBeGreaterThan(0);
     });
+
+    const patchCall = mockFetch.mock.calls.find((c) => (c[1] as RequestInit)?.method === "PATCH");
+    const body = JSON.parse((patchCall![1] as RequestInit).body as string);
+    expect(body).toHaveProperty("name");
+    expect(body).not.toHaveProperty("locale");
   });
 
   test("non-https image URL shows invalidImageUrl error", async () => {

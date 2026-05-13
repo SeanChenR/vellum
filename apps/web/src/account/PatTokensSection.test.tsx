@@ -142,6 +142,29 @@ describe("PatTokensSection — listing", () => {
     renderWith();
     await waitFor(() => expect(screen.getByText(i18n.t("account.pat.emptyState"))).toBeDefined());
   });
+
+  test("row layout: single horizontal flex container with lucide Key icon on the left", async () => {
+    fetchState.rows = [
+      {
+        id: "pat_layout",
+        name: "Claude Desktop",
+        prefix: "vlm_pat_abcd",
+        expiresAt: null,
+        lastUsedAt: null,
+        createdAt: "2026-05-01T00:00:00.000Z",
+      },
+    ];
+    renderWith();
+    await waitFor(() => expect(screen.getByText("Claude Desktop")).toBeDefined());
+    const row = document.querySelector('[data-testid="pat-token-row-pat_layout"]');
+    expect(row).not.toBeNull();
+    expect(row!.className).toContain("flex");
+    expect(row!.className).toContain("items-center");
+    expect(row!.className).toContain("justify-between");
+    // lucide Key icon is rendered as <svg> with aria-hidden
+    const icon = row!.querySelector('[data-testid="pat-token-icon-pat_layout"]');
+    expect(icon).not.toBeNull();
+  });
 });
 
 describe("PatTokensSection — create flow", () => {
@@ -186,6 +209,13 @@ describe("PatTokensSection — create flow", () => {
     );
     expect(screen.getByText(i18n.t("account.pat.plaintextWarning"))).toBeDefined();
     expect(screen.getByRole("button", { name: i18n.t("account.pat.copyButton") })).toBeDefined();
+    // Plaintext reveal region uses the cyan-soft highlight bg
+    const reveal = document.querySelector('[data-testid="pat-plaintext-reveal"]');
+    expect(reveal).not.toBeNull();
+    expect(reveal!.className).toContain("bg-accent-cyan/10");
+    // Copy button contains a lucide Copy svg
+    const copyBtn = screen.getByRole("button", { name: i18n.t("account.pat.copyButton") });
+    expect(copyBtn.querySelector('[data-testid="pat-copy-icon"]')).not.toBeNull();
 
     expect(fetchState.postCalls).toHaveLength(1);
     expect(fetchState.postCalls[0]).toEqual({ name: "Cursor", expiresInDays: 30 });

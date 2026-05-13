@@ -148,6 +148,26 @@ describe("ApiKeyRow — saved state", () => {
     expect(screen.getByRole("button", { name: /replace/i })).toBeTruthy();
   });
 
+  test("saved row shows <Badge tone='cyan' dot> with the savedBadge i18n string", async () => {
+    fetchState.list = [
+      { provider: "openai", createdAt: "2026-05-07T10:00:00.000Z", lastUsedAt: null },
+    ];
+    renderRow("openai");
+    await waitFor(() => {
+      expect(screen.getByText(/•+/)).toBeTruthy();
+    });
+    const badge = screen.getByTestId("apikey-saved-badge-openai");
+    expect(badge.getAttribute("data-tone")).toBe("cyan");
+    expect(badge.querySelector("[data-testid='badge-dot']")).not.toBeNull();
+    expect(badge.textContent).toContain("Connected");
+  });
+
+  test("unsaved row does NOT render the cyan saved badge", async () => {
+    renderRow("google");
+    await screen.findByPlaceholderText("AIza...");
+    expect(screen.queryByTestId("apikey-saved-badge-google")).toBeNull();
+  });
+
   test("a different provider's saved row does NOT make this row saved", async () => {
     fetchState.list = [
       { provider: "anthropic", createdAt: "2026-05-07T10:00:00.000Z", lastUsedAt: null },

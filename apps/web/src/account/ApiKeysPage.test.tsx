@@ -93,11 +93,13 @@ describe("ApiKeysPage — composition", () => {
     expect(screen.getByPlaceholderText("AIza...")).toBeTruthy();
   });
 
-  test("renders the pricing table (9 catalog rows)", async () => {
+  test("does NOT render the legacy pricing table (moved to PricingTab)", async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getAllByTestId("byok-pricing-row")).toHaveLength(9);
+      expect(screen.getByPlaceholderText("sk-ant-...")).toBeTruthy();
     });
+    expect(screen.queryAllByTestId("byok-pricing-row")).toHaveLength(0);
+    expect(document.querySelector("table")).toBeNull();
   });
 
   test("each provider row contains its own default-model dropdown", async () => {
@@ -168,5 +170,26 @@ describe("ApiKeysPage — per-provider preferences mutation", () => {
       selector: "#default-model-openai",
     }) as HTMLSelectElement;
     expect(openaiSelect.value).toBe("");
+  });
+});
+
+describe("ApiKeysPage — Aura two-section layout", () => {
+  test("renders both the Provider Keys section and the MCP Tokens section", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId("apikeys-section-providers")).toBeTruthy();
+    });
+    expect(screen.getByTestId("apikeys-section-mcp-tokens")).toBeTruthy();
+  });
+
+  test("Provider Keys section appears before MCP Tokens section in DOM order", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId("apikeys-section-providers")).toBeTruthy();
+    });
+    const providers = screen.getByTestId("apikeys-section-providers");
+    const mcp = screen.getByTestId("apikeys-section-mcp-tokens");
+    const cmp = providers.compareDocumentPosition(mcp);
+    expect(cmp & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
